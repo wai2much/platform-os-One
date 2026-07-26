@@ -21,10 +21,8 @@ export function Layout({ tenant, title, sections, activeKey, onNavigate, childre
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-card/60">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <svg width="24" height="26" viewBox="0 0 40 44" aria-hidden>
-            <path d="M20 2 36 11 36 33 20 42 4 33 4 11Z" fill="hsl(var(--primary))" />
-          </svg>
+        <div className="flex items-center gap-2.5 px-5 py-5">
+          <img src="/hos-mark-black.png" alt="Haus" className="h-7 w-7 object-contain" />
           <span className="font-display text-xl">Platform OS</span>
         </div>
 
