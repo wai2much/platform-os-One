@@ -3,8 +3,9 @@ import { Layout } from '@/components/Layout';
 import { SECTIONS } from '@/core/registry';
 import { Dashboard } from '@/core/pages/Dashboard';
 import { Customers } from '@/core/pages/Customers';
+import { Invoices } from '@/core/pages/Invoices';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
