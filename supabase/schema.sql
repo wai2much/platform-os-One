@@ -47,9 +47,21 @@ create table if not exists bookings (
   created_at timestamptz not null default now()
 );
 
+-- Xero OAuth tokens — written only by api/xero/callback.js (server-side).
+-- Single row keyed 'default' since this is one workshop; a real multi-tenant
+-- build would key this by tenant/organisation id instead.
+create table if not exists xero_tokens (
+  id text primary key default 'default',
+  access_token text not null,
+  refresh_token text not null,
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
+
 alter table jobs enable row level security;
 alter table invoices enable row level security;
 alter table bookings enable row level security;
+alter table xero_tokens enable row level security;
 
 -- Permissive demo policies — anon can read/write everything. This is fine for
 -- a prototype/demo project with no real customer data. Before onboarding a
@@ -66,3 +78,11 @@ create policy "demo anon update invoices" on invoices for update using (true);
 create policy "demo anon read bookings" on bookings for select using (true);
 create policy "demo anon write bookings" on bookings for insert with check (true);
 create policy "demo anon update bookings" on bookings for update using (true);
+
+-- xero_tokens holds real OAuth secrets, unlike the demo tables above.
+-- Deliberately NO policies at all — RLS is enabled with zero grants, so the
+-- public anon key (which is embedded in the browser bundle) can do NOTHING
+-- to this table. It's readable/writable only via the service role key
+-- (SUPABASE_SERVICE_ROLE_KEY, server-side env var only), which bypasses RLS.
+-- Never add an anon policy here — that would let anyone with the public
+-- anon key read live OAuth tokens straight out of the REST API.

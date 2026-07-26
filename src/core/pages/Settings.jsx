@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Settings — core screen. Business profile, bank details, credit &
- * invoicing (real toggle), integrations (real toggles + a canned test-call
- * flow), account. Faithful to the prototype.
+ * invoicing, integrations. Grok (London) and Xero are wired to REAL
+ * serverless endpoints (api/grok/*, api/xero/*) per the GROK_VOICE_AGENT.md
+ * and XERO_INTEGRATION.md handoffs — they degrade gracefully to "not
+ * configured" until Wai adds the real secrets as Vercel env vars (never in
+ * chat, never client-side), same pattern as the Supabase wiring.
  */
 const inp = { width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' };
 const label = { fontSize: 11, color: 'var(--text-mute)', fontWeight: 700, letterSpacing: '.06em' };
@@ -29,32 +32,67 @@ function Toggle({ on, onClick }) {
   );
 }
 
-const TEST_CALL_LINES = [
-  ['London', "Thanks for calling TyrePlus Thomastown, this is London — how can I help?"],
-  ['Caller', "Hey, can I book in for a wheel alignment next Tuesday?"],
-  ['London', "Of course — I've got 10am or 2pm free Tuesday, which suits?"],
-  ['Caller', "10am works great."],
-];
+const XERO_BANNER = {
+  connected: { color: '#7a8a5e', text: 'Xero connected successfully.' },
+  denied: { color: '#c67139', text: 'Xero authorisation was cancelled.' },
+  not_configured: { color: '#c67139', text: 'Xero isn’t configured on the server yet (XERO_CLIENT_ID/SECRET missing).' },
+  token_exchange_failed: { color: '#c67139', text: 'Xero token exchange failed — check the server logs.' },
+  error: { color: '#c67139', text: 'Something went wrong connecting Xero.' },
+};
 
 export function Settings() {
   const [creditHold, setCreditHold] = useState(true);
-  const [xero, setXero] = useState(true);
+  const [xeroConnected, setXeroConnected] = useState(false);
+  const [xeroConfigured, setXeroConfigured] = useState(null); // null = checking
+  const [xeroBanner, setXeroBanner] = useState(null);
+
   const [testCallOpen, setTestCallOpen] = useState(false);
-  const [testCallDone, setTestCallDone] = useState(false);
+  const [testCallResult, setTestCallResult] = useState(null); // { ok, configured, callerLine, reply, message }
+  const [testCallRunning, setTestCallRunning] = useState(false);
+
   const [connTesting, setConnTesting] = useState(false);
-  const [connOk, setConnOk] = useState(null);
+  const [connResult, setConnResult] = useState(null); // { ok, configured, message }
 
-  const runTestCall = () => {
+  useEffect(() => {
+    // Show the result banner from the Xero OAuth redirect, if we just came back from it.
+    const params = new URLSearchParams(window.location.search);
+    const xeroParam = params.get('xero');
+    if (xeroParam) {
+      setXeroBanner(XERO_BANNER[xeroParam] || null);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    fetch('/api/xero/status').then((r) => r.json()).then((d) => {
+      setXeroConfigured(d.configured);
+      setXeroConnected(!!d.connected);
+    }).catch(() => setXeroConfigured(false));
+  }, []);
+
+  const runTestCall = async () => {
     setTestCallOpen(true);
-    setTestCallDone(false);
-    setTimeout(() => setTestCallDone(true), 900);
+    setTestCallRunning(true);
+    setTestCallResult(null);
+    try {
+      const r = await fetch('/api/grok/test-call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      setTestCallResult(await r.json());
+    } catch (err) {
+      setTestCallResult({ ok: false, configured: true, message: err.message });
+    }
+    setTestCallRunning(false);
   };
 
-  const testConnection = () => {
+  const testConnection = async () => {
     setConnTesting(true);
-    setConnOk(null);
-    setTimeout(() => { setConnTesting(false); setConnOk(true); }, 700);
+    setConnResult(null);
+    try {
+      const r = await fetch('/api/grok/test-connection');
+      setConnResult(await r.json());
+    } catch (err) {
+      setConnResult({ ok: false, configured: true, message: err.message });
+    }
+    setConnTesting(false);
   };
+
+  const connectXero = () => { window.location.href = '/api/xero/authorize'; };
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
@@ -97,10 +135,13 @@ export function Settings() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}><span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Agent ID</span><span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'monospace' }}>agent_w54p3rF4EgKG1y4I</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}>
           <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Connection</span>
-          <span onClick={testConnection} className="fg" style={{ fontSize: 11, fontWeight: 700, color: connOk ? '#fff' : 'var(--text-soft)', background: connOk ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: 'pointer' }}>
-            {connTesting ? 'Testing…' : connOk ? '✓ Connected' : 'Test connection'}
+          <span onClick={testConnection} className="fg" style={{ fontSize: 11, fontWeight: 700, color: connResult?.ok ? '#fff' : 'var(--text-soft)', background: connResult?.ok ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: 'pointer' }}>
+            {connTesting ? 'Testing…' : connResult?.ok ? '✓ Connected' : 'Test connection'}
           </span>
         </div>
+        {connResult && !connResult.ok && (
+          <div className="fg" style={{ fontSize: 11, color: '#c67139', paddingLeft: 14 }}>{connResult.configured ? connResult.message : 'XAI_API_KEY not set on the server yet.'}</div>
+        )}
         <div className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', paddingLeft: 14, lineHeight: 1.5 }}>API key stored server-side only — never shipped to the browser</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}>
           <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Test call flow</span>
@@ -108,16 +149,26 @@ export function Settings() {
         </div>
         {testCallOpen && (
           <div style={{ background: 'var(--panel-bg)', borderRadius: 14, padding: '14px 16px', marginLeft: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {TEST_CALL_LINES.map(([speaker, text], i) => (
-              <div key={i} style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: speaker === 'London' ? '#c67139' : 'var(--text-soft)', width: 52, flexShrink: 0 }}>{speaker}</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{text}</span></div>
-            ))}
-            {testCallDone && <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#7a8a5e' }}>✓ Call flow completed — booking created</span>}
+            {testCallRunning && <span className="fg" style={{ fontSize: 12, color: 'var(--text-mute)' }}>Calling Grok…</span>}
+            {testCallResult && testCallResult.ok && (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft)', width: 52, flexShrink: 0 }}>Caller</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{testCallResult.callerLine}</span></div>
+                <div style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#c67139', width: 52, flexShrink: 0 }}>London</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{testCallResult.reply}</span></div>
+                <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#7a8a5e' }}>✓ Real Grok response — call flow verified</span>
+              </>
+            )}
+            {testCallResult && !testCallResult.ok && (
+              <span className="fg" style={{ fontSize: 12, color: '#c67139' }}>{testCallResult.configured ? testCallResult.message : 'XAI_API_KEY not set on the server yet — nothing to test.'}</span>
+            )}
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>Accounting sync</span>
-          <span onClick={() => setXero((v) => !v)} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: xero ? '#fff' : 'var(--text-soft)', background: xero ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}>{xero ? 'Xero · Synced' : 'Disconnected'}</span>
+          <span onClick={xeroConnected ? undefined : connectXero} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: xeroConnected ? '#fff' : 'var(--text-soft)', background: xeroConnected ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '2px 9px', cursor: xeroConnected ? 'default' : 'pointer' }}>
+            {xeroConfigured === null ? 'Checking…' : xeroConnected ? 'Xero · Synced' : xeroConfigured ? 'Connect Xero' : 'Not configured'}
+          </span>
         </div>
+        {xeroBanner && <div className="fg" style={{ fontSize: 11, color: xeroBanner.color, fontWeight: 600 }}>{xeroBanner.text}</div>}
       </Card>
 
       <Card title="Account">
