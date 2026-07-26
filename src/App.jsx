@@ -20,8 +20,11 @@ import { Products } from '@/verticals/workshop/Products';
 import { TyreStock } from '@/verticals/workshop/TyreStock';
 import { LoanCars } from '@/verticals/workshop/LoanCars';
 import { Settings } from '@/core/pages/Settings';
+import { HR } from '@/core/pages/HR';
+import { PublicBooking } from '@/core/pages/PublicBooking';
+import { Phone } from '@/core/pages/Phone';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings, hr: HR, pubBooking: PublicBooking, phone: Phone };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
