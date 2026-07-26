@@ -11,8 +11,11 @@ import { Mercedes } from '@/core/pages/Mercedes';
 import { Team } from '@/core/pages/Team';
 import { Comms } from '@/core/pages/Comms';
 import { Accounts } from '@/core/pages/Accounts';
+import { Reports } from '@/core/pages/Reports';
+import { Suppliers } from '@/core/pages/Suppliers';
+import { Vehicles } from '@/verticals/workshop/Vehicles';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
