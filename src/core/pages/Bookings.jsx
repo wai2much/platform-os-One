@@ -17,18 +17,12 @@ const CAL = [
   { hour: 13, bay: 2, vehicle: 'Hilux SR5', service: 'Diagnostic', color: '#b5703f' },
 ];
 
-const LIST = [
-  { id: 'b1', time: '08:30', vehicle: 'BMW 320i · WLR 442', customer: 'T. Nguyen', service: 'Service', bay: 'Bay 1', portal: false },
-  { id: 'b2', time: '10:00', vehicle: 'Golf GTI · 1TY 9KH', customer: 'A. Costa', service: 'Brakes', bay: 'Bay 2', portal: true },
-  { id: 'b3', time: '13:15', vehicle: 'Hilux SR5 · 8QT 3ZL', customer: 'L. Farrow', service: 'Diagnostic', bay: 'Bay 3', portal: false },
-];
-
 function Tab({ label, active, onClick }) {
   return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 16px', color: active ? '#fff' : 'var(--text-soft)', background: active ? '#c67139' : 'transparent' }}>{label}</span>;
 }
 
 export function Bookings() {
-  const { startJobCard } = useStore();
+  const { startJobCard, bookings } = useStore();
   const [view, setView] = useState('calendar');
   const [reminded, setReminded] = useState({});
 
@@ -75,16 +69,16 @@ export function Bookings() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {LIST.map((b) => (
+          {bookings.map((b) => (
             <div key={b.id} style={{ background: 'var(--card-bg)', borderRadius: 18, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
               <span className="fg" style={{ fontSize: 13, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '6px 13px', fontWeight: 700 }}>{b.time}</span>
               <div style={{ flex: 1 }}>
                 <div className="fg" style={{ fontSize: 14.5, color: 'var(--text)', fontWeight: 700 }}>{b.vehicle}</div>
                 <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 3 }}>{b.customer} · {b.service}</div>
               </div>
-              {b.portal && <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 9px' }}>Online booking</span>}
-              <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', border: '1.4px solid var(--border-c)', borderRadius: 999, padding: '4px 12px' }}>{b.bay}</span>
-              <span className="fg" onClick={() => startJobCard({ customer: b.customer, vehicle: b.vehicle.split(' · ')[0], workTypes: SVC[b.service] ? { [SVC[b.service]]: true } : {} })} style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', background: '#5a6a3c', borderRadius: 999, padding: '6px 13px', cursor: 'pointer' }}>Start job card →</span>
+              {b.source === 'portal' && <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 9px' }}>Online booking</span>}
+              {b.bay && <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', border: '1.4px solid var(--border-c)', borderRadius: 999, padding: '4px 12px' }}>{b.bay}</span>}
+              <span className="fg" onClick={() => startJobCard({ customer: b.customer, vehicle: (b.vehicle || '').split(' · ')[0], workTypes: SVC[b.service] ? { [SVC[b.service]]: true } : {} })} style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', background: '#5a6a3c', borderRadius: 999, padding: '6px 13px', cursor: 'pointer' }}>Start job card →</span>
               {reminded[b.id] ? (
                 <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '4px 11px' }}>Reminded</span>
               ) : (

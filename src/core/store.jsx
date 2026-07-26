@@ -24,6 +24,12 @@ const SEED_JOBS = [
   { id: 'J-0424', customer: 'L. Farrow', vehicle: 'Toyota Hilux', tech: 'Dean', status: 'Booked', total: 0, lines: [] },
 ];
 
+const SEED_BOOKINGS = [
+  { id: 'b1', time: '08:30', vehicle: 'BMW 320i · WLR 442', customer: 'T. Nguyen', phone: '', service: 'Service', bay: 'Bay 1', source: 'internal', day: '', notes: '' },
+  { id: 'b2', time: '10:00', vehicle: 'Golf GTI · 1TY 9KH', customer: 'A. Costa', phone: '', service: 'Brakes', bay: 'Bay 2', source: 'portal', day: '', notes: '' },
+  { id: 'b3', time: '13:15', vehicle: 'Hilux SR5 · 8QT 3ZL', customer: 'L. Farrow', phone: '', service: 'Diagnostic', bay: 'Bay 3', source: 'internal', day: '', notes: '' },
+];
+
 const SEED_INVOICES = [
   { id: 'INV-1042', customer: 'T. Nguyen', job: 'Job #J-0412', terms: 'Net 14', dueBy: '26 Jun', status: 'Overdue', amount: 1364, creditHold: true, fromJob: true },
   { id: 'INV-1039', customer: 'M. Petrakis', job: 'Job #J-0409', terms: 'Net 7', dueBy: '22 Jul', status: 'Overdue', amount: 594 },
@@ -60,6 +66,8 @@ const jobToRow = (j) => ({ id: j.id, customer: j.customer, vehicle: j.vehicle, t
 const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
 const invoiceToRow = (i) => ({ id: i.id, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount });
 const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account });
+const bookingToRow = (b) => ({ id: b.id, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
+const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : '') });
 
 async function persistJob(job) {
   if (!isSupabaseConfigured) return;
@@ -71,11 +79,17 @@ async function persistInvoice(inv) {
   const { error } = await supabase.from('invoices').upsert(invoiceToRow(inv));
   if (error) console.error('Supabase: failed to save invoice', inv.id, error);
 }
+async function persistBooking(b) {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('bookings').upsert(bookingToRow(b));
+  if (error) console.error('Supabase: failed to save booking', b.id, error);
+}
 
 export function StoreProvider({ children }) {
   const [active, setActive] = useState('dashboard');
   const [jobs, setJobs] = useState(SEED_JOBS);
   const [invoices, setInvoices] = useState(SEED_INVOICES);
+  const [bookings, setBookings] = useState(SEED_BOOKINGS);
   const [jobCard, setJobCard] = useState(blankJobCard());
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
@@ -85,12 +99,14 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     (async () => {
-      const [{ data: jobRows, error: jobsErr }, { data: invRows, error: invErr }] = await Promise.all([
+      const [{ data: jobRows, error: jobsErr }, { data: invRows, error: invErr }, { data: bookRows, error: bookErr }] = await Promise.all([
         supabase.from('jobs').select('*').order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').order('created_at', { ascending: false }),
+        supabase.from('bookings').select('*').order('created_at', { ascending: false }),
       ]);
       if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
       if (invErr) console.error('Supabase: failed to load invoices', invErr);
+      if (bookErr) console.error('Supabase: failed to load bookings', bookErr);
 
       if (!jobsErr && jobRows && jobRows.length === 0) {
         await supabase.from('jobs').upsert(SEED_JOBS.map(jobToRow));
@@ -104,6 +120,13 @@ export function StoreProvider({ children }) {
         setInvoices(SEED_INVOICES);
       } else if (!invErr && invRows) {
         setInvoices(invRows.map(invoiceFromRow));
+      }
+
+      if (!bookErr && bookRows && bookRows.length === 0) {
+        await supabase.from('bookings').upsert(SEED_BOOKINGS.map(bookingToRow));
+        setBookings(SEED_BOOKINGS);
+      } else if (!bookErr && bookRows) {
+        setBookings(bookRows.map(bookingFromRow));
       }
     })();
   }, []);
@@ -169,11 +192,22 @@ export function StoreProvider({ children }) {
     persistInvoice(saved);
   };
 
+  // Customer Booking Portal → a real booking, persisted the same way staff
+  // bookings are. Replaces the prototype's localStorage bridge now that
+  // there's an actual shared backend.
+  const addPortalBooking = ({ customer, phone, vehicle, service, day, time, notes }) => {
+    const booking = { id: 'portal-' + Date.now().toString(36), customer, phone, vehicle, service, day, time, notes, source: 'portal', bay: 'TBC' };
+    setBookings((list) => [booking, ...list]);
+    persistBooking(booking);
+    return booking;
+  };
+
   return (
     <Ctx.Provider value={{
       active, setActive,
       jobs, setJobs,
       invoices, setInvoices,
+      bookings, setBookings, addPortalBooking,
       jobCard, updateJobCard,
       startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
       flash, setFlash,
