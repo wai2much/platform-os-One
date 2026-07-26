@@ -7,8 +7,10 @@ import { Invoices } from '@/core/pages/Invoices';
 import { Jobs } from '@/core/pages/Jobs';
 import { Bookings } from '@/core/pages/Bookings';
 import { JobCard } from '@/verticals/workshop/JobCard';
+import { Mercedes } from '@/core/pages/Mercedes';
+import { Team } from '@/core/pages/Team';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).

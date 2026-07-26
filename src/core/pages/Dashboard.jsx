@@ -23,7 +23,7 @@ const HTML = `
   <div style="background:#201e1d;border-radius:24px;padding:20px 24px;display:flex;align-items:center;gap:22px">
     <div style="width:78px;height:78px;border-radius:50%;background:#c67139;display:flex;align-items:center;justify-content:center;flex:none"><div style="width:34px;height:34px;border-radius:50%;background:#f5ead8"></div></div>
     <div style="flex:1">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span class="fg" style="font-size:11px;letter-spacing:.14em;color:#e2b48a;font-weight:700">MERCEDES · WORKSHOP AI</span><span class="fg" style="font-size:10px;color:#a8b48e;font-weight:600">● On the floor</span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span class="fg" style="font-size:11px;letter-spacing:.14em;color:#e2b48a;font-weight:700">MERCEDES LEE · HYPER AGENT</span><span class="fg" style="font-size:10px;color:#a8b48e;font-weight:600">● On the floor</span></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#c67139;flex-shrink:0"></span><span class="fg" style="font-size:12px;color:#f0c9a8;font-weight:600">1 account on credit hold — T. Nguyen, invoice #1042 past Net 14</span></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#c67139;flex-shrink:0"></span><span class="fg" style="font-size:12px;color:#f0c9a8;font-weight:600">1 NPS detractor — T. Nguyen scored 6/10, needs a follow-up call</span></div>
       <div class="cap" style="color:#f5ead8;font-size:20px;line-height:1.3">Three cars in, one waiting on a Burson part. Shall I chase it?</div>

@@ -1,12 +1,12 @@
 import { useState } from 'react';
+import { useStore, fmt } from '@/core/store';
 
 /**
- * Jobs — core screen. Faithful to the prototype's jobs table, plus a detail
- * modal (line items + GST). Sample data; a job's total is GST-inclusive
- * (ex-GST = total / 1.1), matching the Invoices/engine convention.
+ * Jobs — core screen. Reads from the shared store, so jobs created via
+ * Bookings → "Start job card" (and completed via "Generate invoice") show up
+ * here too — one job list, not a separate sample set. Detail modal is a real
+ * line-item editor (add/remove rows), faithful to the prototype's job modal.
  */
-const fmt = (n) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 const STATUS = {
   'In progress': { color: '#c67139', bg: 'rgba(198,113,57,.15)' },
   Ready: { color: '#fff', bg: '#7a8a5e' },
@@ -14,18 +14,6 @@ const STATUS = {
   Completed: { color: '#7a8a5e', bg: 'rgba(122,138,94,.16)' },
   Booked: { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
 };
-
-const JOBS = [
-  { id: 'J-0412', customer: 'T. Nguyen', vehicle: 'Ford Ranger', tech: 'Sam', status: 'In progress', total: 1364,
-    lines: [['Major service', 1, 420], ['Front brake pads + rotors', 1, 690], ['Wheel alignment', 1, 130]] },
-  { id: 'J-0418', customer: 'A. Costa', vehicle: 'Audi A4', tech: 'Dean', status: 'Ready', total: 759,
-    lines: [['Service B', 1, 560], ['Cabin filter', 1, 79]] },
-  { id: 'J-0409', customer: 'M. Petrakis', vehicle: 'VW Golf GTI', tech: 'Sam', status: 'Awaiting approval', total: 594,
-    lines: [['Diagnostic scan', 1, 150], ['Ignition coil pack', 1, 390]] },
-  { id: 'J-0421', customer: 'S. Bianchi', vehicle: 'Mini Cooper S', tech: 'Anthony', status: 'Completed', total: 462,
-    lines: [['Logbook service', 1, 420]] },
-  { id: 'J-0424', customer: 'L. Farrow', vehicle: 'Toyota Hilux', tech: 'Dean', status: 'Booked', total: 0, lines: [] },
-];
 
 const COLS = '80px 1.3fr 1.1fr .8fr .9fr .7fr';
 
@@ -35,12 +23,29 @@ function StatusPill({ status, style }) {
 }
 
 export function Jobs() {
-  const [open, setOpen] = useState(null);
+  const { jobs, setJobs } = useStore();
+  const [openId, setOpenId] = useState(null);
+  const [lines, setLines] = useState([]); // editable draft: [desc, qty, price]
+
+  const open = jobs.find((j) => j.id === openId) || null;
+  const total = lines.reduce((s, [, qty, price]) => s + (parseFloat(qty) || 0) * (parseFloat(price) || 0), 0);
+
+  const openJob = (j) => { setOpenId(j.id); setLines(j.lines.length ? j.lines.map(([d, q, amt]) => [d, q, q ? amt / q : amt]) : []); };
+  const setLine = (i, k, v) => setLines((ls) => ls.map((l, j) => (j === i ? (k === 0 ? [v, l[1], l[2]] : k === 1 ? [l[0], v, l[2]] : [l[0], l[1], v]) : l)));
+  const removeLine = (i) => setLines((ls) => ls.filter((_, j) => j !== i));
+  const addLine = () => setLines((ls) => [...ls, ['', 1, 0]]);
+
+  const save = () => {
+    const cleanLines = lines.filter(([d]) => d.trim()).map(([d, q, p]) => [d, parseFloat(q) || 1, (parseFloat(q) || 1) * (parseFloat(p) || 0)]);
+    const newTotal = cleanLines.reduce((s, [, , amt]) => s + amt, 0);
+    setJobs((list) => list.map((j) => (j.id === openId ? { ...j, lines: cleanLines, total: newTotal } : j)));
+    setOpenId(null);
+  };
 
   return (
     <div style={{ padding: '6px 30px 26px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
-        <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{JOBS.length} total</span>
+        <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{jobs.length} total</span>
         <span style={{ flex: 1 }} />
         <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New job</span>
       </div>
@@ -51,12 +56,12 @@ export function Jobs() {
             <span key={h} className="fg" style={{ fontSize: 10.5, letterSpacing: '.06em', color: 'var(--text-mute)', fontWeight: 700, textAlign: i === 5 ? 'right' : 'left' }}>{h}</span>
           ))}
         </div>
-        {JOBS.map((j) => (
-          <div key={j.id} onClick={() => setOpen(j)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border-c)', alignItems: 'center', cursor: 'pointer', minWidth: 640 }}>
+        {jobs.map((j) => (
+          <div key={j.id} onClick={() => openJob(j)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border-c)', alignItems: 'center', cursor: 'pointer', minWidth: 640 }}>
             <span className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>{j.id}</span>
             <span className="fg" style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 600 }}>{j.customer}</span>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text-soft)' }}>{j.vehicle}</span>
-            <span className="fg" style={{ fontSize: 13, color: 'var(--text-soft)' }}>{j.tech}</span>
+            <span className="fg" style={{ fontSize: 13, color: 'var(--text-soft)' }}>{j.tech || '—'}</span>
             <StatusPill status={j.status} style={{ justifySelf: 'start' }} />
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700, textAlign: 'right' }}>{j.total ? fmt(j.total) : '—'}</span>
           </div>
@@ -64,46 +69,44 @@ export function Jobs() {
       </div>
 
       {open && (
-        <div onClick={() => setOpen(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 26, width: 480, maxHeight: '80vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+        <div onClick={() => setOpenId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 26, width: 460, padding: '28px 30px', boxShadow: '0 24px 60px rgba(32,30,29,.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
               <div>
-                <div className="cap" style={{ fontSize: 18, color: 'var(--text)' }}>{open.id} · {open.customer}</div>
-                <div className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>{open.vehicle} · Tech {open.tech}</div>
+                <div className="cap" style={{ color: 'var(--text)', fontSize: 22 }}>{open.vehicle}</div>
+                <div className="fg" style={{ color: 'var(--text-mute)', fontSize: 12.5, fontWeight: 600, marginTop: 4 }}>{open.id} · {open.customer}</div>
               </div>
-              <span style={{ flex: 1 }} />
               <StatusPill status={open.status} />
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Technician</span>
+              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{open.tech || '—'}</span>
+            </div>
 
-            {open.lines.length ? (
-              <>
-                <div style={{ background: 'var(--panel-bg)', borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px 90px', gap: 8, padding: '9px 14px' }}>
-                    {['ITEM', 'QTY', 'AMOUNT'].map((h, i) => <span key={h} className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, textAlign: i === 2 ? 'right' : 'left' }}>{h}</span>)}
-                  </div>
-                  {open.lines.map(([desc, qty, amt], i) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 40px 90px', gap: 8, padding: '9px 14px', borderTop: '1px solid var(--border-c)' }}>
-                      <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{desc}</span>
-                      <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{qty}</span>
-                      <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, textAlign: 'right' }}>{fmt(amt)}</span>
-                    </div>
-                  ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+              <span className="fg" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>LINE ITEMS</span>
+              <span className="fg" onClick={addLine} style={{ fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>+ Add item</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflow: 'auto' }}>
+              {lines.map((li, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.6fr .6fr .8fr .8fr 20px', gap: 8, alignItems: 'center', background: 'var(--panel-bg)', borderRadius: 10, padding: '8px 10px' }}>
+                  <input value={li[0]} onChange={(e) => setLine(i, 0, e.target.value)} placeholder="Description" style={{ background: 'transparent', border: 'none', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', padding: 2 }} />
+                  <input value={li[1]} onChange={(e) => setLine(i, 1, e.target.value)} inputMode="decimal" style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-c)', fontSize: 12, fontFamily: 'Figtree, sans-serif', color: 'var(--text-soft)', outline: 'none', padding: 2 }} />
+                  <input value={li[2]} onChange={(e) => setLine(i, 2, e.target.value)} inputMode="decimal" style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-c)', fontSize: 12, fontFamily: 'Figtree, sans-serif', color: 'var(--text-soft)', outline: 'none', padding: 2 }} />
+                  <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 700, textAlign: 'right' }}>{fmt((parseFloat(li[1]) || 0) * (parseFloat(li[2]) || 0))}</span>
+                  <span onClick={() => removeLine(i)} className="fg" style={{ fontSize: 14, color: 'var(--text-mute2)', cursor: 'pointer', textAlign: 'center' }}>×</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>Subtotal (ex GST)</span><span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(open.total / 1.1)}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>GST (10%)</span><span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(open.total - open.total / 1.1)}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid var(--border-c)', paddingTop: 7, marginTop: 2 }}><span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 700 }}>Total (inc GST)</span><span className="cap" style={{ fontSize: 22, color: 'var(--text)' }}>{fmt(open.total)}</span></div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', padding: '10px 0 6px' }}>No line items yet — job is booked, not started.</div>
-            )}
+              ))}
+              {!lines.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)', padding: '8px 0' }}>No line items yet.</div>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(32,30,29,.12)', marginTop: 12, paddingTop: 12 }}>
+              <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>Total</span>
+              <span className="cap" style={{ fontSize: 19, color: 'var(--text)' }}>{fmt(total)}</span>
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-              <span className="fg" onClick={() => setOpen(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
-              <span className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Generate invoice</span>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+              <span className="fg" onClick={() => setOpenId(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
+              <span className="fg" onClick={save} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Save &amp; open job</span>
             </div>
           </div>
         </div>
