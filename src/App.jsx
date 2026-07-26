@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { SECTIONS } from '@/core/registry';
 import { Dashboard } from '@/core/pages/Dashboard';
+import { Customers } from '@/core/pages/Customers';
+
+const SCREENS = { dashboard: Dashboard, customers: Customers };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
@@ -34,9 +37,11 @@ export default function App() {
   const label = sections.flatMap((s) => s.items).find((i) => i.key === active)?.label ?? active;
   const title = TITLES[active] ?? label;
 
+  const Screen = SCREENS[active];
+
   return (
     <Layout title={title} sections={sections} activeKey={active} onNavigate={setActive}>
-      {active === 'dashboard' ? <Dashboard /> : <Placeholder label={label} />}
+      {Screen ? <Screen /> : <Placeholder label={label} />}
     </Layout>
   );
 }
