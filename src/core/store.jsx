@@ -133,13 +133,11 @@ export function StoreProvider({ children }) {
     if (parseFloat(jobCard.sundries) > 0) lines.push(['Sundries / disposal', 1, parseFloat(jobCard.sundries)]);
 
     const jobId = activeJobId || nextNum(jobs, 'J-', 424);
-    let savedJob;
-    if (activeJobId) {
-      setJobs((list) => list.map((j) => (j.id === activeJobId ? (savedJob = { ...j, status: 'Completed', total: amount, lines }) : j)));
-    } else {
-      savedJob = { id: jobId, customer: jobCard.customer || 'Walk-in', vehicle: jobCard.vehicle || '', tech: '', status: 'Completed', total: amount, lines };
-      setJobs((list) => [savedJob, ...list]);
-    }
+    const existingJob = activeJobId ? jobs.find((j) => j.id === activeJobId) : null;
+    const savedJob = existingJob
+      ? { ...existingJob, status: 'Completed', total: amount, lines }
+      : { id: jobId, customer: jobCard.customer || 'Walk-in', vehicle: jobCard.vehicle || '', tech: '', status: 'Completed', total: amount, lines };
+    setJobs((list) => (existingJob ? list.map((j) => (j.id === jobId ? savedJob : j)) : [savedJob, ...list]));
     persistJob(savedJob);
 
     const invId = nextNum(invoices, 'INV-', 1055);
@@ -155,16 +153,20 @@ export function StoreProvider({ children }) {
 
   // Jobs screen: save a job's edited line items + recomputed total.
   const saveJobLines = (id, lines, total) => {
-    let saved;
-    setJobs((list) => list.map((j) => (j.id === id ? (saved = { ...j, lines, total }) : j)));
-    if (saved) persistJob(saved);
+    const existing = jobs.find((j) => j.id === id);
+    if (!existing) return;
+    const saved = { ...existing, lines, total };
+    setJobs((list) => list.map((j) => (j.id === id ? saved : j)));
+    persistJob(saved);
   };
 
   // Invoices screen: mark an invoice paid.
   const markInvoicePaid = (id) => {
-    let saved;
-    setInvoices((list) => list.map((i) => (i.id === id ? (saved = { ...i, status: 'Paid' }) : i)));
-    if (saved) persistInvoice(saved);
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return;
+    const saved = { ...existing, status: 'Paid' };
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved);
   };
 
   return (
