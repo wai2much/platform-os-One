@@ -1,24 +1,22 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { CORE_SECTIONS } from '@/core/registry';
-import { workshopPack } from '@/verticals/workshop';
+import { SECTIONS } from '@/core/registry';
 import { Dashboard } from '@/core/pages/Dashboard';
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
- * Switch `vertical` and the enabled packs change — the core stays the same.
+ * Switch `vertical` and the workshop-tagged nav items drop out — core stays.
  */
 const TENANT = { name: 'TyrePlus Thomastown', vertical: 'workshop' };
 
-// Available vertical packs, keyed by id.
-const PACKS = { workshop: workshopPack };
+const TITLES = { dashboard: 'Good morning, Wai', bookings: "Today's bookings", assistant: 'Mercedes' };
 
 function Placeholder({ label }) {
   return (
-    <div className="mx-auto max-w-6xl px-8 py-7">
-      <h1 className="text-4xl">{label}</h1>
-      <p className="mt-3 text-muted-foreground">
-        Screen not built yet. Core screens come first, then the workshop pack.
+    <div style={{ padding: '6px 30px 26px' }}>
+      <p className="fg" style={{ color: 'var(--text-mute)', fontSize: 13 }}>
+        <span className="cap" style={{ fontSize: 20, color: 'var(--text)' }}>{label}</span><br />
+        Screen not built yet. Core screens first, then the workshop pack.
       </p>
     </div>
   );
@@ -27,14 +25,17 @@ function Placeholder({ label }) {
 export default function App() {
   const [active, setActive] = useState('dashboard');
 
-  const pack = PACKS[TENANT.vertical];
-  const sections = [...CORE_SECTIONS, ...(pack?.sections ?? [])];
+  // Filter nav by the tenant's vertical: core items always show; pack items only
+  // when their pack matches the tenant's vertical.
+  const sections = SECTIONS
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.pack || i.pack === TENANT.vertical) }))
+    .filter((s) => s.items.length);
 
   const label = sections.flatMap((s) => s.items).find((i) => i.key === active)?.label ?? active;
-  const title = active === 'dashboard' ? 'Good morning, Wai' : label;
+  const title = TITLES[active] ?? label;
 
   return (
-    <Layout tenant={TENANT} title={title} sections={sections} activeKey={active} onNavigate={setActive}>
+    <Layout title={title} sections={sections} activeKey={active} onNavigate={setActive}>
       {active === 'dashboard' ? <Dashboard /> : <Placeholder label={label} />}
     </Layout>
   );
