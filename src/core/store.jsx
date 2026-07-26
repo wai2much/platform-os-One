@@ -1,9 +1,11 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 /**
- * App store — a lightweight in-memory data layer shared across screens. This is
- * the seam the real backend (Supabase) plugs into later (see src/lib/supabase.js);
- * for now it wires the front-office → workshop → invoice hand-off end to end.
+ * App store — shared data layer for the app. Runs on in-memory sample data by
+ * default; when VITE_SUPABASE_URL/ANON_KEY are set (see .env.example +
+ * supabase/schema.sql), it loads from and persists to Supabase instead, with
+ * the exact same shape and API — no screen needs to change either way.
  */
 const Ctx = createContext(null);
 export const useStore = () => useContext(Ctx);
@@ -53,6 +55,23 @@ const nextNum = (list, prefix, floor) => {
   return prefix + String(max + 1).padStart(width, '0');
 };
 
+// --- Supabase row <-> app-shape mapping ------------------------------------
+const jobToRow = (j) => ({ id: j.id, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
+const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
+const invoiceToRow = (i) => ({ id: i.id, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount });
+const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account });
+
+async function persistJob(job) {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('jobs').upsert(jobToRow(job));
+  if (error) console.error('Supabase: failed to save job', job.id, error);
+}
+async function persistInvoice(inv) {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('invoices').upsert(invoiceToRow(inv));
+  if (error) console.error('Supabase: failed to save invoice', inv.id, error);
+}
+
 export function StoreProvider({ children }) {
   const [active, setActive] = useState('dashboard');
   const [jobs, setJobs] = useState(SEED_JOBS);
@@ -60,6 +79,34 @@ export function StoreProvider({ children }) {
   const [jobCard, setJobCard] = useState(blankJobCard());
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
+
+  // On mount: if a Supabase project is configured, load from it (bootstrapping
+  // the seed rows into it the first time, so the demo data lives there too).
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    (async () => {
+      const [{ data: jobRows, error: jobsErr }, { data: invRows, error: invErr }] = await Promise.all([
+        supabase.from('jobs').select('*').order('created_at', { ascending: false }),
+        supabase.from('invoices').select('*').order('created_at', { ascending: false }),
+      ]);
+      if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
+      if (invErr) console.error('Supabase: failed to load invoices', invErr);
+
+      if (!jobsErr && jobRows && jobRows.length === 0) {
+        await supabase.from('jobs').upsert(SEED_JOBS.map(jobToRow));
+        setJobs(SEED_JOBS);
+      } else if (!jobsErr && jobRows) {
+        setJobs(jobRows.map(jobFromRow));
+      }
+
+      if (!invErr && invRows && invRows.length === 0) {
+        await supabase.from('invoices').upsert(SEED_INVOICES.map(invoiceToRow));
+        setInvoices(SEED_INVOICES);
+      } else if (!invErr && invRows) {
+        setInvoices(invRows.map(invoiceFromRow));
+      }
+    })();
+  }, []);
 
   const updateJobCard = (patch) => setJobCard((jc) => ({ ...jc, ...patch }));
 
@@ -69,6 +116,7 @@ export function StoreProvider({ children }) {
     const id = nextNum(jobs, 'J-', 424);
     const job = { id, customer: prefill.customer || '', vehicle: prefill.vehicle || '', tech: '', status: 'In progress', total: 0, lines: [] };
     setJobs((list) => [job, ...list]);
+    persistJob(job);
     setActiveJobId(id);
     setJobCard({ ...blankJobCard(), ...prefill });
     setActive('inspections');
@@ -85,20 +133,38 @@ export function StoreProvider({ children }) {
     if (parseFloat(jobCard.sundries) > 0) lines.push(['Sundries / disposal', 1, parseFloat(jobCard.sundries)]);
 
     const jobId = activeJobId || nextNum(jobs, 'J-', 424);
+    let savedJob;
     if (activeJobId) {
-      setJobs((list) => list.map((j) => (j.id === activeJobId ? { ...j, status: 'Completed', total: amount, lines } : j)));
+      setJobs((list) => list.map((j) => (j.id === activeJobId ? (savedJob = { ...j, status: 'Completed', total: amount, lines }) : j)));
     } else {
-      setJobs((list) => [{ id: jobId, customer: jobCard.customer || 'Walk-in', vehicle: jobCard.vehicle || '', tech: '', status: 'Completed', total: amount, lines }, ...list]);
+      savedJob = { id: jobId, customer: jobCard.customer || 'Walk-in', vehicle: jobCard.vehicle || '', tech: '', status: 'Completed', total: amount, lines };
+      setJobs((list) => [savedJob, ...list]);
     }
+    persistJob(savedJob);
 
     const invId = nextNum(invoices, 'INV-', 1055);
     const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true };
     setInvoices((list) => [inv, ...list]);
+    persistInvoice(inv);
     setFlash(inv.id);
     setJobCard(blankJobCard());
     setActiveJobId(null);
     setActive('invoices');
     return inv;
+  };
+
+  // Jobs screen: save a job's edited line items + recomputed total.
+  const saveJobLines = (id, lines, total) => {
+    let saved;
+    setJobs((list) => list.map((j) => (j.id === id ? (saved = { ...j, lines, total }) : j)));
+    if (saved) persistJob(saved);
+  };
+
+  // Invoices screen: mark an invoice paid.
+  const markInvoicePaid = (id) => {
+    let saved;
+    setInvoices((list) => list.map((i) => (i.id === id ? (saved = { ...i, status: 'Paid' }) : i)));
+    if (saved) persistInvoice(saved);
   };
 
   return (
@@ -107,7 +173,7 @@ export function StoreProvider({ children }) {
       jobs, setJobs,
       invoices, setInvoices,
       jobCard, updateJobCard,
-      startJobCard, generateInvoice,
+      startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
       flash, setFlash,
     }}>
       {children}

@@ -38,7 +38,7 @@ function MethodTab({ label, active, onClick }) {
 }
 
 export function Invoices() {
-  const { invoices, setInvoices, flash } = useStore();
+  const { invoices, flash, markInvoicePaid } = useStore();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
 
@@ -46,7 +46,7 @@ export function Invoices() {
   const outstanding = invoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
 
   const markPaid = () => {
-    setInvoices((list) => list.map((i) => (i.id === openId ? { ...i, status: 'Paid' } : i)));
+    markInvoicePaid(openId);
     setOpenId(null);
   };
 

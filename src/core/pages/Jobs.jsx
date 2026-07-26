@@ -23,7 +23,7 @@ function StatusPill({ status, style }) {
 }
 
 export function Jobs() {
-  const { jobs, setJobs } = useStore();
+  const { jobs, saveJobLines } = useStore();
   const [openId, setOpenId] = useState(null);
   const [lines, setLines] = useState([]); // editable draft: [desc, qty, price]
 
@@ -38,7 +38,7 @@ export function Jobs() {
   const save = () => {
     const cleanLines = lines.filter(([d]) => d.trim()).map(([d, q, p]) => [d, parseFloat(q) || 1, (parseFloat(q) || 1) * (parseFloat(p) || 0)]);
     const newTotal = cleanLines.reduce((s, [, , amt]) => s + amt, 0);
-    setJobs((list) => list.map((j) => (j.id === openId ? { ...j, lines: cleanLines, total: newTotal } : j)));
+    saveJobLines(openId, cleanLines, newTotal);
     setOpenId(null);
   };
 
