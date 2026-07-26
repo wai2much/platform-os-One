@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useStore } from '@/core/store';
+
+const SVC = { Service: 'Logbook service', Brakes: 'Brakes', Diagnostic: 'Diagnostic', Tyres: 'Tyres' };
 
 /**
  * Bookings — core screen. Calendar (bay grid) / List tab switcher, appointment
@@ -25,6 +28,7 @@ function Tab({ label, active, onClick }) {
 }
 
 export function Bookings() {
+  const { startJobCard } = useStore();
   const [view, setView] = useState('calendar');
   const [reminded, setReminded] = useState({});
 
@@ -80,6 +84,7 @@ export function Bookings() {
               </div>
               {b.portal && <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 9px' }}>Online booking</span>}
               <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', border: '1.4px solid var(--border-c)', borderRadius: 999, padding: '4px 12px' }}>{b.bay}</span>
+              <span className="fg" onClick={() => startJobCard({ customer: b.customer, vehicle: b.vehicle.split(' · ')[0], workTypes: SVC[b.service] ? { [SVC[b.service]]: true } : {} })} style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', background: '#5a6a3c', borderRadius: 999, padding: '6px 13px', cursor: 'pointer' }}>Start job card →</span>
               {reminded[b.id] ? (
                 <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '4px 11px' }}>Reminded</span>
               ) : (

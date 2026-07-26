@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Layout } from '@/components/Layout';
+import { useStore } from '@/core/store';
 import { SECTIONS } from '@/core/registry';
 import { Dashboard } from '@/core/pages/Dashboard';
 import { Customers } from '@/core/pages/Customers';
@@ -30,7 +30,7 @@ function Placeholder({ label }) {
 }
 
 export default function App() {
-  const [active, setActive] = useState('dashboard');
+  const { active, setActive } = useStore();
 
   // Filter nav by the tenant's vertical: core items always show; pack items only
   // when their pack matches the tenant's vertical.

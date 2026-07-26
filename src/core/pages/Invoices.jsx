@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useStore } from '@/core/store';
 
 /**
  * Invoices — core screen. Faithful to the prototype: table with credit-hold /
@@ -14,14 +15,6 @@ const STATUS = {
   Paid: { color: '#fff', bg: '#7a8a5e' },
   'On account': { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
 };
-
-const SEED = [
-  { id: 'INV-1042', customer: 'T. Nguyen', job: 'Job #J-0412', terms: 'Net 14', dueBy: '26 Jun', status: 'Overdue', amount: 1364, creditHold: true, fromJob: true },
-  { id: 'INV-1039', customer: 'M. Petrakis', job: 'Job #J-0409', terms: 'Net 7', dueBy: '22 Jul', status: 'Overdue', amount: 594 },
-  { id: 'INV-1051', customer: 'A. Costa', job: 'Job #J-0418', terms: 'Net 30', dueBy: '17 Aug', status: 'Sent', amount: 759, fromJob: true },
-  { id: 'INV-1053', customer: 'L. Farrow', job: 'Fleet · Baxter', terms: 'On account', dueBy: '—', status: 'On account', amount: 1232, onAccount: true },
-  { id: 'INV-1055', customer: 'S. Bianchi', job: 'Job #J-0421', terms: 'Due on receipt', dueBy: '26 Jul', status: 'Paid', amount: 462 },
-];
 
 const COLS = '1fr 1.2fr .8fr .8fr .8fr .8fr .8fr';
 
@@ -45,7 +38,7 @@ function MethodTab({ label, active, onClick }) {
 }
 
 export function Invoices() {
-  const [invoices, setInvoices] = useState(SEED);
+  const { invoices, setInvoices, flash } = useStore();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
 
@@ -81,7 +74,7 @@ export function Invoices() {
             <span className="fg" style={{ fontSize: 13, color: 'var(--text-soft)' }}>{inv.dueBy}</span>
             <StatusPill status={inv.status} style={{ justifySelf: 'start' }} />
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700, textAlign: 'right' }}>{fmt(inv.amount)}</span>
-            {inv.creditHold ? <Tag tone="hold">CREDIT HOLD</Tag> : inv.fromJob ? <Tag>SYNCED FROM JOB</Tag> : inv.onAccount ? <Tag>ON ACCOUNT</Tag> : <span />}
+            {inv.id === flash ? <Tag>NEW</Tag> : inv.creditHold ? <Tag tone="hold">CREDIT HOLD</Tag> : inv.fromJob ? <Tag>SYNCED FROM JOB</Tag> : inv.onAccount ? <Tag>ON ACCOUNT</Tag> : <span />}
           </div>
         ))}
       </div>

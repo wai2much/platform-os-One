@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useStore } from '@/core/store';
 
 /**
  * Job Card — TyrePlus "Inspection, Parts & Sign-off" (workshop pack).
@@ -36,13 +37,17 @@ function CheckSquare({ on, onClick, color = OLIVE }) {
 }
 
 function BackPage() {
+  const { jobCard, updateJobCard, generateInvoice } = useStore();
   const [status, setStatus] = useState({});
   const [notes, setNotes] = useState({});
   const [align, setAlign] = useState({ camber: '', toeF: '', toeR: '', caster: '' });
   const [flags, setFlags] = useState({});
-  const [parts, setParts] = useState(Array.from({ length: 8 }, () => ({ qty: '', desc: '', partNo: '', unit: '' })));
-  const [labour, setLabour] = useState('');
-  const [sundries, setSundries] = useState('');
+  const parts = jobCard.parts;
+  const setParts = (fn) => updateJobCard({ parts: typeof fn === 'function' ? fn(jobCard.parts) : fn });
+  const labour = jobCard.labour;
+  const setLabour = (v) => updateJobCard({ labour: v });
+  const sundries = jobCard.sundries;
+  const setSundries = (v) => updateJobCard({ sundries: v });
   const [method, setMethod] = useState('');
 
   const setPart = (i, k, v) => setParts((p) => p.map((row, j) => (j === i ? { ...row, [k]: v } : row)));
@@ -154,6 +159,9 @@ function BackPage() {
               </label>
             ))}
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+            <span className="fg" onClick={() => net > 0 && generateInvoice()} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? '#fff' : 'var(--text-mute2)', background: net > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
+          </div>
         </Card>
       </div>
 
@@ -182,15 +190,21 @@ function BackPage() {
 const WORK_TYPES = ['Logbook service', 'Tyres', 'Wheel alignment', 'Brakes', 'Battery', 'Air-con regas', 'Roadworthy (RWC)', 'Diagnostic'];
 
 function FrontPage() {
+  const { jobCard, updateJobCard } = useStore();
   const [f, setF] = useState({});
-  const [work, setWork] = useState({});
   const [flags, setFlags] = useState({});
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const work = jobCard.workTypes;
+  const setWork = (fn) => updateJobCard({ workTypes: typeof fn === 'function' ? fn(jobCard.workTypes) : fn });
 
-  const Field = ({ label, k, w }) => (
+  const Field = ({ label, k, w, store }) => (
     <div style={{ minWidth: w || 0, flex: w ? '0 0 auto' : 1 }}>
       <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>{label}</div>
-      <input value={f[k] || ''} onChange={set(k)} style={inp} />
+      {store ? (
+        <input value={jobCard[k] || ''} onChange={(e) => updateJobCard({ [k]: e.target.value })} style={inp} />
+      ) : (
+        <input value={f[k] || ''} onChange={set(k)} style={inp} />
+      )}
     </div>
   );
 
@@ -210,7 +224,7 @@ function FrontPage() {
         <Card>
           <SectionTitle>Customer</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Field label="NAME" k="name" />
+            <Field label="NAME" k="customer" store />
             <div style={{ display: 'flex', gap: 12 }}><Field label="PHONE" k="phone" /><Field label="EMAIL" k="email" /></div>
             <Field label="ADDRESS" k="address" />
           </div>
@@ -218,7 +232,7 @@ function FrontPage() {
         <Card>
           <SectionTitle>Vehicle</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 12 }}><Field label="MAKE" k="make" /><Field label="MODEL" k="model" /><Field label="YEAR" k="year" w={90} /></div>
+            <div style={{ display: 'flex', gap: 12 }}><Field label="MAKE / MODEL" k="vehicle" store /><Field label="YEAR" k="year" w={90} /></div>
             <div style={{ display: 'flex', gap: 12 }}><Field label="REGO" k="rego" w={120} /><Field label="ODOMETER (KM)" k="odo" /><Field label="COLOUR" k="colour" w={120} /></div>
             <Field label="VIN" k="vin" />
           </div>
