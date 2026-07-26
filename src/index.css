@@ -23,7 +23,20 @@
     --border: 40 22% 84%;          /* #e0dccf */
     --ring: 24 55% 50%;
     --radius: 0.9rem;
+
+    /* Prototype named tokens (used by faithfully-ported markup) */
+    --page-bg: #f5ead8;
+    --card-bg: #fffaf0;
+    --panel-bg: #efe0c8;
+    --text: #201e1d;
+    --text-soft: #3c3936;
+    --text-mute: #6f6a63;
+    --text-mute2: #8a857c;
+    --border-c: #e0dccf;
   }
+
+  .cap { font-family: 'Caprasimo', Georgia, serif; }
+  .fg { font-family: 'Figtree', system-ui, sans-serif; }
 
   * { border-color: hsl(var(--border)); box-sizing: border-box; }
   html { font-family: 'Figtree', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }

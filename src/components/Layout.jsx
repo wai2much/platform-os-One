@@ -16,7 +16,7 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
-export function Layout({ tenant, sections, activeKey, onNavigate, children }) {
+export function Layout({ tenant, title, sections, activeKey, onNavigate, children }) {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
@@ -55,7 +55,15 @@ export function Layout({ tenant, sections, activeKey, onNavigate, children }) {
       </aside>
 
       {/* Content */}
-      <main className="flex-1 overflow-x-hidden">{children}</main>
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex items-center justify-between border-b border-border px-8 py-4">
+          <h1 className="font-display text-2xl">{title}</h1>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-accent">
+            <span className="inline-block h-2 w-2 rounded-full bg-accent" /> Live · {tenant.name}
+          </div>
+        </header>
+        <div className="flex-1 overflow-auto">{children}</div>
+      </main>
     </div>
   );
 }

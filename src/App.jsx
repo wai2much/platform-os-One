@@ -31,10 +31,11 @@ export default function App() {
   const sections = [...CORE_SECTIONS, ...(pack?.sections ?? [])];
 
   const label = sections.flatMap((s) => s.items).find((i) => i.key === active)?.label ?? active;
+  const title = active === 'dashboard' ? 'Good morning, Wai' : label;
 
   return (
-    <Layout tenant={TENANT} sections={sections} activeKey={active} onNavigate={setActive}>
-      {active === 'dashboard' ? <Dashboard tenant={TENANT} /> : <Placeholder label={label} />}
+    <Layout tenant={TENANT} title={title} sections={sections} activeKey={active} onNavigate={setActive}>
+      {active === 'dashboard' ? <Dashboard /> : <Placeholder label={label} />}
     </Layout>
   );
 }
