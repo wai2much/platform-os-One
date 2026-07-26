@@ -6,8 +6,9 @@ import { Customers } from '@/core/pages/Customers';
 import { Invoices } from '@/core/pages/Invoices';
 import { Jobs } from '@/core/pages/Jobs';
 import { Bookings } from '@/core/pages/Bookings';
+import { JobCard } from '@/verticals/workshop/JobCard';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).

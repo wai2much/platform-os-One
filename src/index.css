@@ -49,3 +49,14 @@
   }
   h1, h2, .font-display { font-family: 'Caprasimo', Georgia, serif; font-weight: 400; letter-spacing: .01em; }
 }
+
+/* Job-card print: only the two pages print, chrome hidden, one page each. */
+.jobcard-page[data-active="false"] { display: none; }
+@media print {
+  .no-print { display: none !important; }
+  body * { visibility: hidden; }
+  #jobcard-print, #jobcard-print * { visibility: visible; }
+  #jobcard-print { position: absolute; left: 0; top: 0; width: 100%; }
+  .jobcard-page { display: block !important; break-after: page; padding: 0 !important; }
+  .jobcard-page:last-child { break-after: auto; }
+}
