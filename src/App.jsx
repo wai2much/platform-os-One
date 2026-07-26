@@ -17,8 +17,11 @@ import { Vehicles } from '@/verticals/workshop/Vehicles';
 import { Statements } from '@/core/pages/Statements';
 import { Reviews } from '@/core/pages/Reviews';
 import { Products } from '@/verticals/workshop/Products';
+import { TyreStock } from '@/verticals/workshop/TyreStock';
+import { LoanCars } from '@/verticals/workshop/LoanCars';
+import { Settings } from '@/core/pages/Settings';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
@@ -26,7 +29,7 @@ const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices
  */
 const TENANT = { name: 'TyrePlus Thomastown', vertical: 'workshop' };
 
-const TITLES = { dashboard: 'Good morning, Wai', bookings: "Today's bookings", assistant: 'Mercedes' };
+const TITLES = { dashboard: 'Good morning, Wai', bookings: "Today's bookings", assistant: 'Mercedes', settings: 'Settings' };
 
 function Placeholder({ label }) {
   return (

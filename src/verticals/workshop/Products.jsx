@@ -1,9 +1,10 @@
 import { useStore } from '@/core/store';
 
 /**
- * Products — workshop pack. 4-up inventory cards + a Suppliers preview panel
- * ("View all →" jumps to the Suppliers screen). Faithful to the prototype;
- * sample stock/price data.
+ * Products — workshop pack. Non-tyre parts & consumables only — tyres have
+ * their own dedicated Tyre Stock screen (real inventory business, kept
+ * separate rather than mixed into a generic products list). 4-up cards +
+ * a Suppliers preview panel ("View all →" jumps to the Suppliers screen).
  */
 const STATUS = {
   'In stock': { color: '#7a8a5e', bg: 'rgba(122,138,94,.16)' },
@@ -12,14 +13,12 @@ const STATUS = {
 };
 
 const PRODUCTS = [
-  { name: 'Bridgestone Turanza 225/45R17', size: '225/45R17', stock: 8, price: '$189', status: 'In stock', iconBg: '#c67139' },
-  { name: 'Michelin Pilot Sport 265/60R18', size: '265/60R18', stock: 2, price: '$310', status: 'Low', iconBg: '#7a8a5e' },
   { name: 'Penrite 5W-30 Full Synthetic', size: '5L', stock: 2, price: '$62', status: 'Low', iconBg: '#8a4f24' },
   { name: 'Ryco Oil Filter Z516', size: 'Each', stock: 1, price: '$14', status: 'Low', iconBg: '#a8926f' },
   { name: 'NGK Spark Plug BKR6E', size: '4-pack', stock: 0, price: '$38', status: 'Ordered', iconBg: '#dcc9a8' },
   { name: 'Bosch Brake Pads (Front)', size: 'Set', stock: 12, price: '$95', status: 'In stock', iconBg: '#c67139' },
-  { name: 'ZMAX 195/R14C', size: '195/R14C', stock: 2, price: '$142', status: 'Low', iconBg: '#7a8a5e' },
-  { name: 'Continental 225/65/R17', size: '225/65/R17', stock: 8, price: '$228', status: 'In stock', iconBg: '#8a4f24' },
+  { name: 'Wynns Coolant Concentrate', size: '5L', stock: 6, price: '$44', status: 'In stock', iconBg: '#7a8a5e' },
+  { name: 'Cabin Air Filter (Universal)', size: 'Each', stock: 9, price: '$28', status: 'In stock', iconBg: '#8a4f24' },
 ];
 
 export function Products() {

@@ -1,0 +1,129 @@
+import { useState } from 'react';
+
+/**
+ * Settings — core screen. Business profile, bank details, credit &
+ * invoicing (real toggle), integrations (real toggles + a canned test-call
+ * flow), account. Faithful to the prototype.
+ */
+const inp = { width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' };
+const label = { fontSize: 11, color: 'var(--text-mute)', fontWeight: 700, letterSpacing: '.06em' };
+
+function Card({ title, children }) {
+  return (
+    <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Field({ l, defaultValue }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}><span className="fg" style={label}>{l}</span><input defaultValue={defaultValue} style={inp} /></div>;
+}
+
+function Toggle({ on, onClick }) {
+  return (
+    <span onClick={onClick} style={{ width: 34, height: 19, borderRadius: 999, background: on ? '#7a8a5e' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
+      <span style={{ position: 'absolute', top: 2, left: on ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+    </span>
+  );
+}
+
+const TEST_CALL_LINES = [
+  ['London', "Thanks for calling TyrePlus Thomastown, this is London — how can I help?"],
+  ['Caller', "Hey, can I book in for a wheel alignment next Tuesday?"],
+  ['London', "Of course — I've got 10am or 2pm free Tuesday, which suits?"],
+  ['Caller', "10am works great."],
+];
+
+export function Settings() {
+  const [creditHold, setCreditHold] = useState(true);
+  const [xero, setXero] = useState(true);
+  const [testCallOpen, setTestCallOpen] = useState(false);
+  const [testCallDone, setTestCallDone] = useState(false);
+  const [connTesting, setConnTesting] = useState(false);
+  const [connOk, setConnOk] = useState(null);
+
+  const runTestCall = () => {
+    setTestCallOpen(true);
+    setTestCallDone(false);
+    setTimeout(() => setTestCallDone(true), 900);
+  };
+
+  const testConnection = () => {
+    setConnTesting(true);
+    setConnOk(null);
+    setTimeout(() => { setConnTesting(false); setConnOk(true); }, 700);
+  };
+
+  return (
+    <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
+      <Card title="Business profile">
+        <Field l="BUSINESS NAME" defaultValue="Haus Of Technik Pty. Ltd." />
+        <Field l="TRADING AS" defaultValue="TyrePlus Thomastown" />
+        <Field l="ADDRESS" defaultValue="218 Mahoneys Rd, Thomastown VIC" />
+        <Field l="PHONE" defaultValue="03 9462 4400" />
+        <Field l="EMAIL" defaultValue="info@hausoftechnik.com.au" />
+      </Card>
+
+      <Card title="Bank details">
+        <Field l="BANK" defaultValue="Zeller Australia" />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}><Field l="BSB" defaultValue="803-439" /></div>
+          <div style={{ flex: 1 }}><Field l="ACCOUNT NUMBER" defaultValue="242373674" /></div>
+        </div>
+        <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontWeight: 600 }}>Used on invoices for direct bank transfer payment</div>
+      </Card>
+
+      <Card title="Credit & invoicing">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>Enforce credit hold</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontWeight: 600, marginTop: 2 }}>Flag accounts past their terms and block new work until approved</div></div>
+          <Toggle on={creditHold} onClick={() => setCreditHold((v) => !v)} />
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}><div className="fg" style={{ ...label, marginBottom: 5 }}>DEFAULT TERMS</div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, background: 'var(--panel-bg)', borderRadius: 10, padding: '10px 13px' }}>Net 14</div></div>
+          <div style={{ flex: 1 }}><div className="fg" style={{ ...label, marginBottom: 5 }}>MAX ACCOUNT TERM</div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, background: 'var(--panel-bg)', borderRadius: 10, padding: '10px 13px' }}>Net 30</div></div>
+        </div>
+      </Card>
+
+      <Card title="Integrations">
+        {[['3CX phone system', true], ['Mercedes AI', true], ['London (voice agent · Grok)', true]].map(([name, connected]) => (
+          <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{name}</span>
+            <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 10px' }}>{connected ? 'Connected' : 'Off'}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}><span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Voice ID</span><span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'monospace' }}>f47a84ff-bb8c-42f9-8458-763051a6dae0</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}><span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Agent ID</span><span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'monospace' }}>agent_w54p3rF4EgKG1y4I</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}>
+          <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Connection</span>
+          <span onClick={testConnection} className="fg" style={{ fontSize: 11, fontWeight: 700, color: connOk ? '#fff' : 'var(--text-soft)', background: connOk ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: 'pointer' }}>
+            {connTesting ? 'Testing…' : connOk ? '✓ Connected' : 'Test connection'}
+          </span>
+        </div>
+        <div className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', paddingLeft: 14, lineHeight: 1.5 }}>API key stored server-side only — never shipped to the browser</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}>
+          <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Test call flow</span>
+          <span onClick={runTestCall} className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: 'pointer' }}>Run test call</span>
+        </div>
+        {testCallOpen && (
+          <div style={{ background: 'var(--panel-bg)', borderRadius: 14, padding: '14px 16px', marginLeft: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {TEST_CALL_LINES.map(([speaker, text], i) => (
+              <div key={i} style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: speaker === 'London' ? '#c67139' : 'var(--text-soft)', width: 52, flexShrink: 0 }}>{speaker}</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{text}</span></div>
+            ))}
+            {testCallDone && <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#7a8a5e' }}>✓ Call flow completed — booking created</span>}
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>Accounting sync</span>
+          <span onClick={() => setXero((v) => !v)} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: xero ? '#fff' : 'var(--text-soft)', background: xero ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}>{xero ? 'Xero · Synced' : 'Disconnected'}</span>
+        </div>
+      </Card>
+
+      <Card title="Account">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>Wai · Owner</span><span className="fg" style={{ fontSize: 12, fontWeight: 600, color: '#c67139', cursor: 'pointer' }}>Manage team</span></div>
+        <span className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Sign out</span>
+      </Card>
+    </div>
+  );
+}

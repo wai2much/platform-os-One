@@ -86,7 +86,7 @@ export function Layout({ title, sections, activeKey, onNavigate, children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute)', fontWeight: 600, whiteSpace: 'nowrap' }}>Sat 26 Jul</span>
             <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#f5ead8', borderRadius: 999, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>New job</span>
-            <span style={{ width: 36, height: 36, borderRadius: 999, background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <span onClick={() => onNavigate('settings')} style={{ width: 36, height: 36, borderRadius: 999, background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.6-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1h.1a2 2 0 110 4h-.1a1.7 1.7 0 00-1.6 1z" />
               </svg>
