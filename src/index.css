@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Front-of-House design system — warm cream / terracotta / sage.
+   Caprasimo (display) + Figtree (UI). Ported from the prototype. */
+@import url('https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 37 59% 90%;      /* cream #f5ead8 */
+    --foreground: 20 5% 12%;       /* ink #201e1d */
+    --card: 40 100% 97%;           /* warm card #fffaf0 */
+    --card-foreground: 20 5% 12%;
+    --muted: 37 45% 88%;
+    --muted-foreground: 35 6% 41%; /* #6f6a63 */
+    --primary: 24 55% 50%;         /* terracotta #c67139 */
+    --primary-foreground: 40 100% 97%;
+    --secondary: 37 55% 86%;       /* panel #efe0c8 */
+    --secondary-foreground: 20 5% 12%;
+    --accent: 82 27% 45%;          /* sage #7a8a5e */
+    --accent-foreground: 40 100% 97%;
+    --border: 40 22% 84%;          /* #e0dccf */
+    --ring: 24 55% 50%;
+    --radius: 0.9rem;
+  }
+
+  * { border-color: hsl(var(--border)); box-sizing: border-box; }
+  html { font-family: 'Figtree', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body {
+    margin: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1, h2, .font-display { font-family: 'Caprasimo', Georgia, serif; font-weight: 400; letter-spacing: .01em; }
+}
