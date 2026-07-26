@@ -14,8 +14,11 @@ import { Accounts } from '@/core/pages/Accounts';
 import { Reports } from '@/core/pages/Reports';
 import { Suppliers } from '@/core/pages/Suppliers';
 import { Vehicles } from '@/verticals/workshop/Vehicles';
+import { Statements } from '@/core/pages/Statements';
+import { Reviews } from '@/core/pages/Reviews';
+import { Products } from '@/verticals/workshop/Products';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
