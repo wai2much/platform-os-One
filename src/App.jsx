@@ -9,8 +9,10 @@ import { Bookings } from '@/core/pages/Bookings';
 import { JobCard } from '@/verticals/workshop/JobCard';
 import { Mercedes } from '@/core/pages/Mercedes';
 import { Team } from '@/core/pages/Team';
+import { Comms } from '@/core/pages/Comms';
+import { Accounts } from '@/core/pages/Accounts';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts };
 
 /**
  * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
