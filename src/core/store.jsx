@@ -62,26 +62,29 @@ const nextNum = (list, prefix, floor) => {
 };
 
 // --- Supabase row <-> app-shape mapping ------------------------------------
-const jobToRow = (j) => ({ id: j.id, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
+// Every row is scoped to the current tenant's org_id (see supabase/schema.sql
+// Phase 1: Auth + Multi-Tenancy) — RLS rejects writes for any other org, this
+// is just so the row shape matches on the way in.
+const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
 const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
-const invoiceToRow = (i) => ({ id: i.id, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount });
+const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount });
 const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account });
-const bookingToRow = (b) => ({ id: b.id, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
+const bookingToRow = (b, orgId) => ({ id: b.id, org_id: orgId, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
 const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : '') });
 
-async function persistJob(job) {
-  if (!isSupabaseConfigured) return;
-  const { error } = await supabase.from('jobs').upsert(jobToRow(job));
+async function persistJob(job, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('jobs').upsert(jobToRow(job, orgId));
   if (error) console.error('Supabase: failed to save job', job.id, error);
 }
-async function persistInvoice(inv) {
-  if (!isSupabaseConfigured) return;
-  const { error } = await supabase.from('invoices').upsert(invoiceToRow(inv));
+async function persistInvoice(inv, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('invoices').upsert(invoiceToRow(inv, orgId));
   if (error) console.error('Supabase: failed to save invoice', inv.id, error);
 }
-async function persistBooking(b) {
-  if (!isSupabaseConfigured) return;
-  const { error } = await supabase.from('bookings').upsert(bookingToRow(b));
+async function persistBooking(b, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('bookings').upsert(bookingToRow(b, orgId));
   if (error) console.error('Supabase: failed to save booking', b.id, error);
 }
 
@@ -97,7 +100,7 @@ function syncInvoiceToXero(inv, event) {
   }).catch(() => {});
 }
 
-export function StoreProvider({ children }) {
+export function StoreProvider({ orgId, children }) {
   const [active, setActive] = useState('dashboard');
   const [jobs, setJobs] = useState(SEED_JOBS);
   const [invoices, setInvoices] = useState(SEED_INVOICES);
@@ -106,42 +109,46 @@ export function StoreProvider({ children }) {
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
 
-  // On mount: if a Supabase project is configured, load from it (bootstrapping
-  // the seed rows into it the first time, so the demo data lives there too).
+  // On mount (and whenever the tenant changes): if a Supabase project is
+  // configured and we know which org we're in, load that org's rows,
+  // bootstrapping the seed rows into it the first time so the demo data
+  // lives there too. Without an orgId (Supabase not configured, or the
+  // portal's VITE_DEFAULT_ORG_ID isn't set yet) this stays on in-memory
+  // sample data — same fallback pattern as before.
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || !orgId) return;
     (async () => {
       const [{ data: jobRows, error: jobsErr }, { data: invRows, error: invErr }, { data: bookRows, error: bookErr }] = await Promise.all([
-        supabase.from('jobs').select('*').order('created_at', { ascending: false }),
-        supabase.from('invoices').select('*').order('created_at', { ascending: false }),
-        supabase.from('bookings').select('*').order('created_at', { ascending: false }),
+        supabase.from('jobs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('invoices').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('bookings').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
       ]);
       if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
       if (invErr) console.error('Supabase: failed to load invoices', invErr);
       if (bookErr) console.error('Supabase: failed to load bookings', bookErr);
 
       if (!jobsErr && jobRows && jobRows.length === 0) {
-        await supabase.from('jobs').upsert(SEED_JOBS.map(jobToRow));
+        await supabase.from('jobs').upsert(SEED_JOBS.map((j) => jobToRow(j, orgId)));
         setJobs(SEED_JOBS);
       } else if (!jobsErr && jobRows) {
         setJobs(jobRows.map(jobFromRow));
       }
 
       if (!invErr && invRows && invRows.length === 0) {
-        await supabase.from('invoices').upsert(SEED_INVOICES.map(invoiceToRow));
+        await supabase.from('invoices').upsert(SEED_INVOICES.map((i) => invoiceToRow(i, orgId)));
         setInvoices(SEED_INVOICES);
       } else if (!invErr && invRows) {
         setInvoices(invRows.map(invoiceFromRow));
       }
 
       if (!bookErr && bookRows && bookRows.length === 0) {
-        await supabase.from('bookings').upsert(SEED_BOOKINGS.map(bookingToRow));
+        await supabase.from('bookings').upsert(SEED_BOOKINGS.map((b) => bookingToRow(b, orgId)));
         setBookings(SEED_BOOKINGS);
       } else if (!bookErr && bookRows) {
         setBookings(bookRows.map(bookingFromRow));
       }
     })();
-  }, []);
+  }, [orgId]);
 
   const updateJobCard = (patch) => setJobCard((jc) => ({ ...jc, ...patch }));
 
@@ -151,7 +158,7 @@ export function StoreProvider({ children }) {
     const id = nextNum(jobs, 'J-', 424);
     const job = { id, customer: prefill.customer || '', vehicle: prefill.vehicle || '', tech: '', status: 'In progress', total: 0, lines: [] };
     setJobs((list) => [job, ...list]);
-    persistJob(job);
+    persistJob(job, orgId);
     setActiveJobId(id);
     setJobCard({ ...blankJobCard(), ...prefill });
     setActive('inspections');
@@ -173,12 +180,12 @@ export function StoreProvider({ children }) {
       ? { ...existingJob, status: 'Completed', total: amount, lines }
       : { id: jobId, customer: jobCard.customer || 'Walk-in', vehicle: jobCard.vehicle || '', tech: '', status: 'Completed', total: amount, lines };
     setJobs((list) => (existingJob ? list.map((j) => (j.id === jobId ? savedJob : j)) : [savedJob, ...list]));
-    persistJob(savedJob);
+    persistJob(savedJob, orgId);
 
     const invId = nextNum(invoices, 'INV-', 1055);
     const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true };
     setInvoices((list) => [inv, ...list]);
-    persistInvoice(inv);
+    persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
     setFlash(inv.id);
     setJobCard(blankJobCard());
@@ -193,7 +200,7 @@ export function StoreProvider({ children }) {
     if (!existing) return;
     const saved = { ...existing, lines, total };
     setJobs((list) => list.map((j) => (j.id === id ? saved : j)));
-    persistJob(saved);
+    persistJob(saved, orgId);
   };
 
   // Invoices screen: mark an invoice paid.
@@ -202,7 +209,7 @@ export function StoreProvider({ children }) {
     if (!existing) return;
     const saved = { ...existing, status: 'Paid' };
     setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
-    persistInvoice(saved);
+    persistInvoice(saved, orgId);
     syncInvoiceToXero(saved, 'paid');
   };
 
@@ -212,7 +219,7 @@ export function StoreProvider({ children }) {
   const addPortalBooking = ({ customer, phone, vehicle, service, day, time, notes }) => {
     const booking = { id: 'portal-' + Date.now().toString(36), customer, phone, vehicle, service, day, time, notes, source: 'portal', bay: 'TBC' };
     setBookings((list) => [booking, ...list]);
-    persistBooking(booking);
+    persistBooking(booking, orgId);
     return booking;
   };
 

@@ -1,5 +1,6 @@
 import { Layout } from '@/components/Layout';
 import { useStore } from '@/core/store';
+import { useAuth } from '@/core/auth';
 import { SECTIONS } from '@/core/registry';
 import { Dashboard } from '@/core/pages/Dashboard';
 import { Customers } from '@/core/pages/Customers';
@@ -27,13 +28,7 @@ import { StockTake } from '@/verticals/workshop/StockTake';
 
 const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings, hr: HR, pubBooking: PublicBooking, phone: Phone, stock: StockTake };
 
-/**
- * Demo tenant. In the product this comes from the signed-in org (multi-tenant).
- * Switch `vertical` and the workshop-tagged nav items drop out — core stays.
- */
-const TENANT = { name: 'TyrePlus Thomastown', vertical: 'workshop' };
-
-const TITLES = { dashboard: 'Good morning, Wai', bookings: "Today's bookings", assistant: 'Mercedes', settings: 'Settings' };
+const TITLES = { dashboard: 'Good morning', bookings: "Today's bookings", assistant: 'Mercedes', settings: 'Settings' };
 
 function Placeholder({ label }) {
   return (
@@ -48,20 +43,23 @@ function Placeholder({ label }) {
 
 export default function App() {
   const { active, setActive } = useStore();
+  const { user, org, signOut } = useAuth();
+
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
 
   // Filter nav by the tenant's vertical: core items always show; pack items only
   // when their pack matches the tenant's vertical.
   const sections = SECTIONS
-    .map((s) => ({ ...s, items: s.items.filter((i) => !i.pack || i.pack === TENANT.vertical) }))
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.pack || i.pack === org.vertical) }))
     .filter((s) => s.items.length);
 
   const label = sections.flatMap((s) => s.items).find((i) => i.key === active)?.label ?? active;
-  const title = TITLES[active] ?? label;
+  const title = active === 'dashboard' ? `Good morning, ${firstName}` : (TITLES[active] ?? label);
 
   const Screen = SCREENS[active];
 
   return (
-    <Layout title={title} sections={sections} activeKey={active} onNavigate={setActive}>
+    <Layout title={title} sections={sections} activeKey={active} onNavigate={setActive} user={user} org={org} onSignOut={signOut}>
       {Screen ? <Screen /> : <Placeholder label={label} />}
     </Layout>
   );

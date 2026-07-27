@@ -31,7 +31,10 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
-export function Layout({ title, sections, activeKey, onNavigate, children }) {
+export function Layout({ title, sections, activeKey, onNavigate, user, org, onSignOut, children }) {
+  const name = user?.user_metadata?.full_name || user?.email || 'Signed in';
+  const roleLabel = org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Member';
+  const avatarUrl = user?.user_metadata?.avatar_url;
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--page-bg)' }}>
       {/* Sidebar */}
@@ -64,11 +67,19 @@ export function Layout({ title, sections, activeKey, onNavigate, children }) {
         </div>
 
         {/* User card */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel-bg)', borderRadius: 999, padding: '8px 12px' }}>
-          <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcc9a8', flexShrink: 0 }} />
-          <div>
-            <div className="fg" style={{ color: 'var(--text)', fontSize: 12.5, fontWeight: 700 }}>Wai</div>
-            <div className="fg" style={{ color: 'var(--text-mute2)', fontSize: 9.5, fontWeight: 600 }}>Owner · Admin</div>
+        <div
+          onClick={onSignOut}
+          title="Sign out"
+          style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel-bg)', borderRadius: 999, padding: '8px 12px', cursor: onSignOut ? 'pointer' : 'default' }}
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcc9a8', flexShrink: 0 }} />
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="fg" style={{ color: 'var(--text)', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+            <div className="fg" style={{ color: 'var(--text-mute2)', fontSize: 9.5, fontWeight: 600 }}>{org?.name} · {roleLabel} · Sign out</div>
           </div>
         </div>
       </aside>
