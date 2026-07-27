@@ -100,6 +100,42 @@ const SEED_NOTES = [
   { id: crypto.randomUUID(), name: 'Anthony Ruiz', severity: 'Minor', date: '2 Jul 2026', note: 'Arrived 20 minutes late without notice, discussed expectations.' },
 ];
 
+const SEED_LOAN_CARS = [
+  { id: crypto.randomUUID(), car: 'Toyota Corolla · 1LC 442', status: 'Out', assignedTo: 'T. Nguyen', outSince: '26 Jul', dueBack: '27 Jul' },
+  { id: crypto.randomUUID(), car: 'Mazda 3 · 2LC 891', status: 'Available', assignedTo: '', outSince: '', dueBack: '' },
+  { id: crypto.randomUUID(), car: 'Hyundai i30 · 3LC 205', status: 'Out', assignedTo: 'A. Costa', outSince: '25 Jul', dueBack: '27 Jul' },
+  { id: crypto.randomUUID(), car: 'Kia Cerato · 4LC 630', status: 'Available', assignedTo: '', outSince: '', dueBack: '' },
+];
+
+const SEED_PARTS = [
+  { id: crypto.randomUUID(), name: 'Penrite 5W-30 Full Synthetic', size: '5L', stock: 2, price: 62, status: 'Low' },
+  { id: crypto.randomUUID(), name: 'Ryco Oil Filter Z516', size: 'Each', stock: 1, price: 14, status: 'Low' },
+  { id: crypto.randomUUID(), name: 'NGK Spark Plug BKR6E', size: '4-pack', stock: 0, price: 38, status: 'Ordered' },
+  { id: crypto.randomUUID(), name: 'Bosch Brake Pads (Front)', size: 'Set', stock: 12, price: 95, status: 'In stock' },
+  { id: crypto.randomUUID(), name: 'Wynns Coolant Concentrate', size: '5L', stock: 6, price: 44, status: 'In stock' },
+  { id: crypto.randomUUID(), name: 'Cabin Air Filter (Universal)', size: 'Each', stock: 9, price: 28, status: 'In stock' },
+];
+
+const SEED_TYRE_STOCK = [
+  { id: crypto.randomUUID(), brand: 'Bridgestone', model: 'Turanza T005', size: '225/45R17', rating: '94W', qty: 8, cost: 118, sell: 189, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'Michelin', model: 'Pilot Sport 4', size: '265/60R18', rating: '110V', qty: 2, cost: 205, sell: 310, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'ZMAX', model: 'X-Spider', size: '195/R14C', rating: '106/104Q', qty: 2, cost: 92, sell: 142, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'Continental', model: 'CrossContact', size: '225/65R17', rating: '102H', qty: 8, cost: 148, sell: 228, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'Bridgestone', model: 'Dueler A/T', size: '265/65R17', rating: '112S', qty: 6, cost: 172, sell: 265, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'Michelin', model: 'Primacy 4', size: '205/55R16', rating: '91V', qty: 12, cost: 96, sell: 158, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'Yokohama', model: 'BluEarth-GT', size: '215/45R17', rating: '87W', qty: 3, cost: 104, sell: 168, reorder: 4 },
+  { id: crypto.randomUUID(), brand: 'Continental', model: 'PremiumContact 6', size: '245/40R18', rating: '97Y', qty: 0, cost: 210, sell: 325, reorder: 2 },
+];
+
+const SEED_STOCK_TAKE = [
+  { id: crypto.randomUUID(), name: 'Penrite 5W-30 Full Synthetic', systemQty: 6, counted: '' },
+  { id: crypto.randomUUID(), name: 'Ryco Oil Filter Z516', systemQty: 10, counted: '' },
+  { id: crypto.randomUUID(), name: 'NGK Spark Plug BKR6E (4-pack)', systemQty: 8, counted: '' },
+  { id: crypto.randomUUID(), name: 'Bosch Brake Pads (Front)', systemQty: 12, counted: '' },
+  { id: crypto.randomUUID(), name: 'Wynns Coolant Concentrate', systemQty: 6, counted: '' },
+  { id: crypto.randomUUID(), name: 'Cabin Air Filter (Universal)', systemQty: 9, counted: '' },
+];
+
 const SEED_SUPPLIERS = [
   { id: crypto.randomUUID(), name: 'Burson Auto Parts', suburb: 'Thomastown', phone: '(03) 9462 1100', website: 'burson.com.au' },
   { id: crypto.randomUUID(), name: 'Repco', suburb: 'Preston', phone: '(03) 9478 2200', website: 'repco.com.au' },
@@ -160,6 +196,14 @@ const payrollToRow = (p, orgId) => ({ id: p.id, org_id: orgId, name: p.name, hou
 const payrollFromRow = (r) => ({ id: r.id, name: r.name, hours: Number(r.hours), rate: Number(r.rate), annual: Number(r.annual_leave_hours), sick: Number(r.sick_leave_hours), accrualRate: r.accrual_rate });
 const noteToRow = (n, orgId) => ({ id: n.id, org_id: orgId, name: n.name, severity: n.severity || 'Minor', note_date: n.date || '', note: n.note || '' });
 const noteFromRow = (r) => ({ id: r.id, name: r.name, severity: r.severity, date: r.note_date, note: r.note });
+const loanCarToRow = (c, orgId) => ({ id: c.id, org_id: orgId, car: c.car, status: c.status || 'Available', assigned_to: c.assignedTo || '', out_since: c.outSince || '', due_back: c.dueBack || '' });
+const loanCarFromRow = (r) => ({ id: r.id, car: r.car, status: r.status, assignedTo: r.assigned_to, outSince: r.out_since, dueBack: r.due_back });
+const partToRow = (p, orgId) => ({ id: p.id, org_id: orgId, name: p.name, size: p.size || '', stock: p.stock, price: p.price, status: p.status || 'In stock' });
+const partFromRow = (r) => ({ id: r.id, name: r.name, size: r.size, stock: Number(r.stock), price: Number(r.price), status: r.status });
+const tyreToRow = (t, orgId) => ({ id: t.id, org_id: orgId, brand: t.brand, model: t.model || '', size: t.size || '', rating: t.rating || '', qty: t.qty, cost: t.cost, sell: t.sell, reorder: t.reorder });
+const tyreFromRow = (r) => ({ id: r.id, brand: r.brand, model: r.model, size: r.size, rating: r.rating, qty: Number(r.qty), cost: Number(r.cost), sell: Number(r.sell), reorder: Number(r.reorder) });
+const stockTakeToRow = (s, orgId) => ({ id: s.id, org_id: orgId, name: s.name, system_qty: s.systemQty, counted: s.counted ?? '' });
+const stockTakeFromRow = (r) => ({ id: r.id, name: r.name, systemQty: Number(r.system_qty), counted: r.counted ?? '' });
 
 async function persistJob(job, orgId) {
   if (!isSupabaseConfigured || !orgId) return;
@@ -216,6 +260,26 @@ async function persistNote(n, orgId) {
   const { error } = await supabase.from('disciplinary_notes').upsert(noteToRow(n, orgId));
   if (error) console.error('Supabase: failed to save disciplinary note', n.id, error);
 }
+async function persistLoanCar(c, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('loan_cars').upsert(loanCarToRow(c, orgId));
+  if (error) console.error('Supabase: failed to save loan car', c.id, error);
+}
+async function persistPart(p, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('parts').upsert(partToRow(p, orgId));
+  if (error) console.error('Supabase: failed to save part', p.id, error);
+}
+async function persistTyre(t, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('tyre_stock').upsert(tyreToRow(t, orgId));
+  if (error) console.error('Supabase: failed to save tyre line', t.id, error);
+}
+async function persistStockTakeItem(s, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('stock_take_items').upsert(stockTakeToRow(s, orgId));
+  if (error) console.error('Supabase: failed to save stock take item', s.id, error);
+}
 
 // Best-effort push to Xero (see XERO_INTEGRATION.md) — fires on invoice
 // creation and on Mark-as-paid. Never awaited by callers and never throws:
@@ -244,6 +308,11 @@ export function StoreProvider({ orgId, children }) {
   const [payroll, setPayroll] = useState(SEED_PAYROLL);
   const [disciplinaryNotes, setDisciplinaryNotes] = useState(SEED_NOTES);
   const [payrollRun, setPayrollRun] = useState(false);
+  const [loanCars, setLoanCars] = useState(SEED_LOAN_CARS);
+  const [parts, setParts] = useState(SEED_PARTS);
+  const [tyreStock, setTyreStock] = useState(SEED_TYRE_STOCK);
+  const [stockTakeItems, setStockTakeItems] = useState(SEED_STOCK_TAKE);
+  const [stockTakeFinalized, setStockTakeFinalized] = useState(false);
   const [jobCard, setJobCard] = useState(blankJobCard());
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
@@ -270,6 +339,10 @@ export function StoreProvider({ orgId, children }) {
         { data: leaveRows, error: leaveErr },
         { data: payRows, error: payErr },
         { data: noteRows, error: noteErr },
+        { data: carRows, error: carErr },
+        { data: partRows, error: partErr },
+        { data: tyreRows, error: tyreErr },
+        { data: stRows, error: stErr },
       ] = await Promise.all([
         supabase.from('jobs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
@@ -283,6 +356,10 @@ export function StoreProvider({ orgId, children }) {
         supabase.from('leave_requests').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('payroll_entries').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('disciplinary_notes').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('loan_cars').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('parts').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('tyre_stock').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('stock_take_items').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
       ]);
       if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
       if (invErr) console.error('Supabase: failed to load invoices', invErr);
@@ -296,6 +373,10 @@ export function StoreProvider({ orgId, children }) {
       if (leaveErr) console.error('Supabase: failed to load leave requests', leaveErr);
       if (payErr) console.error('Supabase: failed to load payroll entries', payErr);
       if (noteErr) console.error('Supabase: failed to load disciplinary notes', noteErr);
+      if (carErr) console.error('Supabase: failed to load loan cars', carErr);
+      if (partErr) console.error('Supabase: failed to load parts', partErr);
+      if (tyreErr) console.error('Supabase: failed to load tyre stock', tyreErr);
+      if (stErr) console.error('Supabase: failed to load stock take items', stErr);
 
       if (!jobsErr && jobRows && jobRows.length === 0) {
         await supabase.from('jobs').upsert(SEED_JOBS.map((j) => jobToRow(j, orgId)));
@@ -379,6 +460,34 @@ export function StoreProvider({ orgId, children }) {
         setDisciplinaryNotes(SEED_NOTES);
       } else if (!noteErr && noteRows) {
         setDisciplinaryNotes(noteRows.map(noteFromRow));
+      }
+
+      if (!carErr && carRows && carRows.length === 0) {
+        await supabase.from('loan_cars').upsert(SEED_LOAN_CARS.map((c) => loanCarToRow(c, orgId)));
+        setLoanCars(SEED_LOAN_CARS);
+      } else if (!carErr && carRows) {
+        setLoanCars(carRows.map(loanCarFromRow));
+      }
+
+      if (!partErr && partRows && partRows.length === 0) {
+        await supabase.from('parts').upsert(SEED_PARTS.map((p) => partToRow(p, orgId)));
+        setParts(SEED_PARTS);
+      } else if (!partErr && partRows) {
+        setParts(partRows.map(partFromRow));
+      }
+
+      if (!tyreErr && tyreRows && tyreRows.length === 0) {
+        await supabase.from('tyre_stock').upsert(SEED_TYRE_STOCK.map((t) => tyreToRow(t, orgId)));
+        setTyreStock(SEED_TYRE_STOCK);
+      } else if (!tyreErr && tyreRows) {
+        setTyreStock(tyreRows.map(tyreFromRow));
+      }
+
+      if (!stErr && stRows && stRows.length === 0) {
+        await supabase.from('stock_take_items').upsert(SEED_STOCK_TAKE.map((s) => stockTakeToRow(s, orgId)));
+        setStockTakeItems(SEED_STOCK_TAKE);
+      } else if (!stErr && stRows) {
+        setStockTakeItems(stRows.map(stockTakeFromRow));
       }
     })();
   }, [orgId]);
@@ -537,6 +646,58 @@ export function StoreProvider({ orgId, children }) {
     return entry;
   };
 
+  // Loan Cars: assign an available car to a customer.
+  const assignLoanCar = (carId, { assignedTo, dueBack }) => {
+    const existing = loanCars.find((c) => c.id === carId);
+    if (!existing) return;
+    const saved = { ...existing, status: 'Out', assignedTo, outSince: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }), dueBack: dueBack || '' };
+    setLoanCars((list) => list.map((c) => (c.id === carId ? saved : c)));
+    persistLoanCar(saved, orgId);
+  };
+
+  // Loan Cars: mark a car back in.
+  const returnLoanCar = (carId) => {
+    const existing = loanCars.find((c) => c.id === carId);
+    if (!existing) return;
+    const saved = { ...existing, status: 'Available', assignedTo: '', outSince: '', dueBack: '' };
+    setLoanCars((list) => list.map((c) => (c.id === carId ? saved : c)));
+    persistLoanCar(saved, orgId);
+  };
+
+  // Parts/Products screen: "+ New product".
+  const addPart = ({ name, size, stock, price, status }) => {
+    const part = { id: crypto.randomUUID(), name, size: size || '', stock: parseInt(stock, 10) || 0, price: parseFloat(price) || 0, status: status || 'In stock' };
+    setParts((list) => [part, ...list]);
+    persistPart(part, orgId);
+    return part;
+  };
+
+  // Tyre Stock: inline qty edit.
+  const setTyreQty = (tyreId, qty) => {
+    const existing = tyreStock.find((t) => t.id === tyreId);
+    if (!existing) return;
+    const saved = { ...existing, qty: Math.max(0, parseInt(qty, 10) || 0) };
+    setTyreStock((list) => list.map((t) => (t.id === tyreId ? saved : t)));
+    persistTyre(saved, orgId);
+  };
+
+  // Tyre Stock: "+ New tyre line".
+  const addTyreLine = ({ brand, model, size, rating, cost, sell }) => {
+    const tyre = { id: crypto.randomUUID(), brand, model: model || '', size: size || '', rating: rating || '', qty: 0, cost: parseFloat(cost) || 0, sell: parseFloat(sell) || 0, reorder: 4 };
+    setTyreStock((list) => [tyre, ...list]);
+    persistTyre(tyre, orgId);
+    return tyre;
+  };
+
+  // Stock Take: enter a counted qty for one line.
+  const setStockCount = (itemId, counted) => {
+    const existing = stockTakeItems.find((s) => s.id === itemId);
+    if (!existing) return;
+    const saved = { ...existing, counted };
+    setStockTakeItems((list) => list.map((s) => (s.id === itemId ? saved : s)));
+    persistStockTakeItem(saved, orgId);
+  };
+
   return (
     <Ctx.Provider value={{
       active, setActive,
@@ -553,6 +714,10 @@ export function StoreProvider({ orgId, children }) {
       payroll,
       disciplinaryNotes, addDisciplinaryNote,
       payrollRun, setPayrollRun,
+      loanCars, assignLoanCar, returnLoanCar,
+      parts, addPart,
+      tyreStock, setTyreQty, addTyreLine,
+      stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized,
       jobCard, updateJobCard,
       startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
       flash, setFlash,

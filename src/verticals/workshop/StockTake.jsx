@@ -1,29 +1,18 @@
 import { useState } from 'react';
+import { useStore } from '@/core/store';
 
 /**
- * Stock Take — workshop pack. System-vs-counted reconciliation with real
- * live variance math (not static labels), KPI row, Finalize + printable
- * reconciliation report. Faithful to the prototype; sample parts baseline
- * (Tyre Stock covers the tyre-specific inventory separately).
+ * Stock Take — workshop pack. System-vs-counted reconciliation, backed by
+ * the store's real stock_take_items table (see supabase/schema.sql Phase
+ * 6) — counts persist instead of resetting on refresh. "Finalize count"
+ * stays a local-only toggle (a session action, not data).
  */
-const SEED = [
-  { name: 'Penrite 5W-30 Full Synthetic', system: 6, counted: '' },
-  { name: 'Ryco Oil Filter Z516', system: 10, counted: '' },
-  { name: 'NGK Spark Plug BKR6E (4-pack)', system: 8, counted: '' },
-  { name: 'Bosch Brake Pads (Front)', system: 12, counted: '' },
-  { name: 'Wynns Coolant Concentrate', system: 6, counted: '' },
-  { name: 'Cabin Air Filter (Universal)', system: 9, counted: '' },
-];
-
 export function StockTake() {
-  const [items, setItems] = useState(SEED);
-  const [finalized, setFinalized] = useState(false);
+  const { stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized } = useStore();
   const [showReport, setShowReport] = useState(false);
 
-  const setCounted = (i, v) => setItems((list) => list.map((r, j) => (j === i ? { ...r, counted: v } : r)));
-
-  const counted = items.filter((r) => r.counted !== '');
-  const variances = items.map((r) => (r.counted === '' ? null : parseInt(r.counted, 10) - r.system));
+  const counted = stockTakeItems.filter((r) => r.counted !== '');
+  const variances = stockTakeItems.map((r) => (r.counted === '' ? null : parseInt(r.counted, 10) - r.systemQty));
   const shortages = variances.filter((v) => v !== null && v < 0).length;
   const overages = variances.filter((v) => v !== null && v > 0).length;
   const netVarianceValue = variances.reduce((s, v) => s + (v || 0), 0);
@@ -31,24 +20,24 @@ export function StockTake() {
   return (
     <div style={{ padding: '6px 30px 26px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
-        <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{counted.length}/{items.length} counted</span>
+        <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{counted.length}/{stockTakeItems.length} counted</span>
         <span style={{ flex: 1 }} />
-        <span onClick={() => setFinalized(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>{finalized ? '✓ Finalized' : 'Finalize count'}</span>
+        <span onClick={() => setStockTakeFinalized(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>{stockTakeFinalized ? '✓ Finalized' : 'Finalize count'}</span>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr .8fr .8fr .8fr .8fr', gap: 12, padding: '14px 20px', minWidth: 600 }}>
           {['ITEM', 'SYSTEM', 'COUNTED', 'VARIANCE', ''].map((h) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>{h}</span>)}
         </div>
-        {items.map((r, i) => {
+        {stockTakeItems.map((r, i) => {
           const v = variances[i];
           const varColor = v === null ? 'var(--text-mute2)' : v < 0 ? '#c67139' : v > 0 ? '#7a8a5e' : 'var(--text-soft)';
           const varLabel = v === null ? '—' : v > 0 ? `+${v}` : `${v}`;
           return (
-            <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '1.6fr .8fr .8fr .8fr .8fr', gap: 12, padding: '12px 20px', borderTop: '1px solid var(--border-c)', alignItems: 'center', minWidth: 600 }}>
+            <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1.6fr .8fr .8fr .8fr .8fr', gap: 12, padding: '12px 20px', borderTop: '1px solid var(--border-c)', alignItems: 'center', minWidth: 600 }}>
               <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{r.name}</span>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{r.system}</span>
-              <input value={r.counted} onChange={(e) => setCounted(i, e.target.value.replace(/[^0-9]/g, ''))} disabled={finalized} placeholder="—" style={{ width: 60, background: 'var(--panel-bg)', border: 'none', borderRadius: 8, padding: '6px 9px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{r.systemQty}</span>
+              <input value={r.counted} onChange={(e) => setStockCount(r.id, e.target.value.replace(/[^0-9]/g, ''))} disabled={stockTakeFinalized} placeholder="—" style={{ width: 60, background: 'var(--panel-bg)', border: 'none', borderRadius: 8, padding: '6px 9px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
               <span className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: varColor }}>{varLabel}</span>
               <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: v === null ? 'var(--text-mute2)' : '#7a8a5e' }}>{v === null ? 'Pending' : 'Done'}</span>
             </div>
@@ -75,9 +64,9 @@ export function StockTake() {
             </div>
             <div style={{ borderTop: '1px solid #e0dccf', borderBottom: '1px solid #e0dccf' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.6fr .8fr .8fr .8fr', gap: 12, padding: '10px 0', fontWeight: 700, fontSize: 11, letterSpacing: '.06em', color: '#8a857c' }}><span>ITEM</span><span>SYSTEM</span><span>COUNTED</span><span>VARIANCE</span></div>
-              {items.map((r, i) => (
-                <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '1.6fr .8fr .8fr .8fr', gap: 12, padding: '9px 0', borderTop: '1px solid #f0ece0', fontSize: 13 }}>
-                  <span>{r.name}</span><span>{r.system}</span><span>{r.counted || '—'}</span><span>{variances[i] === null ? '—' : variances[i] > 0 ? `+${variances[i]}` : variances[i]}</span>
+              {stockTakeItems.map((r, i) => (
+                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1.6fr .8fr .8fr .8fr', gap: 12, padding: '9px 0', borderTop: '1px solid #f0ece0', fontSize: 13 }}>
+                  <span>{r.name}</span><span>{r.systemQty}</span><span>{r.counted || '—'}</span><span>{variances[i] === null ? '—' : variances[i] > 0 ? `+${variances[i]}` : variances[i]}</span>
                 </div>
               ))}
             </div>

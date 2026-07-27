@@ -455,3 +455,100 @@ create policy "member write disciplinary_notes" on disciplinary_notes for insert
   with check (org_id in (select org_id from memberships where user_id = auth.uid()));
 create policy "member update disciplinary_notes" on disciplinary_notes for update
   using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+-- ============================================================================
+-- Phase 6: Loan Cars, Parts, Tyre Stock, Stock Take
+-- Same org-scoped pattern. Stock Take's "Finalize count" stays a local-only
+-- toggle (not persisted) — it's a session action, not data; the counts
+-- themselves are real and saved.
+-- ============================================================================
+
+create table if not exists loan_cars (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  car text not null default '',
+  status text not null default 'Available',
+  assigned_to text not null default '',
+  out_since text not null default '',
+  due_back text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists parts (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  size text not null default '',
+  stock int not null default 0,
+  price numeric not null default 0,
+  status text not null default 'In stock',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists tyre_stock (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  brand text not null default '',
+  model text not null default '',
+  size text not null default '',
+  rating text not null default '',
+  qty int not null default 0,
+  cost numeric not null default 0,
+  sell numeric not null default 0,
+  reorder int not null default 4,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists stock_take_items (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  system_qty int not null default 0,
+  counted text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table loan_cars enable row level security;
+alter table parts enable row level security;
+alter table tyre_stock enable row level security;
+alter table stock_take_items enable row level security;
+
+drop policy if exists "member read loan_cars" on loan_cars;
+drop policy if exists "member write loan_cars" on loan_cars;
+drop policy if exists "member update loan_cars" on loan_cars;
+create policy "member read loan_cars" on loan_cars for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write loan_cars" on loan_cars for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update loan_cars" on loan_cars for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read parts" on parts;
+drop policy if exists "member write parts" on parts;
+drop policy if exists "member update parts" on parts;
+create policy "member read parts" on parts for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write parts" on parts for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update parts" on parts for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read tyre_stock" on tyre_stock;
+drop policy if exists "member write tyre_stock" on tyre_stock;
+drop policy if exists "member update tyre_stock" on tyre_stock;
+create policy "member read tyre_stock" on tyre_stock for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write tyre_stock" on tyre_stock for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update tyre_stock" on tyre_stock for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read stock_take_items" on stock_take_items;
+drop policy if exists "member write stock_take_items" on stock_take_items;
+drop policy if exists "member update stock_take_items" on stock_take_items;
+create policy "member read stock_take_items" on stock_take_items for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write stock_take_items" on stock_take_items for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update stock_take_items" on stock_take_items for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
