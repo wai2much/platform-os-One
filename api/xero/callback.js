@@ -34,6 +34,22 @@ export default async function handler(req, res) {
     if (!tokenRes.ok) return redirectToSettings('token_exchange_failed');
     const tokens = await tokenRes.json();
 
+    // Xero's token grant isn't scoped to one org — the tenant (organisation)
+    // this connection covers comes from a separate call, keyed off the same
+    // access token. Needed as the `Xero-tenant-id` header on every API call.
+    let tenantId = '';
+    try {
+      const connRes = await fetch('https://api.xero.com/connections', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      if (connRes.ok) {
+        const connections = await connRes.json();
+        tenantId = connections[0]?.tenantId || '';
+      }
+    } catch (err) {
+      console.error('Xero: failed to fetch tenant connections', err);
+    }
+
     if (supabaseUrl && supabaseServiceKey) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       await supabase.from('xero_tokens').upsert({
@@ -41,6 +57,7 @@ export default async function handler(req, res) {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expires_at: new Date(Date.now() + (tokens.expires_in || 0) * 1000).toISOString(),
+        tenant_id: tenantId,
       });
     }
 

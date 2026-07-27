@@ -85,6 +85,18 @@ async function persistBooking(b) {
   if (error) console.error('Supabase: failed to save booking', b.id, error);
 }
 
+// Best-effort push to Xero (see XERO_INTEGRATION.md) — fires on invoice
+// creation and on Mark-as-paid. Never awaited by callers and never throws:
+// if Xero isn't connected, or the push fails, the local invoice flow is
+// completely unaffected either way.
+function syncInvoiceToXero(inv, event) {
+  fetch('/api/xero/sync-invoice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invoice: inv, event }),
+  }).catch(() => {});
+}
+
 export function StoreProvider({ children }) {
   const [active, setActive] = useState('dashboard');
   const [jobs, setJobs] = useState(SEED_JOBS);
@@ -167,6 +179,7 @@ export function StoreProvider({ children }) {
     const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv);
+    syncInvoiceToXero(inv, 'created');
     setFlash(inv.id);
     setJobCard(blankJobCard());
     setActiveJobId(null);
@@ -190,6 +203,7 @@ export function StoreProvider({ children }) {
     const saved = { ...existing, status: 'Paid' };
     setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
     persistInvoice(saved);
+    syncInvoiceToXero(saved, 'paid');
   };
 
   // Customer Booking Portal → a real booking, persisted the same way staff
