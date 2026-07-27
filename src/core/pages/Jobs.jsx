@@ -23,7 +23,7 @@ function StatusPill({ status, style }) {
 }
 
 export function Jobs() {
-  const { jobs, saveJobLines } = useStore();
+  const { jobs, saveJobLines, startJobCard } = useStore();
   const [openId, setOpenId] = useState(null);
   const [lines, setLines] = useState([]); // editable draft: [desc, qty, price]
 
@@ -47,7 +47,7 @@ export function Jobs() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{jobs.length} total</span>
         <span style={{ flex: 1 }} />
-        <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New job</span>
+        <span onClick={() => startJobCard({})} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New job</span>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>

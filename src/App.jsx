@@ -41,16 +41,31 @@ function Placeholder({ label }) {
   );
 }
 
+// Nav badges the store has real data for. Everything else (comms, stock,
+// etc.) keeps registry.js's static placeholder until that screen is real.
+const useLiveBadges = () => {
+  const { jobs, invoices, bookings, leave, loanCars } = useStore();
+  return {
+    jobs: String(jobs.length),
+    invoices: String(invoices.length),
+    bookings: String(bookings.length),
+    hr: String(leave.filter((l) => l.status === 'Pending').length),
+    loanCars: String(loanCars.filter((c) => c.status === 'Out').length),
+  };
+};
+
 export default function App() {
   const { active, setActive } = useStore();
   const { user, org, signOut } = useAuth();
+  const liveBadges = useLiveBadges();
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
 
   // Filter nav by the tenant's vertical: core items always show; pack items only
-  // when their pack matches the tenant's vertical.
+  // when their pack matches the tenant's vertical. Badges swap in live counts
+  // where the store has real data (see useLiveBadges).
   const sections = SECTIONS
-    .map((s) => ({ ...s, items: s.items.filter((i) => !i.pack || i.pack === org.vertical) }))
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.pack || i.pack === org.vertical).map((i) => (i.key in liveBadges ? { ...i, badge: liveBadges[i.key] } : i)) }))
     .filter((s) => s.items.length);
 
   const label = sections.flatMap((s) => s.items).find((i) => i.key === active)?.label ?? active;
