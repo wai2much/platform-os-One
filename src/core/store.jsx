@@ -78,6 +78,28 @@ const SEED_REVIEWS = [
   { id: 'rv5', name: 'L. Farrow', rating: 4, platform: 'Google', date: '2 Jul', text: 'Solid service, a bit of a wait on a Saturday morning but worth it.', replied: false, sentReply: '' },
 ];
 
+const SEED_HIRES = [
+  { id: crypto.randomUUID(), name: 'J. Alvarez', role: 'Apprentice Technician', startDate: '4 Aug', tasks: [
+    { label: 'Contract signed', done: true }, { label: 'Uniform issued', done: true },
+    { label: 'Toolbox & PPE allocated', done: false }, { label: 'Induction & site tour', done: false },
+  ], docs: ['📄 Contract', '📄 Tax file declaration', '📄 Super choice form'] },
+];
+
+const SEED_LEAVE = [
+  { id: crypto.randomUUID(), name: 'Dean Whitlock', type: 'Annual leave', dates: '4–8 Aug', status: 'Pending' },
+  { id: crypto.randomUUID(), name: 'Anthony Ruiz', type: 'Sick leave', dates: '26 Jul', status: 'Approved' },
+];
+
+const SEED_PAYROLL = [
+  { id: crypto.randomUUID(), name: 'Sam Okafor', hours: 76, rate: 38, annual: 84, sick: 42, accrualRate: '2.9h' },
+  { id: crypto.randomUUID(), name: 'Dean Whitlock', hours: 74, rate: 34, annual: 61, sick: 38, accrualRate: '2.9h' },
+  { id: crypto.randomUUID(), name: 'Anthony Ruiz', hours: 72, rate: 24, annual: 55, sick: 30, accrualRate: '2.9h' },
+];
+
+const SEED_NOTES = [
+  { id: crypto.randomUUID(), name: 'Anthony Ruiz', severity: 'Minor', date: '2 Jul 2026', note: 'Arrived 20 minutes late without notice, discussed expectations.' },
+];
+
 const SEED_SUPPLIERS = [
   { id: crypto.randomUUID(), name: 'Burson Auto Parts', suburb: 'Thomastown', phone: '(03) 9462 1100', website: 'burson.com.au' },
   { id: crypto.randomUUID(), name: 'Repco', suburb: 'Preston', phone: '(03) 9478 2200', website: 'repco.com.au' },
@@ -130,6 +152,14 @@ const supplierToRow = (s, orgId) => ({ id: s.id, org_id: orgId, name: s.name, su
 const supplierFromRow = (r) => ({ id: r.id, name: r.name, suburb: r.suburb, phone: r.phone, website: r.website });
 const reviewToRow = (r, orgId) => ({ id: r.id, org_id: orgId, name: r.name, rating: r.rating, platform: r.platform, review_date: r.date, review_text: r.text, replied: !!r.replied, sent_reply: r.sentReply || '' });
 const reviewFromRow = (r) => ({ id: r.id, name: r.name, rating: r.rating, platform: r.platform, date: r.review_date, text: r.review_text, replied: r.replied, sentReply: r.sent_reply });
+const hireToRow = (h, orgId) => ({ id: h.id, org_id: orgId, name: h.name, role: h.role || '', start_date: h.startDate || '', tasks: h.tasks || [], docs: h.docs || [] });
+const hireFromRow = (r) => ({ id: r.id, name: r.name, role: r.role, startDate: r.start_date, tasks: r.tasks || [], docs: r.docs || [] });
+const leaveToRow = (l, orgId) => ({ id: l.id, org_id: orgId, name: l.name, leave_type: l.type || '', dates: l.dates || '', status: l.status || 'Pending' });
+const leaveFromRow = (r) => ({ id: r.id, name: r.name, type: r.leave_type, dates: r.dates, status: r.status });
+const payrollToRow = (p, orgId) => ({ id: p.id, org_id: orgId, name: p.name, hours: p.hours, rate: p.rate, annual_leave_hours: p.annual, sick_leave_hours: p.sick, accrual_rate: p.accrualRate || '' });
+const payrollFromRow = (r) => ({ id: r.id, name: r.name, hours: Number(r.hours), rate: Number(r.rate), annual: Number(r.annual_leave_hours), sick: Number(r.sick_leave_hours), accrualRate: r.accrual_rate });
+const noteToRow = (n, orgId) => ({ id: n.id, org_id: orgId, name: n.name, severity: n.severity || 'Minor', note_date: n.date || '', note: n.note || '' });
+const noteFromRow = (r) => ({ id: r.id, name: r.name, severity: r.severity, date: r.note_date, note: r.note });
 
 async function persistJob(job, orgId) {
   if (!isSupabaseConfigured || !orgId) return;
@@ -171,6 +201,21 @@ async function persistReview(r, orgId) {
   const { error } = await supabase.from('reviews').upsert(reviewToRow(r, orgId));
   if (error) console.error('Supabase: failed to save review', r.id, error);
 }
+async function persistHire(h, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('hires').upsert(hireToRow(h, orgId));
+  if (error) console.error('Supabase: failed to save hire', h.id, error);
+}
+async function persistLeave(l, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('leave_requests').upsert(leaveToRow(l, orgId));
+  if (error) console.error('Supabase: failed to save leave request', l.id, error);
+}
+async function persistNote(n, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('disciplinary_notes').upsert(noteToRow(n, orgId));
+  if (error) console.error('Supabase: failed to save disciplinary note', n.id, error);
+}
 
 // Best-effort push to Xero (see XERO_INTEGRATION.md) — fires on invoice
 // creation and on Mark-as-paid. Never awaited by callers and never throws:
@@ -194,6 +239,11 @@ export function StoreProvider({ orgId, children }) {
   const [team, setTeam] = useState(SEED_TEAM);
   const [suppliers, setSuppliers] = useState(SEED_SUPPLIERS);
   const [reviews, setReviews] = useState(SEED_REVIEWS);
+  const [hires, setHires] = useState(SEED_HIRES);
+  const [leave, setLeave] = useState(SEED_LEAVE);
+  const [payroll, setPayroll] = useState(SEED_PAYROLL);
+  const [disciplinaryNotes, setDisciplinaryNotes] = useState(SEED_NOTES);
+  const [payrollRun, setPayrollRun] = useState(false);
   const [jobCard, setJobCard] = useState(blankJobCard());
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
@@ -216,6 +266,10 @@ export function StoreProvider({ orgId, children }) {
         { data: teamRows, error: teamErr },
         { data: supRows, error: supErr },
         { data: revRows, error: revErr },
+        { data: hireRows, error: hireErr },
+        { data: leaveRows, error: leaveErr },
+        { data: payRows, error: payErr },
+        { data: noteRows, error: noteErr },
       ] = await Promise.all([
         supabase.from('jobs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
@@ -225,6 +279,10 @@ export function StoreProvider({ orgId, children }) {
         supabase.from('team_members').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('suppliers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('reviews').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('hires').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('leave_requests').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('payroll_entries').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('disciplinary_notes').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
       ]);
       if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
       if (invErr) console.error('Supabase: failed to load invoices', invErr);
@@ -234,6 +292,10 @@ export function StoreProvider({ orgId, children }) {
       if (teamErr) console.error('Supabase: failed to load team members', teamErr);
       if (supErr) console.error('Supabase: failed to load suppliers', supErr);
       if (revErr) console.error('Supabase: failed to load reviews', revErr);
+      if (hireErr) console.error('Supabase: failed to load hires', hireErr);
+      if (leaveErr) console.error('Supabase: failed to load leave requests', leaveErr);
+      if (payErr) console.error('Supabase: failed to load payroll entries', payErr);
+      if (noteErr) console.error('Supabase: failed to load disciplinary notes', noteErr);
 
       if (!jobsErr && jobRows && jobRows.length === 0) {
         await supabase.from('jobs').upsert(SEED_JOBS.map((j) => jobToRow(j, orgId)));
@@ -289,6 +351,34 @@ export function StoreProvider({ orgId, children }) {
         setReviews(SEED_REVIEWS);
       } else if (!revErr && revRows) {
         setReviews(revRows.map(reviewFromRow));
+      }
+
+      if (!hireErr && hireRows && hireRows.length === 0) {
+        await supabase.from('hires').upsert(SEED_HIRES.map((h) => hireToRow(h, orgId)));
+        setHires(SEED_HIRES);
+      } else if (!hireErr && hireRows) {
+        setHires(hireRows.map(hireFromRow));
+      }
+
+      if (!leaveErr && leaveRows && leaveRows.length === 0) {
+        await supabase.from('leave_requests').upsert(SEED_LEAVE.map((l) => leaveToRow(l, orgId)));
+        setLeave(SEED_LEAVE);
+      } else if (!leaveErr && leaveRows) {
+        setLeave(leaveRows.map(leaveFromRow));
+      }
+
+      if (!payErr && payRows && payRows.length === 0) {
+        await supabase.from('payroll_entries').upsert(SEED_PAYROLL.map((p) => payrollToRow(p, orgId)));
+        setPayroll(SEED_PAYROLL);
+      } else if (!payErr && payRows) {
+        setPayroll(payRows.map(payrollFromRow));
+      }
+
+      if (!noteErr && noteRows && noteRows.length === 0) {
+        await supabase.from('disciplinary_notes').upsert(SEED_NOTES.map((n) => noteToRow(n, orgId)));
+        setDisciplinaryNotes(SEED_NOTES);
+      } else if (!noteErr && noteRows) {
+        setDisciplinaryNotes(noteRows.map(noteFromRow));
       }
     })();
   }, [orgId]);
@@ -407,6 +497,46 @@ export function StoreProvider({ orgId, children }) {
     persistReview(saved, orgId);
   };
 
+  // HR / Onboarding: tick a checklist task.
+  const toggleHireTask = (hireId, taskIdx) => {
+    const existing = hires.find((h) => h.id === hireId);
+    if (!existing) return;
+    const saved = { ...existing, tasks: existing.tasks.map((t, i) => (i === taskIdx ? { ...t, done: !t.done } : t)) };
+    setHires((list) => list.map((h) => (h.id === hireId ? saved : h)));
+    persistHire(saved, orgId);
+  };
+
+  // HR / Onboarding: "+ New hire".
+  const addHire = ({ name, role, startDate }) => {
+    const hire = {
+      id: crypto.randomUUID(), name, role: role || '', startDate: startDate || '',
+      tasks: [
+        { label: 'Contract signed', done: false }, { label: 'Uniform issued', done: false },
+        { label: 'Toolbox & PPE allocated', done: false }, { label: 'Induction & site tour', done: false },
+      ],
+      docs: ['📄 Contract', '📄 Tax file declaration', '📄 Super choice form'],
+    };
+    setHires((list) => [hire, ...list]);
+    persistHire(hire, orgId);
+    return hire;
+  };
+
+  // HR / Leave requests: "+ New request".
+  const addLeaveRequest = ({ name, type, dates }) => {
+    const req = { id: crypto.randomUUID(), name, type: type || 'Annual leave', dates: dates || '', status: 'Pending' };
+    setLeave((list) => [req, ...list]);
+    persistLeave(req, orgId);
+    return req;
+  };
+
+  // HR / Disciplinary notes: "+ New note".
+  const addDisciplinaryNote = ({ name, note }) => {
+    const entry = { id: crypto.randomUUID(), name, severity: 'Minor', date: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }), note };
+    setDisciplinaryNotes((list) => [entry, ...list]);
+    persistNote(entry, orgId);
+    return entry;
+  };
+
   return (
     <Ctx.Provider value={{
       active, setActive,
@@ -418,6 +548,11 @@ export function StoreProvider({ orgId, children }) {
       team, setTeam, addTeamMember,
       suppliers, setSuppliers, addSupplier,
       reviews, setReviews, markReviewReplied,
+      hires, toggleHireTask, addHire,
+      leave, addLeaveRequest,
+      payroll,
+      disciplinaryNotes, addDisciplinaryNote,
+      payrollRun, setPayrollRun,
       jobCard, updateJobCard,
       startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
       flash, setFlash,

@@ -359,3 +359,99 @@ create policy "member write reviews" on reviews for insert
   with check (org_id in (select org_id from memberships where user_id = auth.uid()));
 create policy "member update reviews" on reviews for update
   using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+-- ============================================================================
+-- Phase 5: HR
+-- Four sub-features, four tables. Payroll's "Run payroll" toggle stays
+-- local-only (not persisted) — there's no real pay-period/processing engine
+-- behind it yet, same as Accounts/Reports leaving cost tracking illustrative
+-- until that's built. hours/rate/leave accrual themselves are real and saved.
+-- ============================================================================
+
+create table if not exists hires (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  role text not null default '',
+  start_date text not null default '',
+  tasks jsonb not null default '[]',
+  docs jsonb not null default '[]',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists leave_requests (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  leave_type text not null default '',
+  dates text not null default '',
+  status text not null default 'Pending',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists payroll_entries (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  hours numeric not null default 0,
+  rate numeric not null default 0,
+  annual_leave_hours numeric not null default 0,
+  sick_leave_hours numeric not null default 0,
+  accrual_rate text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists disciplinary_notes (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  severity text not null default 'Minor',
+  note_date text not null default '',
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table hires enable row level security;
+alter table leave_requests enable row level security;
+alter table payroll_entries enable row level security;
+alter table disciplinary_notes enable row level security;
+
+drop policy if exists "member read hires" on hires;
+drop policy if exists "member write hires" on hires;
+drop policy if exists "member update hires" on hires;
+create policy "member read hires" on hires for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write hires" on hires for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update hires" on hires for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read leave_requests" on leave_requests;
+drop policy if exists "member write leave_requests" on leave_requests;
+drop policy if exists "member update leave_requests" on leave_requests;
+create policy "member read leave_requests" on leave_requests for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write leave_requests" on leave_requests for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update leave_requests" on leave_requests for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read payroll_entries" on payroll_entries;
+drop policy if exists "member write payroll_entries" on payroll_entries;
+drop policy if exists "member update payroll_entries" on payroll_entries;
+create policy "member read payroll_entries" on payroll_entries for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write payroll_entries" on payroll_entries for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update payroll_entries" on payroll_entries for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read disciplinary_notes" on disciplinary_notes;
+drop policy if exists "member write disciplinary_notes" on disciplinary_notes;
+drop policy if exists "member update disciplinary_notes" on disciplinary_notes;
+create policy "member read disciplinary_notes" on disciplinary_notes for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write disciplinary_notes" on disciplinary_notes for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update disciplinary_notes" on disciplinary_notes for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
