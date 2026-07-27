@@ -97,8 +97,8 @@ const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.custo
 const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account });
 const bookingToRow = (b, orgId) => ({ id: b.id, org_id: orgId, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
 const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : '') });
-const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, phone: c.phone || '', vehicle: c.vehicle || '', last_visit: c.lastVisit || '', status: c.status, spend: c.spend, job_history: c.jobHistory || [] });
-const customerFromRow = (r) => ({ id: r.id, name: r.name, phone: r.phone, vehicle: r.vehicle, lastVisit: r.last_visit, status: r.status, spend: Number(r.spend), jobHistory: r.job_history || [] });
+const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, phone: c.phone || '', email: c.email || '', vehicle: c.vehicle || '', last_visit: c.lastVisit || '', status: c.status, spend: c.spend, job_history: c.jobHistory || [] });
+const customerFromRow = (r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email || '', vehicle: r.vehicle, lastVisit: r.last_visit, status: r.status, spend: Number(r.spend), jobHistory: r.job_history || [] });
 const vehicleToRow = (v, orgId) => ({ id: v.id, org_id: orgId, model: v.model, rego: v.rego || '', owner: v.owner || '', odo: v.odo || '', last_service: v.lastService || '', next_due: v.nextDue || '', status: v.status, history: v.history || [] });
 const vehicleFromRow = (r) => ({ id: r.id, model: r.model, rego: r.rego, owner: r.owner, odo: r.odo, lastService: r.last_service, nextDue: r.next_due, status: r.status, history: r.history || [] });
 
@@ -290,8 +290,8 @@ export function StoreProvider({ orgId, children }) {
   };
 
   // Customers screen: "+ New customer".
-  const addCustomer = ({ name, phone, vehicle, status }) => {
-    const customer = { id: crypto.randomUUID(), name, phone: phone || '', vehicle: vehicle || '', lastVisit: '', status: status || 'Regular', spend: 0, jobHistory: [] };
+  const addCustomer = ({ name, phone, email, vehicle, status }) => {
+    const customer = { id: crypto.randomUUID(), name, phone: phone || '', email: email || '', vehicle: vehicle || '', lastVisit: '', status: status || 'Regular', spend: 0, jobHistory: [] };
     setCustomers((list) => [customer, ...list]);
     persistCustomer(customer, orgId);
     return customer;

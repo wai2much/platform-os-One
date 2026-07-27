@@ -227,6 +227,7 @@ create table if not exists customers (
   org_id uuid not null references organizations(id),
   name text not null default '',
   phone text not null default '',
+  email text not null default '',
   vehicle text not null default '',
   last_visit text not null default '',
   status text not null default 'Regular',
@@ -248,6 +249,8 @@ create table if not exists vehicles (
   history jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
+
+alter table customers add column if not exists email text not null default '';
 
 alter table customers enable row level security;
 alter table vehicles enable row level security;

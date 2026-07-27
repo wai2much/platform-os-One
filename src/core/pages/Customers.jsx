@@ -26,7 +26,7 @@ function StatusPill({ status, extra }) {
 }
 
 function NewCustomerModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({ name: '', phone: '', vehicle: '', status: 'Regular' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', vehicle: '', status: 'Regular' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
@@ -36,6 +36,7 @@ function NewCustomerModal({ onClose, onCreate }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input autoFocus value={form.name} onChange={set('name')} placeholder="Name" style={inp} />
           <input value={form.phone} onChange={set('phone')} placeholder="Phone" style={inp} />
+          <input value={form.email} onChange={set('email')} placeholder="Email" type="email" style={inp} />
           <input value={form.vehicle} onChange={set('vehicle')} placeholder="Vehicle" style={inp} />
           <select value={form.status} onChange={set('status')} style={inp}>
             {Object.keys(STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
@@ -61,7 +62,7 @@ export function Customers() {
 
   const term = q.trim().toLowerCase();
   const rows = customers.filter((c) =>
-    !term || [c.name, c.phone, c.vehicle].some((v) => (v || '').toLowerCase().includes(term))
+    !term || [c.name, c.phone, c.email, c.vehicle].some((v) => (v || '').toLowerCase().includes(term))
   );
 
   return (
@@ -110,7 +111,7 @@ export function Customers() {
               </div>
               <div>
                 <div className="cap" style={{ fontSize: 18, color: 'var(--text)' }}>{open.name}</div>
-                <div className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>{open.phone} · {open.vehicle}</div>
+                <div className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>{open.phone}{open.email ? ` · ${open.email}` : ''} · {open.vehicle}</div>
               </div>
               <span style={{ flex: 1 }} />
               <StatusPill status={open.status} />
