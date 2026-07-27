@@ -326,3 +326,36 @@ create policy "member write suppliers" on suppliers for insert
   with check (org_id in (select org_id from memberships where user_id = auth.uid()));
 create policy "member update suppliers" on suppliers for update
   using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+-- ============================================================================
+-- Phase 4: Reviews
+-- Reviews themselves come from external platforms (Google/Facebook) in a
+-- real system — pulling those in automatically is a future integration, not
+-- this round. This table just persists the reply flow (currently local-only
+-- state that resets on refresh) so a staff reply actually sticks.
+-- ============================================================================
+
+create table if not exists reviews (
+  id text primary key,
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  rating int not null default 5,
+  platform text not null default '',
+  review_date text not null default '',
+  review_text text not null default '',
+  replied boolean not null default false,
+  sent_reply text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table reviews enable row level security;
+
+drop policy if exists "member read reviews" on reviews;
+drop policy if exists "member write reviews" on reviews;
+drop policy if exists "member update reviews" on reviews;
+create policy "member read reviews" on reviews for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write reviews" on reviews for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update reviews" on reviews for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));

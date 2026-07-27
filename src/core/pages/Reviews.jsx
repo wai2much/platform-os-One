@@ -1,33 +1,30 @@
 import { useState } from 'react';
+import { useStore } from '@/core/store';
 
 /**
- * Reviews — core screen. Aggregate rating + star breakdown, individual review
- * list with a real inline reply flow (open textarea -> Send/Cancel -> shows
- * "Replied"). Faithful to the prototype; sample reviews.
+ * Reviews — core screen. Aggregate rating + star breakdown computed live from
+ * the store's reviews table (see supabase/schema.sql Phase 4); real inline
+ * reply flow persists through the store instead of resetting on refresh.
+ * Reviews themselves still come from seed data — pulling real ones in from
+ * Google/Facebook is a future integration, not this round.
  */
-const BREAKDOWN = [[5, 68, 34], [4, 20, 10], [3, 8, 4], [2, 2, 1], [1, 2, 1]];
-
-const SEED = [
-  { id: 'rv1', name: 'M. Petrakis', rating: 5, platform: 'Google', date: '24 Jul', text: 'Quick turnaround on the alignment, explained everything clearly. Will be back.', replied: true, sentReply: 'Thanks so much for the kind words, see you next time!' },
-  { id: 'rv2', name: 'A. Costa', rating: 5, platform: 'Google', date: '20 Jul', text: 'Best tyre shop in Thomastown, fair pricing and no upselling.', replied: true, sentReply: 'Really appreciate that, thank you!' },
-  { id: 'rv3', name: 'T. Nguyen', rating: 3, platform: 'Facebook', date: '15 Jul', text: 'Good work but took longer than quoted. Would appreciate better time estimates.', replied: false },
-  { id: 'rv4', name: 'S. Bianchi', rating: 5, platform: 'Google', date: '10 Jul', text: 'Friendly staff, honest advice on what actually needed doing.', replied: false },
-  { id: 'rv5', name: 'L. Farrow', rating: 4, platform: 'Google', date: '2 Jul', text: 'Solid service, a bit of a wait on a Saturday morning but worth it.', replied: false },
-];
-
 export function Reviews() {
-  const [reviews, setReviews] = useState(SEED);
+  const { reviews, markReviewReplied } = useStore();
   const [replyingId, setReplyingId] = useState(null);
   const [draft, setDraft] = useState('');
 
-  const avg = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
   const total = reviews.length;
+  const avg = total ? (reviews.reduce((s, r) => s + r.rating, 0) / total).toFixed(1) : '0.0';
+  const breakdown = [5, 4, 3, 2, 1].map((star) => {
+    const count = reviews.filter((r) => r.rating === star).length;
+    return [star, total ? Math.round((count / total) * 100) : 0, count];
+  });
 
   const openReply = (id) => { setReplyingId(id); setDraft(''); };
   const send = (id) => {
     const text = draft.trim();
     if (!text) return;
-    setReviews((list) => list.map((r) => (r.id === id ? { ...r, replied: true, sentReply: text } : r)));
+    markReviewReplied(id, text);
     setReplyingId(null);
   };
 
@@ -40,7 +37,7 @@ export function Reviews() {
           <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 5 }}>{total} reviews</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {BREAKDOWN.map(([star, pct, count]) => (
+          {breakdown.map(([star, pct, count]) => (
             <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, width: 10 }}>{star}</span>
               <div style={{ flex: 1, height: 6, background: 'var(--panel-bg)', borderRadius: 999 }}><div style={{ width: `${pct}%`, height: 6, background: '#c67139', borderRadius: 999 }} /></div>

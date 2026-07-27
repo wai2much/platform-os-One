@@ -70,6 +70,14 @@ const SEED_TEAM = [
   { id: crypto.randomUUID(), name: 'Anthony Ruiz', role: 'Apprentice, Yr 3', status: 'Break', avgTime: '74m', certs: 'RWC in progress' },
 ];
 
+const SEED_REVIEWS = [
+  { id: 'rv1', name: 'M. Petrakis', rating: 5, platform: 'Google', date: '24 Jul', text: 'Quick turnaround on the alignment, explained everything clearly. Will be back.', replied: true, sentReply: 'Thanks so much for the kind words, see you next time!' },
+  { id: 'rv2', name: 'A. Costa', rating: 5, platform: 'Google', date: '20 Jul', text: 'Best tyre shop in Thomastown, fair pricing and no upselling.', replied: true, sentReply: 'Really appreciate that, thank you!' },
+  { id: 'rv3', name: 'T. Nguyen', rating: 3, platform: 'Facebook', date: '15 Jul', text: 'Good work but took longer than quoted. Would appreciate better time estimates.', replied: false, sentReply: '' },
+  { id: 'rv4', name: 'S. Bianchi', rating: 5, platform: 'Google', date: '10 Jul', text: 'Friendly staff, honest advice on what actually needed doing.', replied: false, sentReply: '' },
+  { id: 'rv5', name: 'L. Farrow', rating: 4, platform: 'Google', date: '2 Jul', text: 'Solid service, a bit of a wait on a Saturday morning but worth it.', replied: false, sentReply: '' },
+];
+
 const SEED_SUPPLIERS = [
   { id: crypto.randomUUID(), name: 'Burson Auto Parts', suburb: 'Thomastown', phone: '(03) 9462 1100', website: 'burson.com.au' },
   { id: crypto.randomUUID(), name: 'Repco', suburb: 'Preston', phone: '(03) 9478 2200', website: 'repco.com.au' },
@@ -120,6 +128,8 @@ const teamToRow = (t, orgId) => ({ id: t.id, org_id: orgId, name: t.name, role: 
 const teamFromRow = (r) => ({ id: r.id, name: r.name, role: r.role, email: r.email || '', status: r.status, avgTime: r.avg_time, certs: r.certs });
 const supplierToRow = (s, orgId) => ({ id: s.id, org_id: orgId, name: s.name, suburb: s.suburb || '', phone: s.phone || '', website: s.website || '' });
 const supplierFromRow = (r) => ({ id: r.id, name: r.name, suburb: r.suburb, phone: r.phone, website: r.website });
+const reviewToRow = (r, orgId) => ({ id: r.id, org_id: orgId, name: r.name, rating: r.rating, platform: r.platform, review_date: r.date, review_text: r.text, replied: !!r.replied, sent_reply: r.sentReply || '' });
+const reviewFromRow = (r) => ({ id: r.id, name: r.name, rating: r.rating, platform: r.platform, date: r.review_date, text: r.review_text, replied: r.replied, sentReply: r.sent_reply });
 
 async function persistJob(job, orgId) {
   if (!isSupabaseConfigured || !orgId) return;
@@ -156,6 +166,11 @@ async function persistSupplier(s, orgId) {
   const { error } = await supabase.from('suppliers').upsert(supplierToRow(s, orgId));
   if (error) console.error('Supabase: failed to save supplier', s.id, error);
 }
+async function persistReview(r, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('reviews').upsert(reviewToRow(r, orgId));
+  if (error) console.error('Supabase: failed to save review', r.id, error);
+}
 
 // Best-effort push to Xero (see XERO_INTEGRATION.md) — fires on invoice
 // creation and on Mark-as-paid. Never awaited by callers and never throws:
@@ -178,6 +193,7 @@ export function StoreProvider({ orgId, children }) {
   const [vehicles, setVehicles] = useState(SEED_VEHICLES);
   const [team, setTeam] = useState(SEED_TEAM);
   const [suppliers, setSuppliers] = useState(SEED_SUPPLIERS);
+  const [reviews, setReviews] = useState(SEED_REVIEWS);
   const [jobCard, setJobCard] = useState(blankJobCard());
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
@@ -199,6 +215,7 @@ export function StoreProvider({ orgId, children }) {
         { data: vehRows, error: vehErr },
         { data: teamRows, error: teamErr },
         { data: supRows, error: supErr },
+        { data: revRows, error: revErr },
       ] = await Promise.all([
         supabase.from('jobs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
@@ -207,6 +224,7 @@ export function StoreProvider({ orgId, children }) {
         supabase.from('vehicles').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('team_members').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('suppliers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('reviews').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
       ]);
       if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
       if (invErr) console.error('Supabase: failed to load invoices', invErr);
@@ -215,6 +233,7 @@ export function StoreProvider({ orgId, children }) {
       if (vehErr) console.error('Supabase: failed to load vehicles', vehErr);
       if (teamErr) console.error('Supabase: failed to load team members', teamErr);
       if (supErr) console.error('Supabase: failed to load suppliers', supErr);
+      if (revErr) console.error('Supabase: failed to load reviews', revErr);
 
       if (!jobsErr && jobRows && jobRows.length === 0) {
         await supabase.from('jobs').upsert(SEED_JOBS.map((j) => jobToRow(j, orgId)));
@@ -263,6 +282,13 @@ export function StoreProvider({ orgId, children }) {
         setSuppliers(SEED_SUPPLIERS);
       } else if (!supErr && supRows) {
         setSuppliers(supRows.map(supplierFromRow));
+      }
+
+      if (!revErr && revRows && revRows.length === 0) {
+        await supabase.from('reviews').upsert(SEED_REVIEWS.map((r) => reviewToRow(r, orgId)));
+        setReviews(SEED_REVIEWS);
+      } else if (!revErr && revRows) {
+        setReviews(revRows.map(reviewFromRow));
       }
     })();
   }, [orgId]);
@@ -372,6 +398,15 @@ export function StoreProvider({ orgId, children }) {
     return supplier;
   };
 
+  // Reviews screen: send a reply.
+  const markReviewReplied = (id, text) => {
+    const existing = reviews.find((r) => r.id === id);
+    if (!existing) return;
+    const saved = { ...existing, replied: true, sentReply: text };
+    setReviews((list) => list.map((r) => (r.id === id ? saved : r)));
+    persistReview(saved, orgId);
+  };
+
   return (
     <Ctx.Provider value={{
       active, setActive,
@@ -382,6 +417,7 @@ export function StoreProvider({ orgId, children }) {
       vehicles, setVehicles, addVehicle,
       team, setTeam, addTeamMember,
       suppliers, setSuppliers, addSupplier,
+      reviews, setReviews, markReviewReplied,
       jobCard, updateJobCard,
       startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
       flash, setFlash,
