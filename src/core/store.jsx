@@ -64,6 +64,21 @@ const SEED_VEHICLES = [
     history: [{ service: 'Logbook service', date: '22 Jul 2026', total: '$420' }] },
 ];
 
+const SEED_TEAM = [
+  { id: crypto.randomUUID(), name: 'Sam Okafor', role: 'Senior Technician', status: 'On shift', avgTime: '52m', certs: 'Cert III · Auto Elec' },
+  { id: crypto.randomUUID(), name: 'Dean Whitlock', role: 'Technician', status: 'On shift', avgTime: '61m', certs: 'Cert III Light Vehicle' },
+  { id: crypto.randomUUID(), name: 'Anthony Ruiz', role: 'Apprentice, Yr 3', status: 'Break', avgTime: '74m', certs: 'RWC in progress' },
+];
+
+const SEED_SUPPLIERS = [
+  { id: crypto.randomUUID(), name: 'Burson Auto Parts', suburb: 'Thomastown', phone: '(03) 9462 1100', website: 'burson.com.au' },
+  { id: crypto.randomUUID(), name: 'Repco', suburb: 'Preston', phone: '(03) 9478 2200', website: 'repco.com.au' },
+  { id: crypto.randomUUID(), name: 'BMW Genuine Parts', suburb: 'Docklands', phone: '(03) 8560 5000', website: 'bmw.com.au' },
+  { id: crypto.randomUUID(), name: 'Penrite Oil', suburb: 'Bayswater', phone: '(03) 9720 0500', website: 'penriteoil.com.au' },
+  { id: crypto.randomUUID(), name: 'NGK Spark Plugs', suburb: 'Rydalmere', phone: '(02) 9684 6688', website: 'ngk.com.au' },
+  { id: crypto.randomUUID(), name: 'Ryco Filters', suburb: 'Somerton', phone: '(03) 9305 8900', website: 'ryco.com.au' },
+];
+
 export const blankJobCard = () => ({
   customer: '', vehicle: '', workTypes: {},
   parts: Array.from({ length: 8 }, () => ({ qty: '', desc: '', partNo: '', unit: '' })),
@@ -101,6 +116,10 @@ const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, ph
 const customerFromRow = (r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email || '', vehicle: r.vehicle, lastVisit: r.last_visit, status: r.status, spend: Number(r.spend), jobHistory: r.job_history || [] });
 const vehicleToRow = (v, orgId) => ({ id: v.id, org_id: orgId, model: v.model, rego: v.rego || '', owner: v.owner || '', odo: v.odo || '', last_service: v.lastService || '', next_due: v.nextDue || '', status: v.status, history: v.history || [] });
 const vehicleFromRow = (r) => ({ id: r.id, model: r.model, rego: r.rego, owner: r.owner, odo: r.odo, lastService: r.last_service, nextDue: r.next_due, status: r.status, history: r.history || [] });
+const teamToRow = (t, orgId) => ({ id: t.id, org_id: orgId, name: t.name, role: t.role || '', email: t.email || '', status: t.status || 'On shift', avg_time: t.avgTime || '', certs: t.certs || '' });
+const teamFromRow = (r) => ({ id: r.id, name: r.name, role: r.role, email: r.email || '', status: r.status, avgTime: r.avg_time, certs: r.certs });
+const supplierToRow = (s, orgId) => ({ id: s.id, org_id: orgId, name: s.name, suburb: s.suburb || '', phone: s.phone || '', website: s.website || '' });
+const supplierFromRow = (r) => ({ id: r.id, name: r.name, suburb: r.suburb, phone: r.phone, website: r.website });
 
 async function persistJob(job, orgId) {
   if (!isSupabaseConfigured || !orgId) return;
@@ -127,6 +146,16 @@ async function persistVehicle(v, orgId) {
   const { error } = await supabase.from('vehicles').upsert(vehicleToRow(v, orgId));
   if (error) console.error('Supabase: failed to save vehicle', v.id, error);
 }
+async function persistTeamMember(t, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('team_members').upsert(teamToRow(t, orgId));
+  if (error) console.error('Supabase: failed to save team member', t.id, error);
+}
+async function persistSupplier(s, orgId) {
+  if (!isSupabaseConfigured || !orgId) return;
+  const { error } = await supabase.from('suppliers').upsert(supplierToRow(s, orgId));
+  if (error) console.error('Supabase: failed to save supplier', s.id, error);
+}
 
 // Best-effort push to Xero (see XERO_INTEGRATION.md) — fires on invoice
 // creation and on Mark-as-paid. Never awaited by callers and never throws:
@@ -147,6 +176,8 @@ export function StoreProvider({ orgId, children }) {
   const [bookings, setBookings] = useState(SEED_BOOKINGS);
   const [customers, setCustomers] = useState(SEED_CUSTOMERS);
   const [vehicles, setVehicles] = useState(SEED_VEHICLES);
+  const [team, setTeam] = useState(SEED_TEAM);
+  const [suppliers, setSuppliers] = useState(SEED_SUPPLIERS);
   const [jobCard, setJobCard] = useState(blankJobCard());
   const [activeJobId, setActiveJobId] = useState(null);
   const [flash, setFlash] = useState(null); // id of a just-created/updated record to highlight
@@ -166,18 +197,24 @@ export function StoreProvider({ orgId, children }) {
         { data: bookRows, error: bookErr },
         { data: custRows, error: custErr },
         { data: vehRows, error: vehErr },
+        { data: teamRows, error: teamErr },
+        { data: supRows, error: supErr },
       ] = await Promise.all([
         supabase.from('jobs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('bookings').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('customers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
         supabase.from('vehicles').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('team_members').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('suppliers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
       ]);
       if (jobsErr) console.error('Supabase: failed to load jobs', jobsErr);
       if (invErr) console.error('Supabase: failed to load invoices', invErr);
       if (bookErr) console.error('Supabase: failed to load bookings', bookErr);
       if (custErr) console.error('Supabase: failed to load customers', custErr);
       if (vehErr) console.error('Supabase: failed to load vehicles', vehErr);
+      if (teamErr) console.error('Supabase: failed to load team members', teamErr);
+      if (supErr) console.error('Supabase: failed to load suppliers', supErr);
 
       if (!jobsErr && jobRows && jobRows.length === 0) {
         await supabase.from('jobs').upsert(SEED_JOBS.map((j) => jobToRow(j, orgId)));
@@ -212,6 +249,20 @@ export function StoreProvider({ orgId, children }) {
         setVehicles(SEED_VEHICLES);
       } else if (!vehErr && vehRows) {
         setVehicles(vehRows.map(vehicleFromRow));
+      }
+
+      if (!teamErr && teamRows && teamRows.length === 0) {
+        await supabase.from('team_members').upsert(SEED_TEAM.map((t) => teamToRow(t, orgId)));
+        setTeam(SEED_TEAM);
+      } else if (!teamErr && teamRows) {
+        setTeam(teamRows.map(teamFromRow));
+      }
+
+      if (!supErr && supRows && supRows.length === 0) {
+        await supabase.from('suppliers').upsert(SEED_SUPPLIERS.map((s) => supplierToRow(s, orgId)));
+        setSuppliers(SEED_SUPPLIERS);
+      } else if (!supErr && supRows) {
+        setSuppliers(supRows.map(supplierFromRow));
       }
     })();
   }, [orgId]);
@@ -305,6 +356,22 @@ export function StoreProvider({ orgId, children }) {
     return vehicle;
   };
 
+  // Team screen: "+ Add team member".
+  const addTeamMember = ({ name, role, email, status, certs }) => {
+    const member = { id: crypto.randomUUID(), name, role: role || '', email: email || '', status: status || 'On shift', avgTime: '', certs: certs || '' };
+    setTeam((list) => [member, ...list]);
+    persistTeamMember(member, orgId);
+    return member;
+  };
+
+  // Suppliers screen: "+ New supplier".
+  const addSupplier = ({ name, suburb, phone, website }) => {
+    const supplier = { id: crypto.randomUUID(), name, suburb: suburb || '', phone: phone || '', website: website || '' };
+    setSuppliers((list) => [supplier, ...list]);
+    persistSupplier(supplier, orgId);
+    return supplier;
+  };
+
   return (
     <Ctx.Provider value={{
       active, setActive,
@@ -313,6 +380,8 @@ export function StoreProvider({ orgId, children }) {
       bookings, setBookings, addPortalBooking,
       customers, setCustomers, addCustomer,
       vehicles, setVehicles, addVehicle,
+      team, setTeam, addTeamMember,
+      suppliers, setSuppliers, addSupplier,
       jobCard, updateJobCard,
       startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
       flash, setFlash,

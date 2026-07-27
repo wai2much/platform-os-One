@@ -274,3 +274,55 @@ create policy "member write vehicles" on vehicles for insert
   with check (org_id in (select org_id from memberships where user_id = auth.uid()));
 create policy "member update vehicles" on vehicles for update
   using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+-- ============================================================================
+-- Phase 3: Team + Suppliers
+-- Same org-scoped pattern again. Team's jobs/revenue stats are computed
+-- client-side from the real jobs table (matching on tech name) rather than
+-- stored here — no reason to duplicate numbers that already live in jobs.
+-- ============================================================================
+
+create table if not exists team_members (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  role text not null default '',
+  email text not null default '',
+  status text not null default 'On shift',
+  avg_time text not null default '',
+  certs text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists suppliers (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  suburb text not null default '',
+  phone text not null default '',
+  website text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table team_members enable row level security;
+alter table suppliers enable row level security;
+
+drop policy if exists "member read team_members" on team_members;
+drop policy if exists "member write team_members" on team_members;
+drop policy if exists "member update team_members" on team_members;
+create policy "member read team_members" on team_members for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write team_members" on team_members for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update team_members" on team_members for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read suppliers" on suppliers;
+drop policy if exists "member write suppliers" on suppliers;
+drop policy if exists "member update suppliers" on suppliers;
+create policy "member read suppliers" on suppliers for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write suppliers" on suppliers for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update suppliers" on suppliers for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
