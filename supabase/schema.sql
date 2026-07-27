@@ -212,3 +212,62 @@ drop policy if exists "portal anon insert bookings" on bookings;
 create policy "portal anon insert bookings" on bookings for insert
   to anon
   with check (org_id is not null);
+
+-- ============================================================================
+-- Phase 2: Customers + Vehicles
+-- Same org-scoped pattern as jobs/invoices/bookings above. job_history/history
+-- stay as embedded jsonb for now (matching the sample-data shape the screens
+-- already expect) rather than a real join against jobs — jobs.customer is
+-- still a free-text name, not a customer_id FK, so proper linking is a
+-- follow-up refactor, not blocking this round.
+-- ============================================================================
+
+create table if not exists customers (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  name text not null default '',
+  phone text not null default '',
+  vehicle text not null default '',
+  last_visit text not null default '',
+  status text not null default 'Regular',
+  spend numeric not null default 0,
+  job_history jsonb not null default '[]',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists vehicles (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  model text not null default '',
+  rego text not null default '',
+  owner text not null default '',
+  odo text not null default '',
+  last_service text not null default '',
+  next_due text not null default '',
+  status text not null default 'Serviced',
+  history jsonb not null default '[]',
+  created_at timestamptz not null default now()
+);
+
+alter table customers enable row level security;
+alter table vehicles enable row level security;
+
+drop policy if exists "member read customers" on customers;
+drop policy if exists "member write customers" on customers;
+drop policy if exists "member update customers" on customers;
+create policy "member read customers" on customers for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write customers" on customers for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update customers" on customers for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+drop policy if exists "member read vehicles" on vehicles;
+drop policy if exists "member write vehicles" on vehicles;
+drop policy if exists "member update vehicles" on vehicles;
+create policy "member read vehicles" on vehicles for select
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write vehicles" on vehicles for insert
+  with check (org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update vehicles" on vehicles for update
+  using (org_id in (select org_id from memberships where user_id = auth.uid()));
