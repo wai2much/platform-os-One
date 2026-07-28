@@ -12,20 +12,20 @@ const GoogleG = () => (
 // Folded-paper accents: each is a triangle split into a lit half and a
 // shadowed half, like a crease catching the light. Positioned around the
 // card and left to drift slowly so the screen doesn't feel static.
-const TERRACOTTA = { light: '#e3a06c', dark: '#a85c2c' };
+const CREAM = { light: '#fffaf0', dark: '#e0dccf' };
 const BLUSH = { light: '#e8b4ac', dark: '#c17b71' };
 const SAGE = { light: '#a8bb8b', dark: '#63744a' };
 const INK = { light: '#3c3936', dark: '#201e1d' };
 
 const ORIGAMI_SHAPES = [
-  { size: 160, top: '2%', left: '3%', rot: -12, duration: '7s', delay: '-2s', ...TERRACOTTA },
+  { size: 160, top: '2%', left: '3%', rot: -12, duration: '7s', delay: '-2s', ...CREAM },
   { size: 56, top: '11%', right: '9%', rot: 20, duration: '6s', delay: '-5s', ...SAGE },
-  { size: 96, bottom: '8%', left: '7%', rot: 8, duration: '6.5s', delay: '-1s', ...TERRACOTTA },
+  { size: 96, bottom: '8%', left: '7%', rot: 8, duration: '6.5s', delay: '-1s', ...CREAM },
   { size: 174, bottom: '-6%', right: '-4%', rot: -18, duration: '8s', delay: '-4s', ...BLUSH },
   { size: 40, top: '42%', right: '18%', rot: 32, duration: '5s', delay: '-3s', ...INK },
   { size: 62, top: '3%', left: '42%', rot: -6, duration: '6.5s', delay: '-1.5s', ...BLUSH },
   { size: 34, top: '58%', left: '4%', rot: 16, duration: '5.5s', delay: '-2.5s', ...BLUSH },
-  { size: 112, top: '64%', right: '6%', rot: -24, duration: '9s', delay: '-6s', ...TERRACOTTA },
+  { size: 112, top: '64%', right: '6%', rot: -24, duration: '9s', delay: '-6s', ...CREAM },
 ];
 
 const OrigamiShape = ({ size, top, left, right, bottom, rot, duration, delay, light, dark }) => (
@@ -59,10 +59,9 @@ export function Login() {
         overflow: 'hidden',
         perspective: 900,
         background: `
-          radial-gradient(40rem 30rem at 8% -6%, rgba(198,113,57,.30), transparent 60%),
-          radial-gradient(38rem 34rem at 106% 110%, rgba(193,123,113,.30), transparent 62%),
-          radial-gradient(24rem 20rem at 96% 4%, rgba(122,138,94,.14), transparent 60%),
-          radial-gradient(60rem 60rem at 50% 50%, var(--page-bg), var(--page-bg))
+          radial-gradient(50rem 40rem at 8% -8%, rgba(255,255,255,.16), transparent 55%),
+          radial-gradient(46rem 42rem at 106% 112%, rgba(32,30,29,.22), transparent 60%),
+          #c67139
         `,
       }}
     >
@@ -70,7 +69,7 @@ export function Login() {
         aria-hidden="true"
         style={{
           position: 'absolute', inset: 0, opacity: .5, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(rgba(32,30,29,.09) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(255,250,240,.16) 1px, transparent 1px)',
           backgroundSize: '22px 22px',
           maskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
           WebkitMaskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
