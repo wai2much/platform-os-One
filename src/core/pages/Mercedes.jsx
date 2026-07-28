@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 /**
  * Mercedes — the Hyper Agent screen. Faithful to the prototype: dark hero
  * with open threads, a real chat thread + quick-prompt chips, a mic toggle
  * (visual "London" voice-agent state), stats, activity log, and automation
- * toggles. Chat replies are a small canned/contextual engine — the real
- * mercedesChat integration (Claude + tools) plugs in here later.
+ * toggles. Chat replies come from the mercedesChat Supabase Edge Function
+ * (Claude + tools, scoped to the caller's org) when Supabase is configured;
+ * otherwise a small canned/contextual engine keeps the screen usable on
+ * sample data, same fallback pattern as the rest of the app.
  */
 const THREADS = [
   { title: 'T. Nguyen credit hold', detail: 'Invoice #1042 past Net 14 — 12 days overdue', action: 'Chase' },
@@ -38,12 +41,32 @@ export function Mercedes() {
   const [draft, setDraft] = useState('');
   const [listening, setListening] = useState(false);
   const [reviewsOn, setReviewsOn] = useState(false);
+  const [thinking, setThinking] = useState(false);
 
-  const send = (text) => {
+  const send = async (text) => {
     const q = (text ?? draft).trim();
-    if (!q) return;
-    setMessages((m) => [...m, { from: 'user', text: q }, { from: 'bot', text: reply(q) }]);
+    if (!q || thinking) return;
+    const history = [...messages, { from: 'user', text: q }];
+    setMessages(history);
     setDraft('');
+
+    if (!isSupabaseConfigured) {
+      setMessages((m) => [...m, { from: 'bot', text: reply(q) }]);
+      return;
+    }
+
+    setThinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mercedesChat', { body: { messages: history } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setMessages((m) => [...m, { from: 'bot', text: data.content }]);
+    } catch (err) {
+      console.error('mercedesChat:', err);
+      setMessages((m) => [...m, { from: 'bot', text: "Couldn't reach the backend just now — try again in a moment." }]);
+    } finally {
+      setThinking(false);
+    }
   };
 
   return (
@@ -85,19 +108,24 @@ export function Mercedes() {
                 }}>{m.text}</div>
               </div>
             ))}
+            {thinking && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div className="fg" style={{ background: 'var(--panel-bg)', color: 'var(--text-mute)', borderRadius: '16px 16px 16px 4px', padding: '11px 15px', fontSize: 13 }}>Thinking…</div>
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {PROMPTS.map((p) => (
-              <span key={p} onClick={() => send(p)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer' }}>{p}</span>
+              <span key={p} onClick={() => !thinking && send(p)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: thinking ? 'default' : 'pointer', opacity: thinking ? 0.5 : 1 }}>{p}</span>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Ask Mercedes anything about the floor…"
-              style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+            <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} disabled={thinking} placeholder="Ask Mercedes anything about the floor…"
+              style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', opacity: thinking ? 0.6 : 1 }} />
             <span onClick={() => setListening((v) => !v)} style={{ width: 38, height: 38, borderRadius: '50%', background: listening ? '#c67139' : 'var(--text-mute2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0014 0M12 19v3" /></svg>
             </span>
-            <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Ask</span>
+            <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 18px', cursor: thinking ? 'default' : 'pointer', opacity: thinking ? 0.6 : 1 }}>Ask</span>
           </div>
         </div>
 
