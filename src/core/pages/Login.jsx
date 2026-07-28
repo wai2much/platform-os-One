@@ -13,8 +13,32 @@ export function Login() {
   const { signInWithGoogle } = useAuth();
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--page-bg)' }}>
-      <div style={{ width: '100%', maxWidth: 380, background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '40px 36px', textAlign: 'center' }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        background: `
+          radial-gradient(38rem 28rem at 12% -8%, rgba(198,113,57,.22), transparent 60%),
+          radial-gradient(34rem 30rem at 108% 108%, rgba(122,138,94,.24), transparent 60%),
+          radial-gradient(60rem 60rem at 50% 50%, var(--page-bg), var(--page-bg))
+        `,
+      }}
+    >
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, opacity: .5, pointerEvents: 'none',
+          backgroundImage: 'radial-gradient(rgba(32,30,29,.09) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+          maskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
+          WebkitMaskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
+        }}
+      />
+      <div style={{ width: '100%', maxWidth: 380, position: 'relative', background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '40px 36px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)' }}>
         <img src="/hos-mark-black.png" alt="Haus" style={{ width: 40, height: 40, objectFit: 'contain', margin: '0 auto 16px' }} />
         <div className="cap" style={{ fontSize: 26, color: 'var(--text)', marginBottom: 6 }}>Platform OS</div>
         <p className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginBottom: 28 }}>
