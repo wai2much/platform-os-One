@@ -13,11 +13,15 @@ const GoogleG = () => (
 // shadowed half, like a crease catching the light. Positioned around the
 // card and left to drift slowly so the screen doesn't feel static.
 const ORIGAMI_SHAPES = [
-  { size: 130, top: '4%', left: '5%', rot: -14, duration: '12s', delay: '-2s', light: '#e3a06c', dark: '#a85c2c' },
-  { size: 64, top: '12%', right: '9%', rot: 22, duration: '8.5s', delay: '-5s', light: '#a8bb8b', dark: '#63744a' },
-  { size: 88, bottom: '9%', left: '8%', rot: 10, duration: '9.5s', delay: '-1s', light: '#a8bb8b', dark: '#63744a' },
-  { size: 150, bottom: '-5%', right: '-3%', rot: -20, duration: '13.5s', delay: '-7s', light: '#e3a06c', dark: '#a85c2c' },
-  { size: 42, top: '40%', right: '20%', rot: 34, duration: '7s', delay: '-3s', light: '#3c3936', dark: '#201e1d' },
+  { size: 130, top: '4%', left: '5%', rot: -14, duration: '7s', delay: '-2s', light: '#e3a06c', dark: '#a85c2c' },
+  { size: 64, top: '12%', right: '9%', rot: 22, duration: '6s', delay: '-5s', light: '#a8bb8b', dark: '#63744a' },
+  { size: 88, bottom: '9%', left: '8%', rot: 10, duration: '6.5s', delay: '-1s', light: '#a8bb8b', dark: '#63744a' },
+  { size: 150, bottom: '-5%', right: '-3%', rot: -20, duration: '8s', delay: '-4s', light: '#e3a06c', dark: '#a85c2c' },
+  { size: 42, top: '40%', right: '20%', rot: 34, duration: '5s', delay: '-3s', light: '#3c3936', dark: '#201e1d' },
+  { size: 56, top: '3%', left: '40%', rot: -6, duration: '6.5s', delay: '-1.5s', light: '#e3a06c', dark: '#a85c2c' },
+  { size: 32, top: '58%', left: '3%', rot: 18, duration: '5.5s', delay: '-2.5s', light: '#3c3936', dark: '#201e1d' },
+  { size: 104, top: '62%', right: '5%', rot: -26, duration: '9s', delay: '-6s', light: '#a8bb8b', dark: '#63744a' },
+  { size: 26, bottom: '4%', left: '44%', rot: 42, duration: '5s', delay: '-.5s', light: '#e3a06c', dark: '#a85c2c' },
 ];
 
 const OrigamiShape = ({ size, top, left, right, bottom, rot, duration, delay, light, dark }) => (

@@ -52,8 +52,11 @@
 
 /* Origami drift — folded-paper accents on the Login screen. */
 @keyframes origami-drift {
-  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
-  50% { transform: translateY(-16px) rotate(calc(var(--rot, 0deg) + 5deg)); }
+  0% { transform: translate(0, 0) rotate(var(--rot, 0deg)) scale(1); }
+  25% { transform: translate(8px, -22px) rotate(calc(var(--rot, 0deg) + 10deg)) scale(1.05); }
+  50% { transform: translate(-6px, -36px) rotate(calc(var(--rot, 0deg) + 16deg)) scale(1); }
+  75% { transform: translate(-10px, -16px) rotate(calc(var(--rot, 0deg) + 6deg)) scale(.95); }
+  100% { transform: translate(0, 0) rotate(var(--rot, 0deg)) scale(1); }
 }
 .origami-shape {
   position: absolute;
