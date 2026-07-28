@@ -175,7 +175,7 @@ const nextNum = (list, prefix, floor) => {
 const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
 const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
 const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount });
-const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account });
+const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at });
 const bookingToRow = (b, orgId) => ({ id: b.id, org_id: orgId, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
 const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : '') });
 const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, phone: c.phone || '', email: c.email || '', vehicle: c.vehicle || '', last_visit: c.lastVisit || '', status: c.status, spend: c.spend, job_history: c.jobHistory || [] });
@@ -536,6 +536,19 @@ export function StoreProvider({ orgId, children }) {
     return inv;
   };
 
+  // Invoices screen: "+ New invoice" — a standalone invoice not linked to a job
+  // (e.g. account/fleet billing). GST-inclusive amount, same shape as a
+  // job-generated one just without `fromJob`/`job`.
+  const addInvoice = ({ customer, terms, dueBy, amount }) => {
+    const invId = nextNum(invoices, 'INV-', 1055);
+    const inv = { id: invId, customer, job: '', terms: terms || 'Due on receipt', dueBy: dueBy || 'Today', status: 'Sent', amount: parseFloat(amount) || 0 };
+    setInvoices((list) => [inv, ...list]);
+    persistInvoice(inv, orgId);
+    syncInvoiceToXero(inv, 'created');
+    setFlash(inv.id);
+    return inv;
+  };
+
   // Jobs screen: save a job's edited line items + recomputed total.
   const saveJobLines = (id, lines, total) => {
     const existing = jobs.find((j) => j.id === id);
@@ -560,6 +573,14 @@ export function StoreProvider({ orgId, children }) {
   // there's an actual shared backend.
   const addPortalBooking = ({ customer, phone, vehicle, service, day, time, notes }) => {
     const booking = { id: 'portal-' + Date.now().toString(36), customer, phone, vehicle, service, day, time, notes, source: 'portal', bay: 'TBC' };
+    setBookings((list) => [booking, ...list]);
+    persistBooking(booking, orgId);
+    return booking;
+  };
+
+  // Bookings screen: "+ New booking" (staff-created, as opposed to a portal one).
+  const addBooking = ({ customer, phone, vehicle, service, time, bay }) => {
+    const booking = { id: 'b-' + Date.now().toString(36), customer, phone: phone || '', vehicle, service, day: '', time, notes: '', source: 'internal', bay: bay || '' };
     setBookings((list) => [booking, ...list]);
     persistBooking(booking, orgId);
     return booking;
@@ -702,8 +723,8 @@ export function StoreProvider({ orgId, children }) {
     <Ctx.Provider value={{
       active, setActive,
       jobs, setJobs,
-      invoices, setInvoices,
-      bookings, setBookings, addPortalBooking,
+      invoices, setInvoices, addInvoice,
+      bookings, setBookings, addPortalBooking, addBooking,
       customers, setCustomers, addCustomer,
       vehicles, setVehicles, addVehicle,
       team, setTeam, addTeamMember,

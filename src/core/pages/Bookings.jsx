@@ -21,10 +21,42 @@ function Tab({ label, active, onClick }) {
   return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 16px', color: active ? '#fff' : 'var(--text-soft)', background: active ? '#c67139' : 'transparent' }}>{label}</span>;
 }
 
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+
+function NewBookingModal({ onClose, onCreate }) {
+  const [form, setForm] = useState({ customer: '', phone: '', vehicle: '', service: 'Service', time: '', bay: '' });
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
+        <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New booking</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input autoFocus value={form.customer} onChange={set('customer')} placeholder="Customer name" style={inp} />
+          <input value={form.phone} onChange={set('phone')} placeholder="Phone" style={inp} />
+          <input value={form.vehicle} onChange={set('vehicle')} placeholder="Vehicle" style={inp} />
+          <select value={form.service} onChange={set('service')} style={inp}>
+            {Object.keys(SVC).map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <input value={form.time} onChange={set('time')} placeholder="Time (e.g. 09:30)" style={inp} />
+          <input value={form.bay} onChange={set('bay')} placeholder="Bay (e.g. Bay 1)" style={inp} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+          <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
+          <span onClick={() => form.customer.trim() && form.vehicle.trim() && onCreate(form)}
+            className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.customer.trim() && form.vehicle.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.customer.trim() && form.vehicle.trim() ? 'pointer' : 'not-allowed' }}>
+            Add booking
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Bookings() {
-  const { startJobCard, bookings } = useStore();
+  const { startJobCard, bookings, addBooking } = useStore();
   const [view, setView] = useState('calendar');
   const [reminded, setReminded] = useState({});
+  const [creating, setCreating] = useState(false);
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -33,7 +65,7 @@ export function Bookings() {
           <Tab label="Calendar" active={view === 'calendar'} onClick={() => setView('calendar')} />
           <Tab label="List" active={view === 'list'} onClick={() => setView('list')} />
         </div>
-        <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New booking</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New booking</span>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -88,6 +120,8 @@ export function Bookings() {
           ))}
         </div>
       )}
+
+      {creating && <NewBookingModal onClose={() => setCreating(false)} onCreate={(form) => { addBooking(form); setCreating(false); }} />}
     </div>
   );
 }

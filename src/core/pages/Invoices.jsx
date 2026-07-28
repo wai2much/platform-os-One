@@ -37,10 +37,40 @@ function MethodTab({ label, active, onClick }) {
   );
 }
 
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+
+function NewInvoiceModal({ onClose, onCreate }) {
+  const [form, setForm] = useState({ customer: '', terms: 'Due on receipt', dueBy: 'Today', amount: '' });
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
+        <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New invoice</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input autoFocus value={form.customer} onChange={set('customer')} placeholder="Customer name" style={inp} />
+          <select value={form.terms} onChange={set('terms')} style={inp}>
+            <option>Due on receipt</option><option>Net 7</option><option>Net 14</option><option>Net 30</option><option>On account</option>
+          </select>
+          <input value={form.dueBy} onChange={set('dueBy')} placeholder="Due by (e.g. 12 Aug)" style={inp} />
+          <input value={form.amount} onChange={set('amount')} inputMode="decimal" placeholder="Amount inc GST ($)" style={inp} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+          <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
+          <span onClick={() => form.customer.trim() && parseFloat(form.amount) > 0 && onCreate(form)}
+            className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.customer.trim() && parseFloat(form.amount) > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.customer.trim() && parseFloat(form.amount) > 0 ? 'pointer' : 'not-allowed' }}>
+            Create invoice
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Invoices() {
-  const { invoices, flash, markInvoicePaid } = useStore();
+  const { invoices, flash, markInvoicePaid, addInvoice } = useStore();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
+  const [creating, setCreating] = useState(false);
 
   const open = invoices.find((i) => i.id === openId) || null;
   const outstanding = invoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
@@ -56,7 +86,7 @@ export function Invoices() {
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{invoices.length} total</span>
         <span className="fg" style={{ color: '#c67139', fontSize: 13, fontWeight: 700 }}>{fmt(outstanding)} outstanding</span>
         <span style={{ flex: 1 }} />
-        <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New invoice</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New invoice</span>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
@@ -135,6 +165,8 @@ export function Invoices() {
           </div>
         </div>
       )}
+
+      {creating && <NewInvoiceModal onClose={() => setCreating(false)} onCreate={(form) => { addInvoice(form); setCreating(false); }} />}
     </div>
   );
 }
