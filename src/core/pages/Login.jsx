@@ -9,6 +9,34 @@ const GoogleG = () => (
   </svg>
 );
 
+// Folded-paper accents: each is a triangle split into a lit half and a
+// shadowed half, like a crease catching the light. Positioned around the
+// card and left to drift slowly so the screen doesn't feel static.
+const ORIGAMI_SHAPES = [
+  { size: 130, top: '4%', left: '5%', rot: -14, duration: '12s', delay: '-2s', light: '#e3a06c', dark: '#a85c2c' },
+  { size: 64, top: '12%', right: '9%', rot: 22, duration: '8.5s', delay: '-5s', light: '#a8bb8b', dark: '#63744a' },
+  { size: 88, bottom: '9%', left: '8%', rot: 10, duration: '9.5s', delay: '-1s', light: '#a8bb8b', dark: '#63744a' },
+  { size: 150, bottom: '-5%', right: '-3%', rot: -20, duration: '13.5s', delay: '-7s', light: '#e3a06c', dark: '#a85c2c' },
+  { size: 42, top: '40%', right: '20%', rot: 34, duration: '7s', delay: '-3s', light: '#3c3936', dark: '#201e1d' },
+];
+
+const OrigamiShape = ({ size, top, left, right, bottom, rot, duration, delay, light, dark }) => (
+  <div
+    aria-hidden="true"
+    className="origami-shape"
+    style={{
+      width: size, height: size, top, left, right, bottom,
+      '--rot': `${rot}deg`,
+      transform: `rotate(${rot}deg)`,
+      animationDuration: duration,
+      animationDelay: delay,
+    }}
+  >
+    <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)', background: light }} />
+    <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(50% 0%, 100% 100%, 50% 100%)', background: dark }} />
+  </div>
+);
+
 export function Login() {
   const { signInWithGoogle } = useAuth();
 
@@ -21,6 +49,7 @@ export function Login() {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
+        perspective: 900,
         background: `
           radial-gradient(38rem 28rem at 12% -8%, rgba(198,113,57,.22), transparent 60%),
           radial-gradient(34rem 30rem at 108% 108%, rgba(122,138,94,.24), transparent 60%),
@@ -38,7 +67,10 @@ export function Login() {
           WebkitMaskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
         }}
       />
-      <div style={{ width: '100%', maxWidth: 380, position: 'relative', background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '40px 36px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)' }}>
+      {ORIGAMI_SHAPES.map((s, i) => (
+        <OrigamiShape key={i} {...s} />
+      ))}
+      <div className="origami-card-in" style={{ width: '100%', maxWidth: 380, position: 'relative', background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '40px 36px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)' }}>
         <img src="/hos-mark-black.png" alt="Haus" style={{ width: 40, height: 40, objectFit: 'contain', margin: '0 auto 16px' }} />
         <div className="cap" style={{ fontSize: 26, color: 'var(--text)', marginBottom: 6 }}>Platform OS</div>
         <p className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginBottom: 28 }}>
