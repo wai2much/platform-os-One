@@ -6,16 +6,21 @@ const SVC = { Service: 'Logbook service', Brakes: 'Brakes', Diagnostic: 'Diagnos
 /**
  * Bookings — core screen. Calendar (bay grid) / List tab switcher, appointment
  * type chips, and a per-row Send-reminder action. Faithful to the prototype;
- * sample data.
+ * both tabs read the same real `bookings` from the store.
  */
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16];
 const APPT_TYPES = ['Service', 'Tyres & alignment', 'Brakes', 'Diagnostic', 'Roadworthy'];
 
-const CAL = [
-  { hour: 8, bay: 0, vehicle: 'BMW 320i', service: 'Service', color: '#c67139' },
-  { hour: 10, bay: 1, vehicle: 'Golf GTI', service: 'Brakes', color: '#7a8a5e' },
-  { hour: 13, bay: 2, vehicle: 'Hilux SR5', service: 'Diagnostic', color: '#b5703f' },
-];
+const BAYS = ['Bay 1', 'Bay 2', 'Bay 3'];
+const SERVICE_COLOR = {
+  Service: '#c67139',
+  Brakes: '#7a8a5e',
+  Diagnostic: '#b5703f',
+  'Tyres & alignment': '#8a9b6e',
+  Roadworthy: '#5a6a3c',
+};
+const bookingHour = (b) => parseInt((b.time || '').split(':')[0], 10);
+const bookingBay = (b) => BAYS.indexOf(b.bay);
 
 function Tab({ label, active, onClick }) {
   return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 16px', color: active ? '#fff' : 'var(--text-soft)', background: active ? '#c67139' : 'transparent' }}>{label}</span>;
@@ -52,11 +57,11 @@ export function Bookings() {
             <div key={h} style={{ display: 'grid', gridTemplateColumns: '64px repeat(3,1fr)' }}>
               <div style={{ padding: '18px 10px 0', textAlign: 'right' }}><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{h}:00</span></div>
               {[0, 1, 2].map((bay) => {
-                const blk = CAL.find((c) => c.hour === h && c.bay === bay);
+                const blk = bookings.find((b) => bookingHour(b) === h && bookingBay(b) === bay);
                 return (
                   <div key={bay} style={{ minHeight: 56, borderTop: '1px solid var(--border-c)', borderLeft: '1px solid var(--border-c)', padding: 6 }}>
                     {blk && (
-                      <div style={{ background: blk.color, borderRadius: 10, padding: '8px 10px', overflow: 'hidden' }}>
+                      <div style={{ background: SERVICE_COLOR[blk.service] || '#c67139', borderRadius: 10, padding: '8px 10px', overflow: 'hidden' }}>
                         <div className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{blk.vehicle}</div>
                         <div className="fg" style={{ fontSize: 10, color: 'rgba(255,255,255,.85)', marginTop: 2 }}>{blk.service}</div>
                       </div>
