@@ -38,12 +38,43 @@ export function Mercedes() {
   const [draft, setDraft] = useState('');
   const [listening, setListening] = useState(false);
   const [reviewsOn, setReviewsOn] = useState(false);
+  const [speakingIdx, setSpeakingIdx] = useState(null); // message index currently fetching/playing
+  const [voiceError, setVoiceError] = useState('');
 
   const send = (text) => {
     const q = (text ?? draft).trim();
     if (!q) return;
     setMessages((m) => [...m, { from: 'user', text: q }, { from: 'bot', text: reply(q) }]);
     setDraft('');
+  };
+
+  // Real call to api/mercedes/speak.js (MiniMax T2A) — decodes the returned
+  // base64 audio and plays it. Surfaces the actual { ok, configured, message }
+  // from the route rather than swallowing failures, same pattern as the rest
+  // of the app's Supabase/Xero "not configured" states.
+  const speak = async (text, idx) => {
+    setVoiceError('');
+    setSpeakingIdx(idx);
+    try {
+      const res = await fetch('/api/mercedes/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setVoiceError(data.message || 'Voice synthesis failed');
+        setSpeakingIdx(null);
+        return;
+      }
+      const audio = new Audio(`data:audio/${data.format};base64,${data.audioBase64}`);
+      audio.onended = () => setSpeakingIdx(null);
+      audio.onerror = () => { setVoiceError('Audio failed to play'); setSpeakingIdx(null); };
+      await audio.play();
+    } catch (err) {
+      setVoiceError(err.message);
+      setSpeakingIdx(null);
+    }
   };
 
   return (
@@ -76,16 +107,25 @@ export function Mercedes() {
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
             {messages.map((m, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: m.from === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: m.from === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 6 }}>
                 <div className="fg" style={{
                   background: m.from === 'user' ? '#201e1d' : 'var(--panel-bg)',
                   color: m.from === 'user' ? '#f5ead8' : 'var(--text)',
                   borderRadius: m.from === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                   padding: '11px 15px', fontSize: 13, lineHeight: 1.5, maxWidth: '80%', whiteSpace: 'pre-wrap',
                 }}>{m.text}</div>
+                {m.from === 'bot' && (
+                  <span onClick={() => speak(m.text, i)} title="Hear Mercedes say this" className="fg"
+                    style={{ fontSize: 15, cursor: speakingIdx === null ? 'pointer' : 'default', flexShrink: 0, opacity: speakingIdx === i ? 1 : 0.55 }}>
+                    {speakingIdx === i ? '🔊' : '🔈'}
+                  </span>
+                )}
               </div>
             ))}
           </div>
+          {voiceError && (
+            <div className="fg" style={{ fontSize: 11.5, color: '#c67139', fontWeight: 600 }}>Voice: {voiceError}</div>
+          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {PROMPTS.map((p) => (
               <span key={p} onClick={() => send(p)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer' }}>{p}</span>
