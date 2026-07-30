@@ -34,7 +34,7 @@ export function Statements() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{rows.length} accounts with a balance</span>
         <span style={{ flex: 1 }} />
-        <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>Send all statements</span>
+        <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>Send all statements</span>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
@@ -74,7 +74,7 @@ export function Statements() {
               <div style={{ display: 'flex', justifyContent: 'space-between', width: 220, borderTop: '1px solid #201e1d', paddingTop: 8 }}><span className="fg" style={{ fontWeight: 700 }}>Total balance</span><span className="cap" style={{ fontSize: 18 }}>{fmt(viewing.balance)}</span></div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 36 }}>
-              <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>
+              <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>
               <span onClick={() => setViewing(null)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: '#3c3936', border: '1.5px solid rgba(32,30,29,.2)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Back</span>
             </div>
           </div>

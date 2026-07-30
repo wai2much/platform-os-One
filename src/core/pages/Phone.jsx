@@ -57,7 +57,7 @@ export function Phone() {
     <div style={{ padding: '6px 30px 26px', display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 14, alignItems: 'start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {live ? (
-          <div style={{ background: '#201e1d', borderRadius: 24, padding: '22px 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'relative' }}>
+          <div style={{ background: 'var(--ink)', borderRadius: 24, padding: '22px 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'relative' }}>
             <div style={{ width: 58, height: 58, borderRadius: '50%', background: '#7a8a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f5ead8' }} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}><span className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#c9d4b5', fontWeight: 700 }}>LIVE CALL</span><span className="fg" style={{ fontSize: 10, color: '#a8b48e', fontWeight: 600 }}>{fmtTimer(seconds)}</span></div>
@@ -155,7 +155,7 @@ export function Phone() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <span onClick={() => setShowWrapUp(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
-              <span onClick={saveWrapUp} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Log &amp; end call</span>
+              <span onClick={saveWrapUp} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Log &amp; end call</span>
             </div>
           </div>
         </div>

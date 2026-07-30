@@ -47,7 +47,7 @@ export function Accounts() {
         <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: 'var(--text)', fontSize: 24, lineHeight: 1 }}>28 Oct</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Next BAS due</div></div>
       </div>
 
-      <div style={{ background: '#201e1d', borderRadius: 20, padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ background: 'var(--ink)', borderRadius: 20, padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 20 }}>
         <div style={{ flex: 1 }}>
           <div className="fg" style={{ fontSize: 10.5, letterSpacing: '.14em', color: '#c9a15e', fontWeight: 700, marginBottom: 8 }}>GST · CURRENT PERIOD</div>
           <div className="cap" style={{ color: '#f5ead8', fontSize: 19, lineHeight: 1.3 }}>{fmt(gstCollected)} in GST collected on {fmt(totalIncGst)} of invoiced revenue — set this aside for your BAS.</div>
@@ -140,7 +140,7 @@ export function Accounts() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 36 }}>
-              <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>
+              <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>
               <span onClick={() => setShowBas(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: '#3c3936', border: '1.5px solid rgba(32,30,29,.2)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Back</span>
             </div>
           </div>

@@ -5,7 +5,13 @@ import { CustomerPortal } from '@/core/CustomerPortal';
 import { StoreProvider } from '@/core/store';
 import { AuthProvider, useAuth } from '@/core/auth';
 import { Login } from '@/core/pages/Login';
+import { applyTheme, getThemePreference } from '@/core/theme';
 import './index.css';
+
+// index.html sets data-theme inline before first paint (avoiding a flash of
+// the light theme). Re-applying here is the backstop for anything that loads
+// the bundle without that script — and keeps the two in sync from one source.
+applyTheme(getThemePreference());
 
 // /book is the public Customer Booking Portal — no app chrome, no login,
 // just the booking flow. It uses a fixed org id (VITE_DEFAULT_ORG_ID) since
