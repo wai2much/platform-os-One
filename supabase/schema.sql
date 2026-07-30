@@ -572,3 +572,36 @@ create table if not exists voice_agent_events (
 );
 
 alter table voice_agent_events enable row level security;
+
+-- ============================================================================
+-- Phase 8: Historical vs live data
+-- ============================================================================
+-- The 2026-07-30 MechanicDesk migration brought in 1,830 invoices carrying
+-- whatever state the old system had them in. Spot-checking showed 446 of them
+-- (~$293k) sitting 90+ days unpaid, which for a shop where most retail
+-- customers pay at pickup is far more likely to be invoices that were paid in
+-- person and never closed off than genuinely uncollected debt.
+--
+-- Those records are still worth keeping — the job history is real work that
+-- was really done. What isn't safe is letting their PAYMENT STATE drive live
+-- financial figures: accounts receivable, GST, P&L. That would make the new
+-- system report the old system's bookkeeping errors as fact, and staff would
+-- correctly learn to distrust every number on the screen.
+--
+-- So: migrated rows are flagged, and live financial totals exclude them.
+-- History stays browsable; the balance sheet starts clean from the cutover.
+-- Clearing the backlog is a separate, human, at-your-own-pace job.
+
+alter table invoices add column if not exists migrated boolean not null default false;
+alter table invoices add column if not exists migrated_source text not null default '';
+
+-- Backfill: everything that existed before this migration ran came from the
+-- import. Safe to re-run; only ever marks rows created on or before the
+-- cutover, never anything entered in Platform OS afterwards.
+update invoices
+   set migrated = true,
+       migrated_source = 'mechanicdesk-2026-07-30'
+ where migrated = false
+   and created_at <= '2026-07-31T00:00:00Z';
+
+create index if not exists invoices_migrated_idx on invoices (org_id, migrated);
