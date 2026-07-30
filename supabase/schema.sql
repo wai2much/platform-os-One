@@ -552,3 +552,23 @@ create policy "member write stock_take_items" on stock_take_items for insert
   with check (org_id in (select org_id from memberships where user_id = auth.uid()));
 create policy "member update stock_take_items" on stock_take_items for update
   using (org_id in (select org_id from memberships where user_id = auth.uid()));
+
+-- ============================================================================
+-- Phase 7: Voice Agent Events (Grok Voice Agent / "London")
+-- Raw log of realtime.call.incoming webhook payloads from api/grok/voice-webhook.js.
+-- No org_id yet (single-tenant during this phase; add when multi-tenancy lands).
+-- Same lockdown pattern as xero_tokens: RLS on, ZERO policies. Call events can
+-- carry customer phone numbers and transcripts — only the service role key
+-- (server-side only) can read/write this table. Never add an anon policy here.
+-- ============================================================================
+
+create table if not exists voice_agent_events (
+  id uuid primary key default gen_random_uuid(),
+  agent text not null default 'london',
+  event_type text not null default 'unknown',
+  call_id text,
+  raw_payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table voice_agent_events enable row level security;
