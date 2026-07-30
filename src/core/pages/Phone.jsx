@@ -9,15 +9,14 @@ import { useEffect, useRef, useState } from 'react';
 const TRANSFER_TARGETS = ['Sam · Ext 102', 'Dean · Ext 103', 'Wai · Ext 100'];
 const OUTCOMES = ['Booked job', 'Info only', 'Follow-up needed', 'No answer'];
 
-const QUEUE_SEED = [{ caller: 'Unknown · 0412 xxx xxx', waiting: 42 }];
-
-const CALL_LOG = [
-  { time: '10:52', caller: 'A. Costa', duration: '2:14', outcome: 'Booked job', color: '#7a8a5e' },
-  { time: '10:31', caller: 'Unknown', duration: '0:08', outcome: 'Missed', color: '#c67139' },
-  { time: '09:47', caller: 'M. Petrakis', duration: '4:02', outcome: 'Follow-up', color: 'var(--text-soft)' },
-  { time: '09:15', caller: 'L. Farrow', duration: '1:38', outcome: 'Booked job', color: '#7a8a5e' },
-  { time: '08:52', caller: 'S. Bianchi', duration: '0:54', outcome: 'Info only', color: 'var(--text-soft)' },
-];
+// No telephony data reaches this screen yet. The 3CX trunk exists but nothing
+// routes to it, api/grok/voice-webhook.js has never received an event, and
+// voice_agent_events is empty. This used to render a fake live call, a caller
+// waiting 42 seconds, and five invented call records — a fake queue is
+// actively misleading on a front-desk screen, since staff may think someone
+// is holding. Everything starts empty until real call events arrive.
+const QUEUE_SEED = [];
+const CALL_LOG = [];
 
 function fmtTimer(s) {
   const m = Math.floor(s / 60), sec = s % 60;
@@ -25,7 +24,7 @@ function fmtTimer(s) {
 }
 
 export function Phone() {
-  const [live, setLive] = useState(true);
+  const [live, setLive] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showWrapUp, setShowWrapUp] = useState(false);
@@ -75,7 +74,7 @@ export function Phone() {
           </div>
         ) : (
           <div style={{ background: 'var(--card-bg)', borderRadius: 24, padding: '22px 24px', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-            <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', fontWeight: 600 }}>No live call. {fmtTimer(seconds)} logged{outcome ? ` — ${outcome}` : ''}.</div>
+            <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', fontWeight: 600 }}>{seconds > 0 ? `No live call. ${fmtTimer(seconds)} logged${outcome ? ` — ${outcome}` : ''}.` : 'No live call. Call activity appears here once the phone system is connected.'}</div>
           </div>
         )}
 
@@ -100,6 +99,11 @@ export function Phone() {
           <div style={{ display: 'grid', gridTemplateColumns: '.6fr 1.2fr .7fr .7fr .5fr', gap: 12, padding: '0 17px 10px' }}>
             {['TIME', 'CALLER', 'DURATION', 'OUTCOME', ''].map((h) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>{h}</span>)}
           </div>
+          {CALL_LOG.length === 0 && (
+            <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', padding: '12px 17px 16px', borderTop: '1px solid var(--border-c)', lineHeight: 1.6 }}>
+              No calls logged. This fills in once the 3CX line is routed through Platform OS.
+            </div>
+          )}
           {CALL_LOG.map((c, i) => (
             <div key={i} style={{ borderTop: '1px solid var(--border-c)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '.6fr 1.2fr .7fr .7fr .5fr', gap: 12, padding: '11px 17px', alignItems: 'center' }}>
@@ -122,10 +126,9 @@ export function Phone() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>28</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Calls today</div></div>
-          <div><div className="cap" style={{ color: '#7a8a5e', fontSize: 26, lineHeight: 1 }}>0:14</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Avg wait</div></div>
-          <div><div className="cap" style={{ color: '#c67139', fontSize: 26, lineHeight: 1 }}>2</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Missed today</div></div>
-          <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>96%</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Answer rate</div></div>
+          {[['Calls today', 'var(--text)'], ['Avg wait', '#7a8a5e'], ['Missed today', '#c67139'], ['Answer rate', 'var(--text)']].map(([label]) => (
+            <div key={label}><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>{label}</div></div>
+          ))}
         </div>
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Team status</div>

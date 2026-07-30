@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useStore, fmt, liveInvoices } from '@/core/store';
 
 /**
  * Mercedes — the Hyper Agent screen. Faithful to the prototype: dark hero
@@ -7,33 +8,69 @@ import { useState } from 'react';
  * toggles. Chat replies are a small canned/contextual engine — the real
  * mercedesChat integration (Claude + tools) plugs in here later.
  */
-const THREADS = [
-  { title: 'T. Nguyen credit hold', detail: 'Invoice #1042 past Net 14 — 12 days overdue', action: 'Chase' },
-  { title: 'Burson part delayed', detail: 'Front brake pads for Ranger, ETA unknown', action: 'Follow up' },
-  { title: 'NPS detractor', detail: 'T. Nguyen scored 6/10 — needs a call', action: 'Call' },
-];
-
-const ACTIVITY = [
-  ['09:14', 'Sent service reminder to A. Costa — booked for Wed'],
-  ['08:52', 'Chased Burson for the Ranger brake pad ETA'],
-  ['08:30', 'Answered after-hours call — logged as new booking'],
-  ['Yest', 'Sent 3 overdue-invoice nudges'],
-  ['Yest', 'Requested review from S. Bianchi (Google)'],
-];
+// Mercedes has no autonomous task or activity backend yet — nothing chases
+// invoices, follows up parts, or logs actions on its own. These lists used to
+// be hardcoded, presenting invented work ("Sent service reminder to A. Costa",
+// "Chased Burson for the Ranger brake pad ETA") as things the assistant had
+// actually done, alongside a live thread count and a "14 resolved today"
+// stat. Empty until real work is tracked.
+const THREADS = [];
+const ACTIVITY = [];
 
 const PROMPTS = ["Who's overdue?", "What's low on stock?", 'Summarise today'];
 
-function reply(q) {
+/**
+ * Answers the quick prompts from the store, not from a script.
+ *
+ * These replies were previously hardcoded prose citing specific invoice
+ * numbers, customers and dollar figures ("T. Nguyen is 12 days past Net 14 on
+ * invoice #1042 ($1,364.00)"). An assistant stating invented financials as
+ * fact is the worst version of the fake-data problem — it's confident, and
+ * staff have no way to tell it apart from a real answer. Now every number
+ * traces to a record in the store, and when there's nothing to report it says
+ * so instead of filling the silence.
+ *
+ * Only live invoices count for money questions — migrated MechanicDesk rows
+ * carry the old system's unreliable payment state (see store.jsx).
+ */
+function buildReply(q, store) {
   const s = q.toLowerCase();
-  if (s.includes('overdue')) return 'T. Nguyen is 12 days past Net 14 on invoice #1042 ($1,364.00), and M. Petrakis is 4 days over on #1039 ($594.00). Want me to send reminders?';
-  if (s.includes('stock') || s.includes('low')) return "Penrite 5W-30 is down to 2 L and Ryco Z516 to 1 ea — both below reorder point. NGK BKR6E is on order from Burson.";
-  if (s.includes('summar')) return 'Today: 4 jobs in progress, 3 booked, $0 invoiced so far. One account on credit hold, one NPS detractor needs a follow-up call.';
-  return "I've got the floor, parts, invoices and GST covered — ask me anything, or try one of the quick prompts.";
+  const { invoices = [], parts = [], tyreStock = [], jobs = [], bookings = [] } = store;
+
+  if (s.includes('overdue') || s.includes('owe') || s.includes('unpaid')) {
+    const unpaid = liveInvoices(invoices).filter((i) => i.status !== 'Paid');
+    if (!unpaid.length) return 'Nothing outstanding on invoices raised in Platform OS. (Imported history is excluded — its payment state came from the old system and needs reconciling separately.)';
+    const total = unpaid.reduce((sum, i) => sum + i.amount, 0);
+    const top = [...unpaid].sort((a, b) => b.amount - a.amount).slice(0, 3)
+      .map((i) => `${i.customer || 'Unnamed'} ${fmt(i.amount)} (${i.id})`).join(', ');
+    return `${unpaid.length} unpaid invoice${unpaid.length === 1 ? '' : 's'}, ${fmt(total)} total. Largest: ${top}.`;
+  }
+
+  if (s.includes('stock') || s.includes('low') || s.includes('order')) {
+    const lowParts = parts.filter((p) => p.stock <= 0 || p.status === 'Low' || p.status === 'Ordered');
+    const lowTyres = tyreStock.filter((t) => t.qty <= (t.reorder ?? 0));
+    if (!lowParts.length && !lowTyres.length) return 'Nothing below reorder point in parts or tyre stock right now.';
+    const bits = [];
+    if (lowParts.length) bits.push(`${lowParts.length} part${lowParts.length === 1 ? '' : 's'} (${lowParts.slice(0, 3).map((p) => p.name).join(', ')}${lowParts.length > 3 ? '…' : ''})`);
+    if (lowTyres.length) bits.push(`${lowTyres.length} tyre line${lowTyres.length === 1 ? '' : 's'} (${lowTyres.slice(0, 3).map((t) => [t.brand, t.size].filter(Boolean).join(' ')).join(', ')}${lowTyres.length > 3 ? '…' : ''})`);
+    return `Below reorder point: ${bits.join(' and ')}.`;
+  }
+
+  if (s.includes('summar') || s.includes('today') || s.includes('going on')) {
+    const inProgress = jobs.filter((j) => j.status === 'In progress').length;
+    const booked = bookings.length;
+    const live = liveInvoices(invoices);
+    const invoiced = live.reduce((sum, i) => sum + i.amount, 0);
+    return `${jobs.length} job${jobs.length === 1 ? '' : 's'} on the board (${inProgress} in progress), ${booked} booking${booked === 1 ? '' : 's'}, ${fmt(invoiced)} invoiced through Platform OS.`;
+  }
+
+  return "I can answer from what's in the system — try one of the prompts below. Free-form questions aren't wired to a language model yet, so I'd rather say that than guess.";
 }
 
 export function Mercedes() {
+  const store = useStore();
   const [messages, setMessages] = useState([
-    { from: 'bot', text: "Morning. Three cars in, one waiting on a Burson part — want me to chase it?" },
+    { from: 'bot', text: "Ask me about overdue invoices, low stock, or today's summary — I'll answer from what's actually in the system." },
   ]);
   const [draft, setDraft] = useState('');
   const [listening, setListening] = useState(false);
@@ -44,7 +81,7 @@ export function Mercedes() {
   const send = (text) => {
     const q = (text ?? draft).trim();
     if (!q) return;
-    setMessages((m) => [...m, { from: 'user', text: q }, { from: 'bot', text: reply(q) }]);
+    setMessages((m) => [...m, { from: 'user', text: q }, { from: 'bot', text: buildReply(q, store) }]);
     setDraft('');
   };
 
@@ -89,7 +126,7 @@ export function Mercedes() {
             <div>
               <div className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</div>
               <div className="cap" style={{ color: '#f5ead8', fontSize: 22, marginTop: 4 }}>Watching the floor and the books</div>
-              <div className="fg" style={{ fontSize: 11, color: '#a8b48e', fontWeight: 600, marginTop: 4 }}>● Live · {THREADS.length} open threads</div>
+              <div className="fg" style={{ fontSize: 11, color: '#a8b48e', fontWeight: 600, marginTop: 4 }}>{THREADS.length > 0 ? `● Live · ${THREADS.length} open threads` : 'No open threads'}</div>
             </div>
           </div>
           {THREADS.map((t) => (
@@ -154,14 +191,19 @@ export function Mercedes() {
       {/* Right column */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div><div className="cap" style={{ color: '#c67139', fontSize: 26, lineHeight: 1 }}>14</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Resolved today</div></div>
-          <div><div className="cap" style={{ color: '#7a8a5e', fontSize: 26, lineHeight: 1 }}>6.2h</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Time saved</div></div>
+          <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Resolved today</div></div>
+          <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Time saved</div></div>
           <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>{THREADS.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Open threads</div></div>
-          <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>98%</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Call answer rate</div></div>
+          <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Call answer rate</div></div>
         </div>
 
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Recent activity</div>
+          {ACTIVITY.length === 0 && (
+            <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6 }}>
+              Nothing logged yet. Actions Mercedes takes on your behalf will appear here.
+            </div>
+          )}
           {ACTIVITY.map(([time, text], i) => (
             <div key={i} style={{ display: 'flex', gap: 11, padding: '8px 0', borderBottom: '1px solid var(--border-c)' }}>
               <span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600, width: 38, flexShrink: 0 }}>{time}</span>
