@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, fmt } from '@/core/store';
+import { useStore, fmt, liveInvoices, historicalInvoices } from '@/core/store';
 
 /**
  * Accounts — core screen. Revenue, GST collected, accounts receivable and the
@@ -14,15 +14,29 @@ import { useStore, fmt } from '@/core/store';
  * below. Fabricated numbers on a document someone might lodge with the ATO is
  * not a risk worth carrying for a nicer-looking screen, so they're gone until
  * real expense data exists (Xero pull, or Zeller via the Xero bank feed).
+ *
+ * All money on this screen comes from LIVE invoices only — those raised in
+ * Platform OS. The 1,830 invoices imported from MechanicDesk are excluded:
+ * 446 of them read as 90+ days unpaid (~$293k), which almost certainly
+ * reflects invoices settled in person and never closed off in the old system
+ * rather than real debt. Reporting that as accounts receivable would put a
+ * six-figure error on the dashboard on day one. The backlog is surfaced
+ * separately, labelled for what it is.
  */
 export function Accounts() {
   const { invoices } = useStore();
   const [showBas, setShowBas] = useState(false);
 
-  const totalIncGst = invoices.reduce((s, i) => s + i.amount, 0);
+  const live = liveInvoices(invoices);
+  const historical = historicalInvoices(invoices);
+
+  const totalIncGst = live.reduce((s, i) => s + i.amount, 0);
   const gstCollected = totalIncGst - totalIncGst / 1.1;
   const revenueExGst = totalIncGst / 1.1;
-  const receivable = invoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
+  const receivable = live.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
+
+  const histUnpaid = historical.filter((i) => i.status !== 'Paid');
+  const histUnpaidValue = histUnpaid.reduce((s, i) => s + i.amount, 0);
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -64,12 +78,34 @@ export function Accounts() {
         </div>
       </div>
 
+      {histUnpaid.length > 0 && (
+        <div style={{ background: 'var(--card-bg)', border: '1px solid #ddd0ae', borderRadius: 20, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Imported backlog · needs review</span>
+            <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600 }}>Excluded from the figures above</span>
+          </div>
+          <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>
+            <strong>{histUnpaid.length} invoices ({fmt(histUnpaidValue)})</strong> came across from the old system still marked unpaid.
+            Most are likely settled-in-person jobs that were never closed off there, not money owed — so they&apos;re kept out of
+            revenue, GST and receivables until someone works through them. Reconcile against the bank, then mark them off.
+          </div>
+        </div>
+      )}
+
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-        <div style={{ padding: '17px 20px 12px' }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Invoice GST breakdown</span></div>
+        <div style={{ padding: '17px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Invoice GST breakdown</span>
+          <span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Live invoices only</span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, padding: '0 20px 10px', minWidth: 560 }}>
           {['INVOICE', 'EX GST', 'GST', 'TOTAL'].map((h) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>{h}</span>)}
         </div>
-        {invoices.map((inv) => (
+        {live.length === 0 && (
+          <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', padding: '14px 20px', borderTop: '1px solid var(--border-c)' }}>
+            No invoices raised in Platform OS yet — this fills in as jobs are invoiced from here.
+          </div>
+        )}
+        {live.map((inv) => (
           <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, padding: '11px 20px', borderTop: '1px solid var(--border-c)', alignItems: 'center', minWidth: 560 }}>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{inv.id}</span>
             <span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{fmt(inv.amount / 1.1)}</span>
