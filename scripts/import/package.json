@@ -1,0 +1,11 @@
+{
+  "name": "platform-os-mechanicdesk-import",
+  "version": "1.0.0",
+  "description": "One-time MechanicDesk -> Platform OS data migration",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
+    "csv-parse": "^7.0.1"
+  }
+}
