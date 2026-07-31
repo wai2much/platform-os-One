@@ -33,6 +33,50 @@
     --text-mute: #6f6a63;
     --text-mute2: #8a857c;
     --border-c: #e0dccf;
+
+    /* "Ink" surfaces — the dark cards/buttons that sit ON the cream page
+       (Mercedes hero, GST banner, live-call card, primary buttons). In light
+       mode they're the brand ink. In dark mode a near-black card would vanish
+       against a dark page, so it lifts to a raised warm surface instead. */
+    --ink: #201e1d;
+    --ink-text: #f5ead8;
+    --ink-soft: #a49a8c;
+  }
+
+  /* Dark theme. Warm rather than neutral-grey, so it still reads as the
+     Front-of-House palette — the cream becomes the type colour and the
+     browns deepen, instead of turning the product into a generic dark app.
+     Applied via [data-theme="dark"] on <html> (see src/core/theme.js);
+     the media query only covers first paint before the script sets the
+     attribute, so a system-dark user never sees a flash of light. */
+  :root[data-theme='dark'] {
+    --background: 30 12% 8%;
+    --foreground: 37 59% 90%;
+    --card: 30 10% 11%;
+    --card-foreground: 37 59% 90%;
+    --muted: 30 9% 16%;
+    --muted-foreground: 35 12% 62%;
+    --primary: 24 55% 54%;
+    --primary-foreground: 30 12% 8%;
+    --secondary: 30 9% 16%;
+    --secondary-foreground: 37 59% 90%;
+    --accent: 82 24% 52%;
+    --accent-foreground: 30 12% 8%;
+    --border: 30 8% 20%;
+    --ring: 24 55% 54%;
+
+    --page-bg: #14120f;
+    --card-bg: #1f1c18;
+    --panel-bg: #2a2621;
+    --text: #f5ead8;
+    --text-soft: #ddd2be;
+    --text-mute: #a89e8e;
+    --text-mute2: #877d6f;
+    --border-c: #332e28;
+
+    --ink: #322c26;
+    --ink-text: #f5ead8;
+    --ink-soft: #b3a898;
   }
 
   .cap { font-family: 'Caprasimo', Georgia, serif; }

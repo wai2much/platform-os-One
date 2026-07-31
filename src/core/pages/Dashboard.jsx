@@ -1,16 +1,41 @@
-import { useStore, fmt } from '@/core/store';
+import { useStore, fmt, liveInvoices } from '@/core/store';
 
 /**
  * Dashboard — faithful port of the Front-of-House prototype design, now real
  * React wired to the shared store instead of a static HTML string. KPIs,
  * today's diary, in-the-bays, parts stock, credits & follow-ups, and staff
- * attendance are all computed live from real data. Revenue-by-service,
- * cars-through-door, profit-margin trend, and customer NPS stay illustrative
- * — they need time-series/cost-tracking/NPS-survey data models that don't
- * exist yet (same as Accounts/Reports leaving cost tracking illustrative).
+ * attendance are all computed live from real data.
+ *
+ * Revenue totals are derived from LIVE invoices only — migrated MechanicDesk
+ * rows carry the old system's unreliable payment state (see store.jsx).
+ *
+ * Anything that needs a data model Platform OS doesn't have — service-mix
+ * breakdown (no line-item categorisation), cars-through-door (no job
+ * time-series), profit margin (no cost tracking), NPS (no survey) — now says
+ * so instead of rendering invented numbers. Those cards previously showed
+ * $286,400 year-to-date, a 41% margin and an NPS of 72 with no on-screen
+ * indication they were placeholders, on the first screen anyone opens.
  */
 export function Dashboard() {
   const { jobs, invoices, bookings, parts, tyreStock, team, customers, setActive, startJobCard } = useStore();
+
+  // Real revenue by period, from invoices raised in Platform OS. Rows without
+  // a createdAt (nothing writes one client-side yet) are counted in the
+  // all-time figure only, never attributed to a period they can't be dated to.
+  const live = liveInvoices(invoices);
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(startOfDay.getTime() - 6 * 86400000);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const sumSince = (from) => live.reduce((s, i) => {
+    if (!i.createdAt) return s;
+    const d = new Date(i.createdAt);
+    return Number.isNaN(d.getTime()) || d < from ? s : s + i.amount;
+  }, 0);
+  const rev7 = sumSince(sevenDaysAgo);
+  const revMtd = sumSince(startOfMonth);
+  const revYtd = sumSince(startOfYear);
 
   const inProgress = jobs.filter((j) => j.status === 'In progress');
   const booked = jobs.filter((j) => j.status === 'Booked').length;
@@ -63,7 +88,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div style={{ background: '#201e1d', borderRadius: 24, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 22 }}>
+      <div style={{ background: 'var(--ink)', borderRadius: 24, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 22 }}>
         <div style={{ width: 78, height: 78, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><div style={{ width: 34, height: 34, borderRadius: '50%', background: '#f5ead8' }} /></div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><span className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</span><span className="fg" style={{ fontSize: 10, color: '#a8b48e', fontWeight: 600 }}>● On the floor</span></div>
@@ -128,52 +153,33 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Revenue by service, cars-through-door, and profit margin need a real
-          time-series + cost-tracking data model that doesn't exist yet (same
-          as Accounts/Reports) — kept illustrative rather than faked live. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr 1fr', gap: 12 }}>
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Revenue by service</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <div style={{ width: 100, height: 100, borderRadius: '50%', flex: 'none', background: 'conic-gradient(#c67139 0 42%, #7a8a5e 42% 68%, #dcc9a8 68% 86%, #efe0c8 86% 100%)' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--card-bg)', margin: '22px 0 0 22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="cap" style={{ fontSize: 13, color: 'var(--text)' }}>$8.4k</span></div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[['#c67139', 'Servicing · 42%'], ['#7a8a5e', 'Brakes & suspension · 26%'], ['#dcc9a8', 'Diagnostics · 18%'], ['var(--panel-bg)', 'Other · 14%']].map(([c, l]) => (
-                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: c, flex: 'none' }} /><span className="fg" style={{ fontSize: 11.5, color: 'var(--text-soft)', fontWeight: 600 }}>{l}</span></div>
-              ))}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, borderTop: '1px solid var(--border-c)', paddingTop: 12 }}>
-            {[['7 DAYS', '$8,420'], ['MONTH TO DATE', '$31,860'], ['YEAR TO DATE', '$286,400']].map(([l, v]) => (
-              <div key={l}><div className="fg" style={{ fontSize: 9.5, letterSpacing: '.08em', color: 'var(--text-mute2)', fontWeight: 700 }}>{l}</div><div className="cap" style={{ fontSize: 19, color: 'var(--text)', marginTop: 4 }}>{v}</div></div>
+          <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Revenue</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+            {[['LAST 7 DAYS', rev7], ['MONTH TO DATE', revMtd], ['YEAR TO DATE', revYtd]].map(([l, v]) => (
+              <div key={l}><div className="fg" style={{ fontSize: 9.5, letterSpacing: '.08em', color: 'var(--text-mute2)', fontWeight: 700 }}>{l}</div><div className="cap" style={{ fontSize: 19, color: 'var(--text)', marginTop: 4 }}>{fmt(v)}</div></div>
             ))}
           </div>
-        </div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Cars through door</span>
-            <div style={{ display: 'flex', gap: 4, background: 'var(--panel-bg)', borderRadius: 999, padding: 3 }}>
-              <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '4px 10px' }}>7D</span>
-              <span className="fg" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-mute)', padding: '4px 10px' }}>14D</span>
-              <span className="fg" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-mute)', padding: '4px 10px' }}>30D</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, minHeight: 70 }}>
-            {[52, 68, 44, 76, 60, 82].map((h, i) => <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--panel-bg)', borderRadius: '5px 5px 0 0' }} />)}
-            <div style={{ flex: 1, height: '90%', background: '#c67139', borderRadius: '5px 5px 0 0' }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => <span key={d} className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', fontWeight: 600 }}>{d}</span>)}
-            <span className="fg" style={{ fontSize: 10, color: '#c67139', fontWeight: 700 }}>Today</span>
+          <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55, borderTop: '1px solid var(--border-c)', paddingTop: 12 }}>
+            Invoices raised in Platform OS. Imported history is excluded — its payment state came from the old system.
+            A breakdown by service type needs invoice line items to be categorised, which isn&apos;t set up yet.
           </div>
         </div>
+
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Profit margin</span><span className="fg" style={{ fontSize: 10.5, color: '#7a8a5e', fontWeight: 700 }}>▲ 3pts</span></div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}><span className="cap" style={{ fontSize: 34, color: 'var(--text)' }}>41%</span><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>last 8 weeks</span></div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 34 }}>
-            {[58, 64, 52, 70, 66, 78, 74].map((h, i) => <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--panel-bg)', borderRadius: '3px 3px 0 0' }} />)}
-            <div style={{ flex: 1, height: '100%', background: '#c67139', borderRadius: '3px 3px 0 0' }} />
+          <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Cars through door</span>
+          <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>Not tracked yet.</div>
+          <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55 }}>
+            Needs a dated history of completed jobs. Jobs don&apos;t carry a completion date yet, so there&apos;s nothing to chart.
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Profit margin</span>
+          <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>Needs expense data.</div>
+          <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55 }}>
+            Revenue is known, costs aren&apos;t. Connecting the Zeller&nbsp;&rarr;&nbsp;Xero feed is what makes a margin calculable.
           </div>
         </div>
       </div>
@@ -186,7 +192,7 @@ export function Dashboard() {
               <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{inv.customer} · invoice {inv.id}</span>
                 <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {inv.creditHold && <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: '#201e1d', border: '1px solid #c67139', borderRadius: 999, padding: '3px 9px', fontWeight: 700 }}>Credit hold</span>}
+                  {inv.creditHold && <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: 'var(--ink)', border: '1px solid #c67139', borderRadius: 999, padding: '3px 9px', fontWeight: 700 }}>Credit hold</span>}
                   <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: '#c67139', borderRadius: 999, padding: '3px 10px', fontWeight: 700 }}>{inv.status}</span>
                 </span>
               </div>
@@ -199,20 +205,20 @@ export function Dashboard() {
             ))}
             {!overdue.length && !storeCredit.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)' }}>Nothing outstanding.</div>}
           </div>
-          {/* Customer NPS needs a real survey data model, not star reviews — illustrative for now. */}
           <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Customer NPS</span><span className="fg" style={{ fontSize: 10.5, color: '#7a8a5e', fontWeight: 700 }}>72 · Promoter zone</span></div>
-            {[['T. Nguyen', 6, '#c67139', 'Follow up'], ['S. Okafor', 9, '#7a8a5e', 'Thank'], ['J. Bianchi', 8, '#7a8a5e', 'Thank']].map(([n, s, bg, label]) => (
-              <div key={n} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{n} · scored {s}/10</span><span className="fg" style={{ fontSize: 10.5, color: '#fff', background: bg, borderRadius: 999, padding: '3px 10px', fontWeight: 700 }}>{label}</span></div>
-            ))}
+            <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Customer NPS</span>
+            <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>No survey running.</div>
+            <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55 }}>
+              NPS needs customers to be asked the 0&ndash;10 question directly. Star reviews aren&apos;t the same measure, so this stays empty rather than approximating one from them.
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Upcoming needs real dated bookings/quotes beyond today — illustrative for now. */}
           <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
             <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Upcoming</span>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>A. Costa · service recheck</span><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-soft)', fontWeight: 600 }}>Tomorrow 9:00</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>Fleet quote · Baxter Logistics</span><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-soft)', fontWeight: 600 }}>Due Mon</span></div>
+            <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)', lineHeight: 1.6 }}>
+              Nothing scheduled beyond today. Bookings with a future date will show here.
+            </div>
           </div>
           <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
             <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Staff attendance</span>

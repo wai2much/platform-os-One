@@ -105,7 +105,7 @@ export function LoanCars() {
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', marginTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
           <span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Uber for Business</span>
-          <span onClick={() => setShowRequest(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ Request ride</span>
+          <span onClick={() => setShowRequest(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ Request ride</span>
         </div>
         <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6, marginBottom: 14 }}>When a customer doesn't want a loan car, book them an Uber instead — the trip cost adds straight to their job invoice.</div>
         {trips.length > 0 && (
@@ -133,7 +133,7 @@ export function LoanCars() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <span onClick={() => setShowRequest(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
-              <span onClick={requestRide} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Request &amp; bill to job</span>
+              <span onClick={requestRide} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Request &amp; bill to job</span>
             </div>
           </div>
         </div>

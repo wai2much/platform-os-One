@@ -63,7 +63,7 @@ export const liveInvoices = (invoices) => invoices.filter((i) => !i.migrated);
 /** Imported history — real work, unreliable payment state. Reference only. */
 export const historicalInvoices = (invoices) => invoices.filter((i) => i.migrated);
 const bookingToRow = (b, orgId) => ({ id: b.id, org_id: orgId, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
-const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : '') });
+const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : ''), createdAt: r.created_at });
 const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, phone: c.phone || '', email: c.email || '', vehicle: c.vehicle || '', last_visit: c.lastVisit || '', status: c.status, spend: c.spend, job_history: c.jobHistory || [] });
 const customerFromRow = (r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email || '', vehicle: r.vehicle, lastVisit: r.last_visit, status: r.status, spend: Number(r.spend), jobHistory: r.job_history || [] });
 const vehicleToRow = (v, orgId) => ({ id: v.id, org_id: orgId, model: v.model, rego: v.rego || '', owner: v.owner || '', odo: v.odo || '', last_service: v.lastService || '', next_due: v.nextDue || '', status: v.status, history: v.history || [] });

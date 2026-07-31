@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '@/core/store';
+import { getThemePreference, setThemePreference, getResolvedTheme, watchSystemTheme } from '@/core/theme';
 
 function NavIcon({ icon, color }) {
   return (
@@ -12,8 +14,8 @@ function NavIcon({ icon, color }) {
 }
 
 function NavItem({ item, active, onClick }) {
-  const color = active ? '#fff' : '#3c3936';
-  const badgeColor = active ? '#fff' : item.badgeAccent ? '#fff' : '#8a857c';
+  const color = active ? '#fff' : 'var(--text-soft)';
+  const badgeColor = active ? '#fff' : item.badgeAccent ? '#fff' : 'var(--text-mute2)';
   const badgeBg = active ? 'rgba(255,255,255,.25)' : item.badgeAccent ? '#7a8a5e' : 'transparent';
   return (
     <button
@@ -33,12 +35,48 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
+/**
+ * Live wall clock for the header. Ticks on the minute rather than every
+ * second — this sits next to the date on a screen that's open all day, so a
+ * seconds counter is just noise (and a re-render every second).
+ */
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    // Align the first tick to the top of the next minute, then run every 60s,
+    // so the display flips exactly when the minute does.
+    const msToNextMinute = 60000 - (Date.now() % 60000);
+    let interval;
+    const timeout = setTimeout(() => {
+      setNow(new Date());
+      interval = setInterval(() => setNow(new Date()), 60000);
+    }, msToNextMinute);
+    return () => { clearTimeout(timeout); clearInterval(interval); };
+  }, []);
+  return now;
+}
+
 export function Layout({ title, sections, activeKey, onNavigate, user, org, onSignOut, children }) {
   const { startJobCard } = useStore();
   const name = user?.user_metadata?.full_name || user?.email || 'Signed in';
   const roleLabel = org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Member';
   const avatarUrl = user?.user_metadata?.avatar_url;
-  const today = new Date().toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+  const [themePref, setThemePref] = useState(getThemePreference);
+  const [resolvedTheme, setResolvedTheme] = useState(() => getResolvedTheme());
+  useEffect(() => watchSystemTheme(() => setResolvedTheme(getResolvedTheme())), []);
+  const isDark = resolvedTheme === 'dark';
+  // Cycles light -> dark -> system so "follow the OS" stays reachable from
+  // the same control, rather than needing a separate settings screen.
+  const nextTheme = themePref === 'light' ? 'dark' : themePref === 'dark' ? 'system' : 'light';
+  const toggleTheme = () => {
+    setThemePreference(nextTheme);
+    setThemePref(nextTheme);
+    setResolvedTheme(getResolvedTheme(nextTheme));
+  };
+
+  const now = useClock();
+  const today = now.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+  const clock = now.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--page-bg)' }}>
       {/* Sidebar */}
@@ -59,14 +97,27 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
           ))}
         </nav>
 
-        {/* Dark toggle (visual — not yet wired) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 15px', borderRadius: 999 }}>
+        {/* Theme switch. Label reflects the preference (including "Auto"), the
+            knob reflects what's actually on screen — so following the system
+            at night still reads as dark. */}
+        <div
+          onClick={toggleTheme}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTheme(); } }}
+          title={`Theme: ${themePref === 'system' ? `Auto (${resolvedTheme})` : themePref} — click for ${nextTheme}`}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 15px', borderRadius: 999, cursor: 'pointer' }}
+        >
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-mute)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z" />
+            {themePref === 'system'
+              ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>
+              : <path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z" />}
           </svg>
-          <span className="fg" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-soft)', flex: 1 }}>Dark mode</span>
-          <span style={{ width: 34, height: 19, borderRadius: 999, background: 'var(--panel-bg)', position: 'relative', flexShrink: 0 }}>
-            <span style={{ position: 'absolute', top: 2, left: 2, width: 15, height: 15, borderRadius: '50%', background: '#fff' }} />
+          <span className="fg" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-soft)', flex: 1 }}>
+            {themePref === 'system' ? 'Theme · auto' : themePref === 'dark' ? 'Dark mode' : 'Light mode'}
+          </span>
+          <span style={{ width: 34, height: 19, borderRadius: 999, background: isDark ? '#7a8a5e' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, transition: 'background .18s' }}>
+            <span style={{ position: 'absolute', top: 2, left: isDark ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: '#fff', transition: 'left .18s' }} />
           </span>
         </div>
 
@@ -99,8 +150,11 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
             <input type="text" placeholder="Search…" style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute)', fontWeight: 600, whiteSpace: 'nowrap' }}>{today}</span>
-            <span onClick={() => startJobCard({})} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#f5ead8', borderRadius: 999, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>New job</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.15 }}>
+              <span className="cap" style={{ fontSize: 15, color: 'var(--text)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{clock}</span>
+              <span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600, whiteSpace: 'nowrap' }}>{today}</span>
+            </div>
+            <span onClick={() => startJobCard({})} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: 'var(--ink-text)', borderRadius: 999, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>New job</span>
             <span onClick={() => onNavigate('settings')} style={{ width: 36, height: 36, borderRadius: 999, background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-soft)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.6-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1h.1a2 2 0 110 4h-.1a1.7 1.7 0 00-1.6 1z" />

@@ -5,17 +5,39 @@ const SVC = { Service: 'Logbook service', Brakes: 'Brakes', Diagnostic: 'Diagnos
 
 /**
  * Bookings — core screen. Calendar (bay grid) / List tab switcher, appointment
- * type chips, and a per-row Send-reminder action. Faithful to the prototype;
- * sample data.
+ * type chips, and a per-row Send-reminder action.
+ *
+ * The calendar grid used to render three hardcoded blocks (BMW 320i, Golf GTI,
+ * Hilux SR5) regardless of what was actually booked, so it showed phantom jobs
+ * next to the real list view. It now derives from the same bookings the list
+ * uses — an empty day renders as an empty grid.
  */
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16];
 const APPT_TYPES = ['Service', 'Tyres & alignment', 'Brakes', 'Diagnostic', 'Roadworthy'];
 
-const CAL = [
-  { hour: 8, bay: 0, vehicle: 'BMW 320i', service: 'Service', color: '#c67139' },
-  { hour: 10, bay: 1, vehicle: 'Golf GTI', service: 'Brakes', color: '#7a8a5e' },
-  { hour: 13, bay: 2, vehicle: 'Hilux SR5', service: 'Diagnostic', color: '#b5703f' },
-];
+const BAY_COLORS = ['#c67139', '#7a8a5e', '#b5703f'];
+
+/** "1:00"/"13:15"/"8:30am" -> 24h hour int, or null if unparseable. */
+function parseHour(time) {
+  if (!time) return null;
+  const m = String(time).trim().match(/^(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const suffix = (m[3] || '').toLowerCase();
+  if (suffix === 'pm' && h < 12) h += 12;
+  if (suffix === 'am' && h === 12) h = 0;
+  // Shop hours run 8-16, so a bare 1-6 means afternoon, not 1am.
+  if (!suffix && h >= 1 && h <= 6) h += 12;
+  return h;
+}
+
+/** Bay label ("Bay 2", "2", "TBC") -> column index, or null when unassigned. */
+function parseBay(bay) {
+  const m = String(bay || '').match(/(\d+)/);
+  if (!m) return null;
+  const idx = parseInt(m[1], 10) - 1;
+  return idx >= 0 && idx <= 2 ? idx : null;
+}
 
 function Tab({ label, active, onClick }) {
   return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 16px', color: active ? '#fff' : 'var(--text-soft)', background: active ? '#c67139' : 'transparent' }}>{label}</span>;
@@ -58,6 +80,15 @@ export function Bookings() {
   const [reminded, setReminded] = useState({});
   const [creating, setCreating] = useState(false);
 
+  // Only bookings that resolve to a real hour AND an assigned bay can be
+  // placed on the grid. Portal bookings arrive with bay 'TBC', so they show
+  // in the List view until someone assigns them — better than guessing a bay
+  // and having the board disagree with reality.
+  const calBlocks = bookings
+    .map((b) => ({ ...b, hour: parseHour(b.time), bay: parseBay(b.bay) }))
+    .filter((b) => b.hour !== null && b.bay !== null);
+  const unplaced = bookings.length - calBlocks.length;
+
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -72,6 +103,12 @@ export function Bookings() {
         {APPT_TYPES.map((a) => <span key={a} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 13px' }}>{a}</span>)}
       </div>
 
+      {view === 'calendar' && unplaced > 0 && (
+        <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>
+          {unplaced} booking{unplaced === 1 ? '' : 's'} not on the board — no bay assigned yet. See the List tab.
+        </div>
+      )}
+
       {view === 'calendar' ? (
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '64px repeat(3,1fr)' }}>
@@ -84,12 +121,12 @@ export function Bookings() {
             <div key={h} style={{ display: 'grid', gridTemplateColumns: '64px repeat(3,1fr)' }}>
               <div style={{ padding: '18px 10px 0', textAlign: 'right' }}><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{h}:00</span></div>
               {[0, 1, 2].map((bay) => {
-                const blk = CAL.find((c) => c.hour === h && c.bay === bay);
+                const blk = calBlocks.find((c) => c.hour === h && c.bay === bay);
                 return (
                   <div key={bay} style={{ minHeight: 56, borderTop: '1px solid var(--border-c)', borderLeft: '1px solid var(--border-c)', padding: 6 }}>
                     {blk && (
-                      <div style={{ background: blk.color, borderRadius: 10, padding: '8px 10px', overflow: 'hidden' }}>
-                        <div className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{blk.vehicle}</div>
+                      <div style={{ background: BAY_COLORS[bay % BAY_COLORS.length], borderRadius: 10, padding: '8px 10px', overflow: 'hidden' }}>
+                        <div className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{blk.vehicle || blk.customer || 'Booking'}</div>
                         <div className="fg" style={{ fontSize: 10, color: 'rgba(255,255,255,.85)', marginTop: 2 }}>{blk.service}</div>
                       </div>
                     )}

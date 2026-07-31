@@ -113,7 +113,7 @@ export function Invoices() {
         <div onClick={() => setOpenId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 26, width: 440, overflow: 'hidden', boxShadow: '0 24px 60px rgba(32,30,29,.3)' }}>
             {/* Dark header band */}
-            <div style={{ background: '#201e1d', padding: '22px 30px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ background: 'var(--ink)', padding: '22px 30px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span className="cap" style={{ color: '#fff', fontSize: 16 }}>$</span></div>
                 <div>
@@ -135,7 +135,7 @@ export function Invoices() {
               </div>
 
               {open.creditHold && (
-                <div style={{ background: '#201e1d', borderRadius: 14, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ background: 'var(--ink)', borderRadius: 14, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} />
                   <span className="fg" style={{ fontSize: 12, color: '#f5ead8', fontWeight: 600, flex: 1 }}>Account on credit hold — past {open.terms} terms. New work needs approval before booking.</span>
                 </div>
