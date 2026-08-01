@@ -10,7 +10,7 @@ const fmt = (n) => '$' + (n || 0).toLocaleString('en-AU', { minimumFractionDigit
 
 const OLIVE = '#5a6a3c';
 const TERRA = '#8a4f24';
-const INK = '#201e1d';
+const INK = '#201c16';
 const LINE = '#d3c19a';
 
 const INSPECTION_ITEMS = [
@@ -20,10 +20,10 @@ const INSPECTION_ITEMS = [
 ];
 const STATUS_COLOR = { ok: '#5a6a3c', monitor: '#c9a15e', action: '#b4531f' };
 
-const inp = { border: `1px solid ${LINE}`, borderRadius: 999, padding: '8px 12px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: INK, background: '#fffdf8', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { border: `1px solid ${LINE}`, borderRadius: 999, padding: '8px 12px', fontSize: 12.5, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: INK, background: '#f7f1e4', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function Card({ children, style }) {
-  return <div style={{ background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', padding: 20, ...style }}>{children}</div>;
+  return <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, boxShadow: '0 1px 3px rgba(32,30,29,.06)', padding: 20, ...style }}>{children}</div>;
 }
 function SectionTitle({ children }) {
   return <div className="cap" style={{ color: TERRA, fontSize: 17, letterSpacing: '.01em', marginBottom: 12 }}>{children}</div>;
@@ -160,7 +160,7 @@ function BackPage() {
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-            <span className="fg" onClick={() => net > 0 && generateInvoice()} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? '#fff' : 'var(--text-mute2)', background: net > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
+            <span className="fg" onClick={() => net > 0 && generateInvoice()} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? '#fff' : 'var(--text-mute2)', background: net > 0 ? 'var(--vermillion)' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
           </div>
         </Card>
       </div>
@@ -178,7 +178,7 @@ function BackPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginTop: 16, alignItems: 'end' }}>
           <div>
             <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 6 }}>CUSTOMER SIGNATURE ON COLLECTION</div>
-            <div style={{ height: 44, borderRadius: 12, border: `1px solid ${LINE}`, background: '#fffdf8' }} />
+            <div style={{ height: 44, borderRadius: 12, border: `1px solid ${LINE}`, background: '#f7f1e4' }} />
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 12 }}><CheckSquare on={flags.keys} onClick={() => flag('keys')} /><span className="fg" style={{ fontSize: 12.5, color: INK }}>Keys returned / vehicle out</span></label>
         </div>
@@ -279,7 +279,7 @@ function FrontPage() {
           </div>
           <div>
             <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>CUSTOMER SIGNATURE ON DROP-OFF</div>
-            <div style={{ height: 44, borderRadius: 12, border: `1px solid ${LINE}`, background: '#fffdf8' }} />
+            <div style={{ height: 44, borderRadius: 12, border: `1px solid ${LINE}`, background: '#f7f1e4' }} />
           </div>
         </div>
       </Card>

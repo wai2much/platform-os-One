@@ -1,6 +1,12 @@
-/* Front-of-House design system — warm cream / terracotta / sage.
-   Caprasimo (display) + Figtree (UI). Ported from the prototype. */
-@import url('https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap');
+/* Origami Paper design system — washi cream / ink / vermillion.
+   Japanese-influenced: paper tone, ink hairline structure, folded-corner
+   cards, one vermillion accent. Shippori Mincho (display) + Zen Kaku
+   Gothic New (UI), replacing the earlier Caprasimo/Figtree pairing.
+
+   Status colours are NOT vermillion: the system reserves #1f6d3d for
+   Complete/Done/positive-delta, because a workshop screen needs "Paid" and
+   "On" to not read as danger. "Single accent" means one brand accent. */
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,38 +14,46 @@
 
 @layer base {
   :root {
-    --background: 37 59% 90%;      /* cream #f5ead8 */
-    --foreground: 20 5% 12%;       /* ink #201e1d */
-    --card: 40 100% 97%;           /* warm card #fffaf0 */
-    --card-foreground: 20 5% 12%;
-    --muted: 37 45% 88%;
-    --muted-foreground: 35 6% 41%; /* #6f6a63 */
-    --primary: 24 55% 50%;         /* terracotta #c67139 */
-    --primary-foreground: 40 100% 97%;
-    --secondary: 37 55% 86%;       /* panel #efe0c8 */
-    --secondary-foreground: 20 5% 12%;
-    --accent: 82 27% 45%;          /* sage #7a8a5e */
-    --accent-foreground: 40 100% 97%;
-    --border: 40 22% 84%;          /* #e0dccf */
-    --ring: 24 55% 50%;
-    --radius: 0.9rem;
+    --background: 42 45% 91%;      /* washi #f3ecdd */
+    --foreground: 36 20% 11%;      /* ink #201c16 */
+    --card: 42 45% 91%;            /* washi — cards sit on the same paper */
+    --card-foreground: 36 20% 11%;
+    --muted: 40 38% 84%;
+    --muted-foreground: 38 12% 47%; /* #8a7f6e */
+    --primary: 5 68% 44%;          /* vermillion #bf3324 */
+    --primary-foreground: 42 45% 91%;
+    --secondary: 40 38% 84%;       /* kraft #e7dcc3 */
+    --secondary-foreground: 36 20% 11%;
+    --accent: 146 56% 27%;         /* fold green #1f6d3d — positive states */
+    --accent-foreground: 42 45% 91%;
+    --border: 36 20% 11%;          /* ink hairline, used at low alpha */
+    --ring: 5 68% 44%;
+    --radius: 0;                   /* the fold replaces the rounded corner */
 
-    /* Prototype named tokens (used by faithfully-ported markup) */
-    --page-bg: #f5ead8;
-    --card-bg: #fffaf0;
-    --panel-bg: #efe0c8;
-    --text: #201e1d;
-    --text-soft: #3c3936;
-    --text-mute: #6f6a63;
-    --text-mute2: #8a857c;
-    --border-c: #e0dccf;
+    /* Named tokens (used by the faithfully-ported inline-styled markup) */
+    --page-bg: #f3ecdd;            /* Washi */
+    --card-bg: #f3ecdd;            /* same paper; the hairline defines the card */
+    --panel-bg: #e7dcc3;           /* Kraft */
+    --text: #201c16;               /* Ink */
+    --text-soft: #3a352d;
+    --text-mute: #55504a;
+    --text-mute2: #8a7f6e;
+    --border-c: rgba(32, 28, 22, 0.16);
+
+    /* Origami additions */
+    --vermillion: #bf3324;         /* accent / markers / active underline */
+    --vermillion-deep: #a52a1e;    /* primary button fill */
+    --fold-bg: #e7dcc3;            /* underside of a folded corner */
+    --label: #8a6b3f;              /* uppercase eyebrow labels */
+    --positive: #1f6d3d;           /* Complete / Paid / ↑ delta */
+    --fold-size: 32px;
 
     /* "Ink" surfaces — the dark cards/buttons that sit ON the cream page
        (Mercedes hero, GST banner, live-call card, primary buttons). In light
        mode they're the brand ink. In dark mode a near-black card would vanish
        against a dark page, so it lifts to a raised warm surface instead. */
-    --ink: #201e1d;
-    --ink-text: #f5ead8;
+    --ink: #201c16;
+    --ink-text: #f3ecdd;
     --ink-soft: #a49a8c;
   }
 
@@ -50,48 +64,103 @@
      the media query only covers first paint before the script sets the
      attribute, so a system-dark user never sees a flash of light. */
   :root[data-theme='dark'] {
-    --background: 30 12% 8%;
-    --foreground: 37 59% 90%;
-    --card: 30 10% 11%;
-    --card-foreground: 37 59% 90%;
-    --muted: 30 9% 16%;
-    --muted-foreground: 35 12% 62%;
-    --primary: 24 55% 54%;
-    --primary-foreground: 30 12% 8%;
-    --secondary: 30 9% 16%;
-    --secondary-foreground: 37 59% 90%;
-    --accent: 82 24% 52%;
-    --accent-foreground: 30 12% 8%;
-    --border: 30 8% 20%;
-    --ring: 24 55% 54%;
+    --background: 30 12% 10%;      /* sumi #1c1815 */
+    --foreground: 42 45% 91%;
+    --card: 33 21% 13%;            /* #262019 */
+    --card-foreground: 42 45% 91%;
+    --muted: 33 21% 16%;
+    --muted-foreground: 38 16% 58%;
+    --primary: 8 69% 51%;          /* vermillion brightens to hold contrast */
+    --primary-foreground: 30 12% 10%;
+    --secondary: 33 21% 16%;
+    --secondary-foreground: 42 45% 91%;
+    --accent: 146 45% 36%;
+    --accent-foreground: 42 45% 91%;
+    --border: 42 45% 91%;          /* washi hairline at low alpha */
+    --ring: 8 69% 51%;
 
-    --page-bg: #14120f;
-    --card-bg: #1f1c18;
-    --panel-bg: #2a2621;
-    --text: #f5ead8;
-    --text-soft: #ddd2be;
-    --text-mute: #a89e8e;
-    --text-mute2: #877d6f;
-    --border-c: #332e28;
+    --page-bg: #1c1815;            /* Sumi surface */
+    --card-bg: #262019;
+    --panel-bg: #332b21;
+    --text: #f3ecdd;
+    --text-soft: #c9c4ba;
+    --text-mute: #a89b82;
+    --text-mute2: #8a7d68;
+    --border-c: rgba(243, 236, 221, 0.14);
 
-    --ink: #322c26;
-    --ink-text: #f5ead8;
-    --ink-soft: #b3a898;
+    /* Vermillion brightens on ink so it keeps contrast; the gold eyebrow
+       label lifts to #c9a15e for the same reason (both per the system's
+       Dark Mode section, not invented here). */
+    --vermillion: #d9432e;
+    --vermillion-deep: #bf3324;
+    --fold-bg: #332b21;
+    --label: #c9a15e;
+    --positive: #2f8a52;
+
+    --ink: #332b21;
+    --ink-text: #f3ecdd;
+    --ink-soft: #a89b82;
   }
 
-  .cap { font-family: 'Caprasimo', Georgia, serif; }
-  .fg { font-family: 'Figtree', system-ui, sans-serif; }
+  /* The whole app already routes display type through .cap and UI type
+     through .fg, so re-pointing those two classes swaps the typography
+     everywhere at once. Caprasimo was a heavy display face at weight 400;
+     Shippori Mincho needs 800 to hold the same presence at heading sizes. */
+  .cap { font-family: 'Shippori Mincho', Georgia, serif; font-weight: 800; letter-spacing: 0; }
+  .fg { font-family: 'Zen Kaku Gothic New', system-ui, sans-serif; }
 
-  * { border-color: hsl(var(--border)); box-sizing: border-box; }
-  html { font-family: 'Figtree', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  * { border-color: var(--border-c); box-sizing: border-box; }
+  html { font-family: 'Zen Kaku Gothic New', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   body {
     margin: 0;
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.6;
   }
-  h1, h2, .font-display { font-family: 'Caprasimo', Georgia, serif; font-weight: 400; letter-spacing: .01em; }
+  h1, h2, .font-display { font-family: 'Shippori Mincho', Georgia, serif; font-weight: 800; letter-spacing: 0; }
+  ::selection { background: var(--vermillion); color: #f3ecdd; }
+
+  /* Uppercase eyebrow label — the system's recurring section marker. */
+  .label {
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--label);
+    font-weight: 500;
+  }
+
+  /* Folded corner. The clip cuts the top-right corner on the diagonal; the
+     ::after paints the small triangle just inside that cut in the kraft
+     tone, so it reads as the underside of a turned-down sheet.
+
+     Note: clip-path also clips box-shadow, so a .fold surface loses its
+     drop shadow — intended. The hairline border and the fold carry the
+     structure instead, which is what the system does. */
+  /* The hairline is not optional. Cards share the page's washi tone, so
+     without a border a folded card has no visible edge at all — and the
+     clip-path removes the box-shadow most of these cards relied on. Set
+     here rather than on 70 inline styles; an inline border still wins. */
+  .fold {
+    position: relative;
+    border: 1px solid var(--border-c);
+    clip-path: polygon(0 0, calc(100% - var(--fold-size)) 0, 100% var(--fold-size), 100% 100%, 0 100%);
+  }
+  .fold::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--fold-size);
+    height: var(--fold-size);
+    background: var(--fold-bg);
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+    border-left: 1px solid var(--border-c);
+    border-bottom: 1px solid var(--border-c);
+    pointer-events: none;
+  }
+  .fold-sm { --fold-size: 22px; }  /* compact / stat cards */
+  .fold-lg { --fold-size: 36px; }  /* modals and dialogs */
 }
 
 /* Job-card print: only the two pages print, chrome hidden, one page each. */

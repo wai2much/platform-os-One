@@ -28,7 +28,7 @@ export function Statements() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 14 }}>
         <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: 'var(--text)', fontSize: 24, lineHeight: 1 }}>{fmt(totalBalance)}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Total outstanding</div></div>
         <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: 'var(--text)', fontSize: 24, lineHeight: 1 }}>{rows.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Accounts with a balance</div></div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: '#c67139', fontSize: 24, lineHeight: 1 }}>{overdueCount}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Past terms</div></div>
+        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: 'var(--vermillion)', fontSize: 24, lineHeight: 1 }}>{overdueCount}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Past terms</div></div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
@@ -37,7 +37,7 @@ export function Statements() {
         <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>Send all statements</span>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+      <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr .8fr .8fr', gap: 12, padding: '14px 20px', minWidth: 600 }}>
           {['CUSTOMER', 'BALANCE', 'TERMS', '', ''].map((h, i) => <span key={i} className="fg" style={{ fontSize: 10, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>{h}</span>)}
         </div>
@@ -47,14 +47,14 @@ export function Statements() {
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>{fmt(r.balance)}</span>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{r.terms}</span>
             <span onClick={() => setViewing(r)} className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#3c3936', cursor: 'pointer', justifySelf: 'end' }}>View</span>
-            <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer', justifySelf: 'end' }}>Send</span>
+            <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--vermillion)', cursor: 'pointer', justifySelf: 'end' }}>Send</span>
           </div>
         ))}
         {!rows.length && <div className="fg" style={{ padding: 20, fontSize: 12.5, color: 'var(--text-mute)', textAlign: 'center' }}>No outstanding balances</div>}
       </div>
 
       {viewing && (
-        <div style={{ position: 'fixed', inset: 0, background: '#fbf5e8', zIndex: 100, padding: 48, overflow: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: '#f3ecdd', zIndex: 100, padding: 48, overflow: 'auto' }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <div style={{ position: 'relative', background: '#a8b58a', color: '#2e3a1e', padding: '26px 32px', margin: '-48px -48px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -64,14 +64,14 @@ export function Statements() {
               <div style={{ textAlign: 'right' }}><div className="cap" style={{ fontSize: 22 }}>ACCOUNT STATEMENT</div></div>
             </div>
             <div style={{ marginBottom: 24 }}><div className="fg" style={{ fontSize: 10.5, letterSpacing: '.08em', color: '#8a857c', fontWeight: 700, marginBottom: 5 }}>ACCOUNT</div><div className="fg" style={{ fontSize: 14, fontWeight: 700 }}>{viewing.customer} · {viewing.terms}</div></div>
-            <div style={{ borderTop: '1px solid #e0dccf', borderBottom: '1px solid #e0dccf' }}>
+            <div style={{ borderTop: '1px solid #ddd5c4', borderBottom: '1px solid #ddd5c4' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '10px 0', fontWeight: 700, fontSize: 11, letterSpacing: '.06em', color: '#8a857c' }}><span>INVOICE</span><span>STATUS</span><span style={{ textAlign: 'right' }}>AMOUNT</span></div>
               {viewing.lines.map((ln) => (
-                <div key={ln.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '9px 0', borderTop: '1px solid #f0ece0', fontSize: 13 }}><span>{ln.id}</span><span>{ln.status}</span><span style={{ textAlign: 'right' }}>{fmt(ln.amount)}</span></div>
+                <div key={ln.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '9px 0', borderTop: '1px solid #ece4d3', fontSize: 13 }}><span>{ln.id}</span><span>{ln.status}</span><span style={{ textAlign: 'right' }}>{fmt(ln.amount)}</span></div>
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: 220, borderTop: '1px solid #201e1d', paddingTop: 8 }}><span className="fg" style={{ fontWeight: 700 }}>Total balance</span><span className="cap" style={{ fontSize: 18 }}>{fmt(viewing.balance)}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: 220, borderTop: '1px solid #201c16', paddingTop: 8 }}><span className="fg" style={{ fontWeight: 700 }}>Total balance</span><span className="cap" style={{ fontSize: 18 }}>{fmt(viewing.balance)}</span></div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 36 }}>
               <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>

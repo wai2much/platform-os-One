@@ -7,11 +7,11 @@ import { useStore } from '@/core/store';
  * computed live from the real jobs table (matched by tech first name)
  * rather than stored separately.
  */
-const AVATAR_COLORS = ['#201e1d', '#7a8a5e', '#8a4f24', '#a8926f', '#6b3a22', '#c67139'];
+const AVATAR_COLORS = ['#201c16', 'var(--positive)', '#8a4f24', '#a8926f', '#6b3a22', 'var(--vermillion)'];
 const initials = (name) => (name || '').trim().split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase();
 const colorFor = (id) => AVATAR_COLORS[[...String(id)].reduce((h, c) => h + c.charCodeAt(0), 0) % AVATAR_COLORS.length];
 const fmtK = (n) => (n >= 1000 ? '$' + (n / 1000).toFixed(1) + 'k' : '$' + n);
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 const STATUSES = ['On shift', 'Break', 'Off shift'];
 
 function NewMemberModal({ onClose, onCreate }) {
@@ -20,7 +20,7 @@ function NewMemberModal({ onClose, onCreate }) {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 26, width: 380 }}>
+      <div className="fold fold-lg" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 26, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>Add team member</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input autoFocus value={form.name} onChange={set('name')} placeholder="Name" style={inp} />
@@ -33,7 +33,7 @@ function NewMemberModal({ onClose, onCreate }) {
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <span className="fg" onClick={() => form.name.trim() && onCreate(form)}
-            style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.name.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 18px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>
+            style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.name.trim() ? 'var(--vermillion)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 18px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>
             Add
           </span>
           <span className="fg" onClick={onClose} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
@@ -58,13 +58,13 @@ export function Team() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{team.length} on the team</span>
         <span style={{ flex: 1 }} />
-        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ Add team member</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ Add team member</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
         {team.map((p) => {
           const { jobsCount, revenue } = statsFor(p.name);
           return (
-            <div key={p.id} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div key={p.id} className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: colorFor(p.id), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span className="fg" style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>{initials(p.name)}</span>
@@ -73,7 +73,7 @@ export function Team() {
                   <div className="fg" style={{ fontSize: 15, color: 'var(--text)', fontWeight: 700 }}>{p.name}</div>
                   <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600 }}>{p.role}{p.email ? ` · ${p.email}` : ''}</div>
                 </div>
-                <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: p.status === 'On shift' ? '#fff' : 'var(--text-soft)', background: p.status === 'On shift' ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '3px 9px' }}>{p.status}</span>
+                <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: p.status === 'On shift' ? '#fff' : 'var(--text-soft)', background: p.status === 'On shift' ? 'var(--positive)' : 'var(--panel-bg)', borderRadius: 999, padding: '3px 9px' }}>{p.status}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, borderTop: '1px solid var(--border-c)', paddingTop: 12 }}>
                 <div><div className="cap" style={{ fontSize: 18, color: 'var(--text)' }}>{jobsCount}</div><div className="fg" style={{ fontSize: 9, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 3 }}>JOBS</div></div>

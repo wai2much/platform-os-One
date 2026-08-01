@@ -16,14 +16,14 @@ function NavIcon({ icon, color }) {
 function NavItem({ item, active, onClick }) {
   const color = active ? '#fff' : 'var(--text-soft)';
   const badgeColor = active ? '#fff' : item.badgeAccent ? '#fff' : 'var(--text-mute2)';
-  const badgeBg = active ? 'rgba(255,255,255,.25)' : item.badgeAccent ? '#7a8a5e' : 'transparent';
+  const badgeBg = active ? 'rgba(255,255,255,.25)' : item.badgeAccent ? 'var(--positive)' : 'transparent';
   return (
     <button
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
         padding: '10px 15px', borderRadius: 999, border: 'none', cursor: 'pointer',
-        textAlign: 'left', background: active ? '#c67139' : 'transparent',
+        textAlign: 'left', background: active ? 'var(--vermillion)' : 'transparent',
       }}
     >
       <NavIcon icon={item.icon} color={color} />
@@ -116,7 +116,7 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
           <span className="fg" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-soft)', flex: 1 }}>
             {themePref === 'system' ? 'Theme · auto' : themePref === 'dark' ? 'Dark mode' : 'Light mode'}
           </span>
-          <span style={{ width: 34, height: 19, borderRadius: 999, background: isDark ? '#7a8a5e' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, transition: 'background .18s' }}>
+          <span style={{ width: 34, height: 19, borderRadius: 999, background: isDark ? 'var(--positive)' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, transition: 'background .18s' }}>
             <span style={{ position: 'absolute', top: 2, left: isDark ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: '#fff', transition: 'left .18s' }} />
           </span>
         </div>
@@ -130,7 +130,7 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
           {avatarUrl ? (
             <img src={avatarUrl} alt="" style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcc9a8', flexShrink: 0 }} />
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#cbb589', flexShrink: 0 }} />
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="fg" style={{ color: 'var(--text)', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
@@ -147,7 +147,7 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-mute)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)' }}>
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
             </svg>
-            <input type="text" placeholder="Search…" style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+            <input type="text" placeholder="Search…" style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.15 }}>
