@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '@/core/store';
+import { RegoCheck } from '@/components/RegoCheck';
 
 /**
  * Vehicles — workshop pack. Searchable register + detail modal, backed by
@@ -20,8 +21,8 @@ function StatusPill({ status }) {
   return <span className="fg" style={{ fontSize: 11, color: s.color, background: s.bg, borderRadius: 999, padding: '3px 11px', fontWeight: 700, justifySelf: 'start' }}>{status}</span>;
 }
 
-function NewVehicleModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({ model: '', rego: '', owner: '', odo: '', status: 'Serviced' });
+function NewVehicleModal({ onClose, onCreate, initial }) {
+  const [form, setForm] = useState({ model: '', rego: '', owner: '', odo: '', status: 'Serviced', ...(initial || {}) });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
@@ -60,6 +61,9 @@ export function Vehicles() {
 
   return (
     <div style={{ padding: '6px 30px 26px' }}>
+      <div style={{ marginBottom: 14 }}>
+        <RegoCheck />
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{vehicles.length} total</span>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search rego, model, owner…" style={{ background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '8px 14px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: 220 }} />
