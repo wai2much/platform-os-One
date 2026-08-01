@@ -104,3 +104,6 @@
   .jobcard-page { display: block !important; break-after: page; padding: 0 !important; }
   .jobcard-page:last-child { break-after: auto; }
 }
+
+/* Mercedes — Poll Now spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
