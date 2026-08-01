@@ -43,18 +43,18 @@ export function Comms() {
   const toggleResolved = () => setResolved((r) => ({ ...r, [activeId]: !r[activeId] }));
 
   const Toggle = ({ on, onClick }) => (
-    <span onClick={onClick} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', cursor: 'pointer', borderRadius: 999, padding: '2px 9px', background: on ? '#7a8a5e' : 'var(--text-mute2)' }}>{on ? 'On' : 'Off'}</span>
+    <span onClick={onClick} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', cursor: 'pointer', borderRadius: 999, padding: '2px 9px', background: on ? 'var(--positive)' : 'var(--text-mute2)' }}>{on ? 'On' : 'Off'}</span>
   );
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 4 }}>
-        <span onClick={() => setShowSettings((v) => !v)} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>{showSettings ? 'Hide settings' : 'Notification settings'}</span>
+        <span onClick={() => setShowSettings((v) => !v)} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--vermillion)', cursor: 'pointer' }}>{showSettings ? 'Hide settings' : 'Notification settings'}</span>
       </div>
 
       {showSettings && (
         <div style={{ paddingBottom: 12 }}>
-          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: '18px 20px', boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: '18px 20px', boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 11 }}>
             <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 2 }}>Notification settings</div>
             {[['New SMS alerts', 'sms'], ['New email alerts', 'email'], ['Auto-forward unresolved to London after hours', 'forward']].map(([label, key]) => (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -71,8 +71,8 @@ export function Comms() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '.9fr 1.6fr', gap: 14, flex: 1, minHeight: 0 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' }}>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations…" style={{ background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', marginBottom: 6 }} />
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' }}>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations…" style={{ background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px', fontSize: 12.5, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', marginBottom: 6 }} />
           {visible.map((t) => (
             <div key={t.id} onClick={() => open(t.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 12px', borderRadius: 12, cursor: 'pointer', background: t.id === activeId ? 'var(--panel-bg)' : 'transparent' }}>
               <div style={{ minWidth: 0 }}>
@@ -82,7 +82,7 @@ export function Comms() {
                 </div>
                 <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.messages[t.messages.length - 1]?.text}</div>
               </div>
-              {t.unread && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} />}
+              {t.unread && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--vermillion)', flexShrink: 0 }} />}
             </div>
           ))}
           {!visible.length && (
@@ -95,29 +95,29 @@ export function Comms() {
         </div>
 
         {active && (
-          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>{active.name}</div>
                 <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>{active.phone} · via {active.channel}</div>
               </div>
-              <span onClick={toggleResolved} className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>{resolved[activeId] ? 'Reopen' : 'Mark resolved'}</span>
+              <span onClick={toggleResolved} className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--vermillion)', cursor: 'pointer' }}>{resolved[activeId] ? 'Reopen' : 'Mark resolved'}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto', flex: 1 }}>
               {active.messages.map((m, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: m.from === 'us' ? 'flex-end' : 'flex-start' }}>
-                  <div className="fg" style={{ background: m.from === 'us' ? '#201e1d' : 'var(--panel-bg)', color: m.from === 'us' ? '#f5ead8' : 'var(--text)', borderRadius: 14, padding: '9px 13px', fontSize: 13, maxWidth: '75%' }}>{m.text}</div>
+                  <div className="fg" style={{ background: m.from === 'us' ? '#201c16' : 'var(--panel-bg)', color: m.from === 'us' ? '#f3ecdd' : 'var(--text)', borderRadius: 14, padding: '9px 13px', fontSize: 13, maxWidth: '75%' }}>{m.text}</div>
                 </div>
               ))}
             </div>
             {resolved[activeId] && (
-              <div className="fg" style={{ fontSize: 11.5, color: '#7a8a5e', fontWeight: 700, textAlign: 'center' }}>● Resolved</div>
+              <div className="fg" style={{ fontSize: 11.5, color: 'var(--positive)', fontWeight: 700, textAlign: 'center' }}>● Resolved</div>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
               {QUICK_REPLIES.map((qr) => <span key={qr} onClick={() => send(qr)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer' }}>{qr}</span>)}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '10px 15px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '10px 15px', fontSize: 13, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none' }} />
               <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Send</span>
             </div>
           </div>

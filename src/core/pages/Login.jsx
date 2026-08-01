@@ -26,7 +26,10 @@ export function Login() {
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             padding: '11px 16px', borderRadius: 999, border: '1px solid var(--border-c)',
-            background: '#fff', color: 'var(--text)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+            /* Google's button is fixed-white per their branding rules, so the
+               label must be fixed ink too — var(--text) inverts to cream in
+               dark mode and renders the label invisible on the white fill. */
+            background: '#fff', color: '#201c16', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
           }}
         >
           <GoogleG />

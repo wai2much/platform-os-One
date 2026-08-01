@@ -8,10 +8,10 @@ import { useStore, fmt } from '@/core/store';
  * line-item editor (add/remove rows), faithful to the prototype's job modal.
  */
 const STATUS = {
-  'In progress': { color: '#c67139', bg: 'rgba(198,113,57,.15)' },
-  Ready: { color: '#fff', bg: '#7a8a5e' },
+  'In progress': { color: 'var(--vermillion)', bg: 'rgba(191,51,36,.15)' },
+  Ready: { color: '#fff', bg: 'var(--positive)' },
   'Awaiting approval': { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
-  Completed: { color: '#7a8a5e', bg: 'rgba(122,138,94,.16)' },
+  Completed: { color: 'var(--positive)', bg: 'rgba(31,109,61,.16)' },
   Booked: { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
 };
 
@@ -47,10 +47,10 @@ export function Jobs() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{jobs.length} total</span>
         <span style={{ flex: 1 }} />
-        <span onClick={() => startJobCard({})} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New job</span>
+        <span onClick={() => startJobCard({})} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New job</span>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+      <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '13px 20px', background: 'var(--panel-bg)', minWidth: 640 }}>
           {['JOB', 'CUSTOMER', 'VEHICLE', 'TECH', 'STATUS', 'TOTAL'].map((h, i) => (
             <span key={h} className="fg" style={{ fontSize: 10.5, letterSpacing: '.06em', color: 'var(--text-mute)', fontWeight: 700, textAlign: i === 5 ? 'right' : 'left' }}>{h}</span>
@@ -85,14 +85,14 @@ export function Jobs() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
               <span className="fg" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>LINE ITEMS</span>
-              <span className="fg" onClick={addLine} style={{ fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>+ Add item</span>
+              <span className="fg" onClick={addLine} style={{ fontSize: 12, fontWeight: 700, color: 'var(--vermillion)', cursor: 'pointer' }}>+ Add item</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflow: 'auto' }}>
               {lines.map((li, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.6fr .6fr .8fr .8fr 20px', gap: 8, alignItems: 'center', background: 'var(--panel-bg)', borderRadius: 10, padding: '8px 10px' }}>
-                  <input value={li[0]} onChange={(e) => setLine(i, 0, e.target.value)} placeholder="Description" style={{ background: 'transparent', border: 'none', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', padding: 2 }} />
-                  <input value={li[1]} onChange={(e) => setLine(i, 1, e.target.value)} inputMode="decimal" style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-c)', fontSize: 12, fontFamily: 'Figtree, sans-serif', color: 'var(--text-soft)', outline: 'none', padding: 2 }} />
-                  <input value={li[2]} onChange={(e) => setLine(i, 2, e.target.value)} inputMode="decimal" style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-c)', fontSize: 12, fontFamily: 'Figtree, sans-serif', color: 'var(--text-soft)', outline: 'none', padding: 2 }} />
+                  <input value={li[0]} onChange={(e) => setLine(i, 0, e.target.value)} placeholder="Description" style={{ background: 'transparent', border: 'none', fontSize: 12.5, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', padding: 2 }} />
+                  <input value={li[1]} onChange={(e) => setLine(i, 1, e.target.value)} inputMode="decimal" style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-c)', fontSize: 12, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text-soft)', outline: 'none', padding: 2 }} />
+                  <input value={li[2]} onChange={(e) => setLine(i, 2, e.target.value)} inputMode="decimal" style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-c)', fontSize: 12, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text-soft)', outline: 'none', padding: 2 }} />
                   <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 700, textAlign: 'right' }}>{fmt((parseFloat(li[1]) || 0) * (parseFloat(li[2]) || 0))}</span>
                   <span onClick={() => removeLine(i)} className="fg" style={{ fontSize: 14, color: 'var(--text-mute2)', cursor: 'pointer', textAlign: 'center' }}>×</span>
                 </div>

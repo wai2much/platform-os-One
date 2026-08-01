@@ -48,20 +48,20 @@ export function PublicBooking() {
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+      <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Booking link</span>
-          <span onClick={() => setLinkOn((v) => !v)} className="fg" style={{ fontSize: 11, fontWeight: 700, color: linkOn ? '#fff' : 'var(--text-soft)', background: linkOn ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '5px 13px', cursor: 'pointer' }}>{linkOn ? 'Enabled' : 'Disabled'}</span>
+          <span onClick={() => setLinkOn((v) => !v)} className="fg" style={{ fontSize: 11, fontWeight: 700, color: linkOn ? '#fff' : 'var(--text-soft)', background: linkOn ? 'var(--positive)' : 'var(--panel-bg)', borderRadius: 999, padding: '5px 13px', cursor: 'pointer' }}>{linkOn ? 'Enabled' : 'Disabled'}</span>
         </div>
         <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6, marginBottom: 14 }}>When enabled, customers can book online via the Customer Booking Portal. New bookings sync straight into the Bookings calendar.</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel-bg)', borderRadius: 12, padding: '11px 14px' }}>
           <span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>tyreplusthomastown.com.au/book</span>
-          <span onClick={copyLink} className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer', flexShrink: 0 }}>{copied ? 'Copied!' : 'Copy'}</span>
+          <span onClick={copyLink} className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--vermillion)', cursor: 'pointer', flexShrink: 0 }}>{copied ? 'Copied!' : 'Copy'}</span>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Scheduling rules</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>Minimum lead time</span><span className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{leadTime}h</span></div>
@@ -72,7 +72,7 @@ export function PublicBooking() {
             <input type="range" min="1" max="12" step="1" value={maxPerDay} onChange={(e) => setMaxPerDay(+e.target.value)} style={{ width: '100%' }} />
           </div>
         </div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Recent online bookings</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {recent.length === 0 && (
@@ -85,7 +85,7 @@ export function PublicBooking() {
               return (
                 <div key={rb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border-c)' }}>
                   <div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{rb.customer || 'Unnamed'}</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>{[rb.service, when].filter(Boolean).join(' · ')}</div></div>
-                  <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 10px' }}>Booked</span>
+                  <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: 'var(--positive)', borderRadius: 999, padding: '3px 10px' }}>Booked</span>
                 </div>
               );
             })}
@@ -93,8 +93,8 @@ export function PublicBooking() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Appointment types</span><span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New type</span></div>
+      <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Appointment types</span><span className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New type</span></div>
         {APPT_TYPES.map(([name, hours]) => (
           <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-c)' }}>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{name}</span>

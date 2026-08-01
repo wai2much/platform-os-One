@@ -15,7 +15,7 @@ const SVC = { Service: 'Logbook service', Brakes: 'Brakes', Diagnostic: 'Diagnos
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16];
 const APPT_TYPES = ['Service', 'Tyres & alignment', 'Brakes', 'Diagnostic', 'Roadworthy'];
 
-const BAY_COLORS = ['#c67139', '#7a8a5e', '#b5703f'];
+const BAY_COLORS = ['var(--vermillion)', 'var(--positive)', '#b5703f'];
 
 /** "1:00"/"13:15"/"8:30am" -> 24h hour int, or null if unparseable. */
 function parseHour(time) {
@@ -40,17 +40,17 @@ function parseBay(bay) {
 }
 
 function Tab({ label, active, onClick }) {
-  return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 16px', color: active ? '#fff' : 'var(--text-soft)', background: active ? '#c67139' : 'transparent' }}>{label}</span>;
+  return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 16px', color: active ? '#fff' : 'var(--text-soft)', background: active ? 'var(--vermillion)' : 'transparent' }}>{label}</span>;
 }
 
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function NewBookingModal({ onClose, onCreate }) {
   const [form, setForm] = useState({ customer: '', phone: '', vehicle: '', service: 'Service', time: '', bay: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
+      <div className="fold fold-lg" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 24, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New booking</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input autoFocus value={form.customer} onChange={set('customer')} placeholder="Customer name" style={inp} />
@@ -65,7 +65,7 @@ function NewBookingModal({ onClose, onCreate }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
           <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
           <span onClick={() => form.customer.trim() && form.vehicle.trim() && onCreate(form)}
-            className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.customer.trim() && form.vehicle.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.customer.trim() && form.vehicle.trim() ? 'pointer' : 'not-allowed' }}>
+            className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.customer.trim() && form.vehicle.trim() ? 'var(--vermillion)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.customer.trim() && form.vehicle.trim() ? 'pointer' : 'not-allowed' }}>
             Add booking
           </span>
         </div>
@@ -96,7 +96,7 @@ export function Bookings() {
           <Tab label="Calendar" active={view === 'calendar'} onClick={() => setView('calendar')} />
           <Tab label="List" active={view === 'list'} onClick={() => setView('list')} />
         </div>
-        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New booking</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New booking</span>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -110,7 +110,7 @@ export function Bookings() {
       )}
 
       {view === 'calendar' ? (
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '64px repeat(3,1fr)' }}>
             <div />
             {['Bay 1', 'Bay 2', 'Bay 3'].map((b) => (
@@ -140,18 +140,18 @@ export function Bookings() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {bookings.map((b) => (
             <div key={b.id} style={{ background: 'var(--card-bg)', borderRadius: 18, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-              <span className="fg" style={{ fontSize: 13, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '6px 13px', fontWeight: 700 }}>{b.time}</span>
+              <span className="fg" style={{ fontSize: 13, color: '#fff', background: 'var(--positive)', borderRadius: 999, padding: '6px 13px', fontWeight: 700 }}>{b.time}</span>
               <div style={{ flex: 1 }}>
                 <div className="fg" style={{ fontSize: 14.5, color: 'var(--text)', fontWeight: 700 }}>{b.vehicle}</div>
                 <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 3 }}>{b.customer} · {b.service}</div>
               </div>
-              {b.source === 'portal' && <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 9px' }}>Online booking</span>}
+              {b.source === 'portal' && <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--positive)', borderRadius: 999, padding: '3px 9px' }}>Online booking</span>}
               {b.bay && <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', border: '1.4px solid var(--border-c)', borderRadius: 999, padding: '4px 12px' }}>{b.bay}</span>}
               <span className="fg" onClick={() => startJobCard({ customer: b.customer, vehicle: (b.vehicle || '').split(' · ')[0], workTypes: SVC[b.service] ? { [SVC[b.service]]: true } : {} })} style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', background: '#5a6a3c', borderRadius: 999, padding: '6px 13px', cursor: 'pointer' }}>Start job card →</span>
               {reminded[b.id] ? (
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '4px 11px' }}>Reminded</span>
+                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: 'var(--positive)', borderRadius: 999, padding: '4px 11px' }}>Reminded</span>
               ) : (
-                <span className="fg" onClick={() => setReminded((r) => ({ ...r, [b.id]: true }))} style={{ fontSize: 11.5, fontWeight: 600, color: '#fff', background: '#c67139', borderRadius: 999, padding: '6px 13px', cursor: 'pointer' }}>Send reminder</span>
+                <span className="fg" onClick={() => setReminded((r) => ({ ...r, [b.id]: true }))} style={{ fontSize: 11.5, fontWeight: 600, color: '#fff', background: 'var(--vermillion)', borderRadius: 999, padding: '6px 13px', cursor: 'pointer' }}>Send reminder</span>
               )}
             </div>
           ))}

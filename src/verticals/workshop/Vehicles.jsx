@@ -7,13 +7,13 @@ import { useStore } from '@/core/store';
  * "+ New vehicle" opens a real create form.
  */
 const STATUS = {
-  Serviced: { color: '#7a8a5e', bg: 'rgba(122,138,94,.16)' },
-  'Due soon': { color: '#fff', bg: '#c67139' },
-  Overdue: { color: '#fff', bg: '#201e1d' },
+  Serviced: { color: 'var(--positive)', bg: 'rgba(31,109,61,.16)' },
+  'Due soon': { color: '#fff', bg: 'var(--vermillion)' },
+  Overdue: { color: '#fff', bg: '#201c16' },
 };
 
 const COLS = '1.2fr 1fr 1fr .9fr .8fr';
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function StatusPill({ status }) {
   const s = STATUS[status] ?? STATUS.Serviced;
@@ -26,7 +26,7 @@ function NewVehicleModal({ onClose, onCreate }) {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 26, width: 380 }}>
+      <div className="fold fold-lg" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 26, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New vehicle</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input autoFocus value={form.model} onChange={set('model')} placeholder="Model (e.g. Ford Ranger)" style={inp} />
@@ -39,7 +39,7 @@ function NewVehicleModal({ onClose, onCreate }) {
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <span className="fg" onClick={() => form.model.trim() && onCreate(form)}
-            style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.model.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 18px', cursor: form.model.trim() ? 'pointer' : 'not-allowed' }}>
+            style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.model.trim() ? 'var(--vermillion)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 18px', cursor: form.model.trim() ? 'pointer' : 'not-allowed' }}>
             Add vehicle
           </span>
           <span className="fg" onClick={onClose} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
@@ -62,11 +62,11 @@ export function Vehicles() {
     <div style={{ padding: '6px 30px 26px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{vehicles.length} total</span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search rego, model, owner…" style={{ background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '8px 14px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: 220 }} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search rego, model, owner…" style={{ background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '8px 14px', fontSize: 12.5, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', width: 220 }} />
         <span style={{ flex: 1 }} />
-        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New vehicle</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New vehicle</span>
       </div>
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+      <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '13px 20px', background: 'var(--panel-bg)', minWidth: 640 }}>
           {['VEHICLE', 'OWNER', 'ODOMETER', 'LAST SERVICE', 'STATUS'].map((h) => <span key={h} className="fg" style={{ fontSize: 10.5, letterSpacing: '.06em', color: 'var(--text-mute)', fontWeight: 700 }}>{h}</span>)}
         </div>
@@ -84,7 +84,7 @@ export function Vehicles() {
 
       {open && (
         <div onClick={() => setOpen(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 26, width: 460, maxHeight: '78vh', overflowY: 'auto' }}>
+          <div className="fold fold-lg" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 26, width: 460, maxHeight: '78vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
               <span className="cap" style={{ fontSize: 18, color: 'var(--text)' }}>{open.model}</span>
               <StatusPill status={open.status} />

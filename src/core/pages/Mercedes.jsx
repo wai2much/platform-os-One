@@ -120,34 +120,34 @@ export function Mercedes() {
         {/* Hero + threads */}
         <div style={{ background: 'var(--ink)', borderRadius: 24, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f5ead8' }} />
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--vermillion)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f3ecdd' }} />
             </div>
             <div>
               <div className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</div>
-              <div className="cap" style={{ color: '#f5ead8', fontSize: 22, marginTop: 4 }}>Watching the floor and the books</div>
+              <div className="cap" style={{ color: '#f3ecdd', fontSize: 22, marginTop: 4 }}>Watching the floor and the books</div>
               <div className="fg" style={{ fontSize: 11, color: '#a8b48e', fontWeight: 600, marginTop: 4 }}>{THREADS.length > 0 ? `● Live · ${THREADS.length} open threads` : 'No open threads'}</div>
             </div>
           </div>
           {THREADS.map((t) => (
             <div key={t.title} style={{ background: 'rgba(245,234,216,.06)', borderRadius: 16, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div className="fg" style={{ color: '#f5ead8', fontSize: 13.5, fontWeight: 600 }}>{t.title}</div>
+                <div className="fg" style={{ color: '#f3ecdd', fontSize: 13.5, fontWeight: 600 }}>{t.title}</div>
                 <div className="fg" style={{ color: '#a49a8c', fontSize: 11, marginTop: 3 }}>{t.detail}</div>
               </div>
-              <span className="fg" style={{ fontSize: 11, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '5px 13px' }}>{t.action}</span>
+              <span className="fg" style={{ fontSize: 11, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '5px 13px' }}>{t.action}</span>
             </div>
           ))}
         </div>
 
         {/* Chat */}
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
             {messages.map((m, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: m.from === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 6 }}>
                 <div className="fg" style={{
-                  background: m.from === 'user' ? '#201e1d' : 'var(--panel-bg)',
-                  color: m.from === 'user' ? '#f5ead8' : 'var(--text)',
+                  background: m.from === 'user' ? '#201c16' : 'var(--panel-bg)',
+                  color: m.from === 'user' ? '#f3ecdd' : 'var(--text)',
                   borderRadius: m.from === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                   padding: '11px 15px', fontSize: 13, lineHeight: 1.5, maxWidth: '80%', whiteSpace: 'pre-wrap',
                 }}>{m.text}</div>
@@ -161,7 +161,7 @@ export function Mercedes() {
             ))}
           </div>
           {voiceError && (
-            <div className="fg" style={{ fontSize: 11.5, color: '#c67139', fontWeight: 600 }}>Voice: {voiceError}</div>
+            <div className="fg" style={{ fontSize: 11.5, color: 'var(--vermillion)', fontWeight: 600 }}>Voice: {voiceError}</div>
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {PROMPTS.map((p) => (
@@ -170,8 +170,8 @@ export function Mercedes() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Ask Mercedes anything about the floor…"
-              style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
-            <span onClick={() => setListening((v) => !v)} style={{ width: 38, height: 38, borderRadius: '50%', background: listening ? '#c67139' : 'var(--text-mute2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none' }} />
+            <span onClick={() => setListening((v) => !v)} style={{ width: 38, height: 38, borderRadius: '50%', background: listening ? 'var(--vermillion)' : 'var(--text-mute2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0014 0M12 19v3" /></svg>
             </span>
             <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Ask</span>
@@ -181,7 +181,7 @@ export function Mercedes() {
         {listening && (
           <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: '14px 18px', boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 18 }}>
-              {[8, 16, 10, 14].map((h, i) => <span key={i} style={{ width: 3, height: h, background: '#c67139', borderRadius: 2 }} />)}
+              {[8, 16, 10, 14].map((h, i) => <span key={i} style={{ width: 3, height: h, background: 'var(--vermillion)', borderRadius: 2 }} />)}
             </div>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', fontWeight: 600 }}>London is listening — say a command…</span>
           </div>
@@ -190,14 +190,14 @@ export function Mercedes() {
 
       {/* Right column */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Resolved today</div></div>
           <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Time saved</div></div>
           <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>{THREADS.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Open threads</div></div>
           <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Call answer rate</div></div>
         </div>
 
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Recent activity</div>
           {ACTIVITY.length === 0 && (
             <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6 }}>
@@ -212,18 +212,18 @@ export function Mercedes() {
           ))}
         </div>
 
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Automations</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[['Service reminders', true], ['Stock chase-up', true], ['After-hours call answer · London', true], ['Overdue invoice nudges', false]].map(([label, on]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="fg" style={{ fontSize: 12.5, color: on ? 'var(--text)' : 'var(--text-mute)', fontWeight: 600 }}>{label}</span>
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: on ? '#fff' : 'var(--text-soft)', background: on ? '#7a8a5e' : 'transparent', border: on ? 'none' : '1px solid var(--border-c)', borderRadius: 999, padding: '2px 9px' }}>{on ? 'On' : 'Off'}</span>
+                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: on ? '#fff' : 'var(--text-soft)', background: on ? 'var(--positive)' : 'transparent', border: on ? 'none' : '1px solid var(--border-c)', borderRadius: 999, padding: '2px 9px' }}>{on ? 'On' : 'Off'}</span>
               </div>
             ))}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>Review requests <span style={{ color: 'var(--text-mute2)' }}>· London</span></span>
-              <span onClick={() => setReviewsOn((v) => !v)} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: reviewsOn ? '#7a8a5e' : 'var(--text-mute2)', borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}>{reviewsOn ? 'On' : 'Off'}</span>
+              <span onClick={() => setReviewsOn((v) => !v)} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: reviewsOn ? 'var(--positive)' : 'var(--text-mute2)', borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}>{reviewsOn ? 'On' : 'Off'}</span>
             </div>
           </div>
         </div>

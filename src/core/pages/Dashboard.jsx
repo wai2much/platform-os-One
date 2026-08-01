@@ -54,11 +54,11 @@ export function Dashboard() {
   const storeCredit = customers.filter((c) => c.status === 'Store credit' || c.status === 'Overdue').filter((c) => !overdue.some((i) => i.customer === c.name));
 
   const KPI = [
-    { value: inProgress.length, label: 'In progress', color: '#c67139', onClick: () => setActive('jobs') },
+    { value: inProgress.length, label: 'In progress', color: 'var(--vermillion)', onClick: () => setActive('jobs') },
     { value: booked, label: 'Booked', color: 'var(--text)', onClick: () => setActive('jobs') },
     { value: awaitingApproval, label: 'Awaiting approval', color: 'var(--text)', onClick: () => setActive('jobs') },
-    { value: ready, label: 'Ready', color: '#7a8a5e', onClick: () => setActive('jobs') },
-    { value: partsLowCount, label: 'Parts low', color: '#c67139', onClick: () => setActive('parts') },
+    { value: ready, label: 'Ready', color: 'var(--positive)', onClick: () => setActive('jobs') },
+    { value: partsLowCount, label: 'Parts low', color: 'var(--vermillion)', onClick: () => setActive('parts') },
     { value: fmt(invoicedToday), label: 'Invoiced today', color: 'var(--text)', onClick: () => setActive('invoices') },
   ];
 
@@ -74,7 +74,7 @@ export function Dashboard() {
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {QUICK_ACTIONS.map((a) => (
           <span key={a.label} onClick={a.onClick} className="fg" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', background: 'var(--card-bg)', boxShadow: '0 1px 3px rgba(32,30,29,.06)', borderRadius: 999, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ color: '#c67139' }}>+</span>{a.label}
+            <span style={{ color: 'var(--vermillion)' }}>+</span>{a.label}
           </span>
         ))}
       </div>
@@ -89,33 +89,33 @@ export function Dashboard() {
       </div>
 
       <div style={{ background: 'var(--ink)', borderRadius: 24, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 22 }}>
-        <div style={{ width: 78, height: 78, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><div style={{ width: 34, height: 34, borderRadius: '50%', background: '#f5ead8' }} /></div>
+        <div style={{ width: 78, height: 78, borderRadius: '50%', background: 'var(--vermillion)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><div style={{ width: 34, height: 34, borderRadius: '50%', background: '#f3ecdd' }} /></div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><span className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</span><span className="fg" style={{ fontSize: 10, color: '#a8b48e', fontWeight: 600 }}>● On the floor</span></div>
           {overdue[0] && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#f0c9a8', fontWeight: 600 }}>{overdue[0].creditHold ? 'Account on credit hold' : 'Overdue invoice'} — {overdue[0].customer}, invoice {overdue[0].id}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--vermillion)', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#f0c9a8', fontWeight: 600 }}>{overdue[0].creditHold ? 'Account on credit hold' : 'Overdue invoice'} — {overdue[0].customer}, invoice {overdue[0].id}</span></div>
           )}
           {lowParts[0] && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#f0c9a8', fontWeight: 600 }}>{lowParts.length} part{lowParts.length !== 1 ? 's' : ''} low on stock — starting with {lowParts[0].name}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--vermillion)', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#f0c9a8', fontWeight: 600 }}>{lowParts.length} part{lowParts.length !== 1 ? 's' : ''} low on stock — starting with {lowParts[0].name}</span></div>
           )}
-          <div className="cap" style={{ color: '#f5ead8', fontSize: 20, lineHeight: 1.3 }}>
+          <div className="cap" style={{ color: '#f3ecdd', fontSize: 20, lineHeight: 1.3 }}>
             {inProgress.length} car{inProgress.length !== 1 ? 's' : ''} in progress{lowParts[0] ? `, waiting on ${lowParts[0].name}` : ''}. Shall I chase it?
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <span onClick={() => setActive('parts')} className="fg" style={{ fontSize: 11.5, fontWeight: 600, background: '#c67139', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>Chase part</span>
-            <span onClick={() => setActive('bookings')} className="fg" style={{ fontSize: 11.5, fontWeight: 600, border: '1px solid rgba(245,234,216,.3)', color: '#f5ead8', borderRadius: 999, padding: '5px 13px', cursor: 'pointer' }}>Today's diary</span>
-            <span onClick={() => setActive('customers')} className="fg" style={{ fontSize: 11.5, fontWeight: 600, border: '1px solid rgba(245,234,216,.3)', color: '#f5ead8', borderRadius: 999, padding: '5px 13px', cursor: 'pointer' }}>Call customer</span>
+            <span onClick={() => setActive('parts')} className="fg" style={{ fontSize: 11.5, fontWeight: 600, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>Chase part</span>
+            <span onClick={() => setActive('bookings')} className="fg" style={{ fontSize: 11.5, fontWeight: 600, border: '1px solid rgba(245,234,216,.3)', color: '#f3ecdd', borderRadius: 999, padding: '5px 13px', cursor: 'pointer' }}>Today's diary</span>
+            <span onClick={() => setActive('customers')} className="fg" style={{ fontSize: 11.5, fontWeight: 600, border: '1px solid rgba(245,234,216,.3)', color: '#f3ecdd', borderRadius: 999, padding: '5px 13px', cursor: 'pointer' }}>Call customer</span>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 12 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Today's diary</span><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{bookings.length} booked</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {diary.map((b, i) => (
               <div key={b.id} style={{ display: 'flex', gap: 11, alignItems: 'center' }}>
-                <span className="fg" style={{ fontSize: 11.5, color: i === 0 ? '#fff' : 'var(--text-soft)', background: i === 0 ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '3px 9px', fontWeight: 700 }}>{b.time}</span>
+                <span className="fg" style={{ fontSize: 11.5, color: i === 0 ? '#fff' : 'var(--text-soft)', background: i === 0 ? 'var(--positive)' : 'var(--panel-bg)', borderRadius: 999, padding: '3px 9px', fontWeight: 700 }}>{b.time}</span>
                 <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, flex: 1 }}>{b.vehicle}</span>
                 <span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{b.bay || '—'}</span>
               </div>
@@ -123,7 +123,7 @@ export function Dashboard() {
             {!diary.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)' }}>Nothing booked.</div>}
           </div>
         </div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>In the bays</span><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{inProgress.length} active</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {inProgress.slice(0, 3).map((j) => (
@@ -135,8 +135,8 @@ export function Dashboard() {
             {!inProgress.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)' }}>Nothing in the bays.</div>}
           </div>
         </div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Parts stock</span><span className="fg" style={{ fontSize: 10.5, color: '#c67139', fontWeight: 700 }}>{partsLowCount} low</span></div>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 }}><span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Parts stock</span><span className="fg" style={{ fontSize: 10.5, color: 'var(--vermillion)', fontWeight: 700 }}>{partsLowCount} low</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             {partsStockRows.map((p, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -144,7 +144,7 @@ export function Dashboard() {
                 {p.tag === 0 ? (
                   <span className="fg" style={{ fontSize: 10, color: 'var(--text-soft)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '2px 8px', fontWeight: 700 }}>Ordered</span>
                 ) : (
-                  <span className="fg" style={{ fontSize: 10, color: '#fff', background: '#c67139', borderRadius: 999, padding: '2px 8px', fontWeight: 700 }}>{p.tag}</span>
+                  <span className="fg" style={{ fontSize: 10, color: '#fff', background: 'var(--vermillion)', borderRadius: 999, padding: '2px 8px', fontWeight: 700 }}>{p.tag}</span>
                 )}
               </div>
             ))}
@@ -154,7 +154,7 @@ export function Dashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr 1fr', gap: 12 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Revenue</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
             {[['LAST 7 DAYS', rev7], ['MONTH TO DATE', revMtd], ['YEAR TO DATE', revYtd]].map(([l, v]) => (
@@ -167,7 +167,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Cars through door</span>
           <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>Not tracked yet.</div>
           <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55 }}>
@@ -175,7 +175,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Profit margin</span>
           <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>Needs expense data.</div>
           <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55 }}>
@@ -186,14 +186,14 @@ export function Dashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
             <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Credits &amp; follow-ups</span>
             {overdue.map((inv) => (
               <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{inv.customer} · invoice {inv.id}</span>
                 <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {inv.creditHold && <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: 'var(--ink)', border: '1px solid #c67139', borderRadius: 999, padding: '3px 9px', fontWeight: 700 }}>Credit hold</span>}
-                  <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: '#c67139', borderRadius: 999, padding: '3px 10px', fontWeight: 700 }}>{inv.status}</span>
+                  {inv.creditHold && <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: 'var(--ink)', border: '1px solid var(--vermillion)', borderRadius: 999, padding: '3px 9px', fontWeight: 700 }}>Credit hold</span>}
+                  <span className="fg" style={{ fontSize: 10.5, color: '#fff', background: 'var(--vermillion)', borderRadius: 999, padding: '3px 10px', fontWeight: 700 }}>{inv.status}</span>
                 </span>
               </div>
             ))}
@@ -205,7 +205,7 @@ export function Dashboard() {
             ))}
             {!overdue.length && !storeCredit.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)' }}>Nothing outstanding.</div>}
           </div>
-          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
             <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Customer NPS</span>
             <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', lineHeight: 1.6 }}>No survey running.</div>
             <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', lineHeight: 1.55 }}>
@@ -214,18 +214,18 @@ export function Dashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
             <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Upcoming</span>
             <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)', lineHeight: 1.6 }}>
               Nothing scheduled beyond today. Bookings with a future date will show here.
             </div>
           </div>
-          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 9 }}>
             <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Staff attendance</span>
             {team.map((p) => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{p.name}</span>
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: p.status === 'On shift' ? '#fff' : 'var(--text-soft)', background: p.status === 'On shift' ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '3px 10px' }}>{p.status}</span>
+                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: p.status === 'On shift' ? '#fff' : 'var(--text-soft)', background: p.status === 'On shift' ? 'var(--positive)' : 'var(--panel-bg)', borderRadius: 999, padding: '3px 10px' }}>{p.status}</span>
               </div>
             ))}
             {!team.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)' }}>No team members yet.</div>}

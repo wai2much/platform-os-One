@@ -10,9 +10,9 @@ import { useStore } from '@/core/store';
 const fmt = (n) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const STATUS = {
-  Overdue: { color: '#fff', bg: '#c67139' },
-  Sent: { color: '#7a8a5e', bg: 'rgba(122,138,94,.16)' },
-  Paid: { color: '#fff', bg: '#7a8a5e' },
+  Overdue: { color: '#fff', bg: 'var(--vermillion)' },
+  Sent: { color: 'var(--positive)', bg: 'rgba(31,109,61,.16)' },
+  Paid: { color: '#fff', bg: 'var(--positive)' },
   'On account': { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
 };
 
@@ -24,7 +24,7 @@ function StatusPill({ status, style }) {
 }
 
 function Tag({ children, tone = 'sage' }) {
-  const map = { sage: { color: '#fff', bg: '#7a8a5e' }, hold: { color: '#fff', bg: '#201e1d', border: '1px solid #c67139' }, panel: { color: '#201e1d', bg: 'var(--panel-bg)' } };
+  const map = { sage: { color: '#fff', bg: 'var(--positive)' }, hold: { color: '#fff', bg: 'var(--ink)', border: '1px solid var(--vermillion)' }, panel: { color: 'var(--text)', bg: 'var(--panel-bg)' } };
   const t = map[tone];
   return <span className="fg" style={{ fontSize: 9.5, fontWeight: 700, color: t.color, background: t.bg, border: t.border, borderRadius: 999, padding: '3px 8px', justifySelf: 'end' }}>{children}</span>;
 }
@@ -33,18 +33,18 @@ function MethodTab({ label, active, onClick }) {
   return (
     <span className="fg" onClick={onClick}
       style={{ fontSize: 12.5, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '8px 16px',
-        color: active ? '#fff' : 'var(--text-soft)', background: active ? '#c67139' : 'var(--panel-bg)' }}>{label}</span>
+        color: active ? '#fff' : 'var(--text-soft)', background: active ? 'var(--vermillion)' : 'var(--panel-bg)' }}>{label}</span>
   );
 }
 
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Zen Kaku Gothic New, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function NewInvoiceModal({ onClose, onCreate }) {
   const [form, setForm] = useState({ customer: '', terms: 'Due on receipt', dueBy: 'Today', amount: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
+      <div className="fold fold-lg" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 0, padding: 24, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New invoice</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input autoFocus value={form.customer} onChange={set('customer')} placeholder="Customer name" style={inp} />
@@ -57,7 +57,7 @@ function NewInvoiceModal({ onClose, onCreate }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
           <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
           <span onClick={() => form.customer.trim() && parseFloat(form.amount) > 0 && onCreate(form)}
-            className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.customer.trim() && parseFloat(form.amount) > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.customer.trim() && parseFloat(form.amount) > 0 ? 'pointer' : 'not-allowed' }}>
+            className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.customer.trim() && parseFloat(form.amount) > 0 ? 'var(--vermillion)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.customer.trim() && parseFloat(form.amount) > 0 ? 'pointer' : 'not-allowed' }}>
             Create invoice
           </span>
         </div>
@@ -84,12 +84,12 @@ export function Invoices() {
     <div style={{ padding: '6px 30px 26px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{invoices.length} total</span>
-        <span className="fg" style={{ color: '#c67139', fontSize: 13, fontWeight: 700 }}>{fmt(outstanding)} outstanding</span>
+        <span className="fg" style={{ color: 'var(--vermillion)', fontSize: 13, fontWeight: 700 }}>{fmt(outstanding)} outstanding</span>
         <span style={{ flex: 1 }} />
-        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New invoice</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--vermillion)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New invoice</span>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+      <div className="fold" style={{ background: 'var(--card-bg)', borderRadius: 0, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '13px 20px', background: 'var(--panel-bg)', minWidth: 720 }}>
           {['INVOICE', 'CUSTOMER', 'TERMS', 'DUE BY', 'STATUS', 'AMOUNT', ''].map((h, i) => (
             <span key={i} className="fg" style={{ fontSize: 10.5, letterSpacing: '.06em', color: 'var(--text-mute)', fontWeight: 700, textAlign: i === 5 ? 'right' : 'left' }}>{h}</span>
@@ -115,9 +115,9 @@ export function Invoices() {
             {/* Dark header band */}
             <div style={{ background: 'var(--ink)', padding: '22px 30px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span className="cap" style={{ color: '#fff', fontSize: 16 }}>$</span></div>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--vermillion)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span className="cap" style={{ color: '#fff', fontSize: 16 }}>$</span></div>
                 <div>
-                  <div className="cap" style={{ color: '#f5ead8', fontSize: 20 }}>{open.id}</div>
+                  <div className="cap" style={{ color: '#f3ecdd', fontSize: 20 }}>{open.id}</div>
                   <div className="fg" style={{ color: '#a49a8c', fontSize: 12, fontWeight: 600, marginTop: 4 }}>{open.customer} · {open.job} · {open.terms}</div>
                 </div>
               </div>
@@ -136,8 +136,8 @@ export function Invoices() {
 
               {open.creditHold && (
                 <div style={{ background: 'var(--ink)', borderRadius: 14, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} />
-                  <span className="fg" style={{ fontSize: 12, color: '#f5ead8', fontWeight: 600, flex: 1 }}>Account on credit hold — past {open.terms} terms. New work needs approval before booking.</span>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--vermillion)', flexShrink: 0 }} />
+                  <span className="fg" style={{ fontSize: 12, color: '#f3ecdd', fontWeight: 600, flex: 1 }}>Account on credit hold — past {open.terms} terms. New work needs approval before booking.</span>
                 </div>
               )}
 
@@ -159,7 +159,7 @@ export function Invoices() {
                   <span key={l} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>{l}</span>
                 ))}
                 <span className="fg" onClick={() => setOpenId(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
-                {open.status !== 'Paid' && <span className="fg" onClick={markPaid} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Mark as paid</span>}
+                {open.status !== 'Paid' && <span className="fg" onClick={markPaid} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--positive)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Mark as paid</span>}
               </div>
             </div>
           </div>
