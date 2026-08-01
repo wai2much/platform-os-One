@@ -1,38 +1,36 @@
-import { useState } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  Zap, Plus, Send, Mic, MicOff, Volume2, VolumeX,
+  Folder, FolderOpen, Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
+} from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useStore, fmt, liveInvoices } from '@/core/store';
 
 /**
- * Mercedes — the Hyper Agent screen. Faithful to the prototype: dark hero
- * with open threads, a real chat thread + quick-prompt chips, a mic toggle
- * (visual "London" voice-agent state), stats, activity log, and automation
- * toggles. Chat replies are a small canned/contextual engine — the real
- * mercedesChat integration (Claude + tools) plugs in here later.
+ * Mercedes — the Hyper Agent screen, rebuilt to the clean chat layout: a left
+ * rail (New Chat · Vehicle Health Alerts · history) and a centred "Mercedes
+ * here" hero with a composer + example prompts.
+ *
+ * Reasoning: when Supabase is configured she calls the mercedesChat Edge
+ * Function (Claude + tools, scoped to the caller's org). If that's unreachable
+ * (not signed in, function down) she falls back to buildReply — the data-driven
+ * engine that answers only from what's in the store, never invented figures.
+ * Replies can be spoken via the MiniMax voice route (api/mercedes/speak).
  */
-// Mercedes has no autonomous task or activity backend yet — nothing chases
-// invoices, follows up parts, or logs actions on its own. These lists used to
-// be hardcoded, presenting invented work ("Sent service reminder to A. Costa",
-// "Chased Burson for the Ranger brake pad ETA") as things the assistant had
-// actually done, alongside a live thread count and a "14 resolved today"
-// stat. Empty until real work is tracked.
-const THREADS = [];
-const ACTIVITY = [];
+
+const ACCENT = '#c67139';
+
+const EXAMPLES = [
+  { icon: Zap, label: 'Create a new job', sub: "Let's knock it out" },
+  { icon: MessageSquare, label: 'Send customer an SMS', sub: 'Keep them in the loop' },
+  { icon: Send, label: 'Draft a follow-up', sub: 'Follow up with them' },
+];
 
 const PROMPTS = ["Who's overdue?", "What's low on stock?", 'Summarise today'];
 
-/**
- * Answers the quick prompts from the store, not from a script.
- *
- * These replies were previously hardcoded prose citing specific invoice
- * numbers, customers and dollar figures ("T. Nguyen is 12 days past Net 14 on
- * invoice #1042 ($1,364.00)"). An assistant stating invented financials as
- * fact is the worst version of the fake-data problem — it's confident, and
- * staff have no way to tell it apart from a real answer. Now every number
- * traces to a record in the store, and when there's nothing to report it says
- * so instead of filling the silence.
- *
- * Only live invoices count for money questions — migrated MechanicDesk rows
- * carry the old system's unreliable payment state (see store.jsx).
- */
+// Data-driven fallback — answers only from the store, never invented figures.
+// Only live invoices count for money questions; migrated rows carry the old
+// system's unreliable payment state.
 function buildReply(q, store) {
   const s = q.toLowerCase();
   const { invoices = [], parts = [], tyreStock = [], jobs = [], bookings = [] } = store;
@@ -58,176 +56,304 @@ function buildReply(q, store) {
 
   if (s.includes('summar') || s.includes('today') || s.includes('going on')) {
     const inProgress = jobs.filter((j) => j.status === 'In progress').length;
-    const booked = bookings.length;
     const live = liveInvoices(invoices);
     const invoiced = live.reduce((sum, i) => sum + i.amount, 0);
-    return `${jobs.length} job${jobs.length === 1 ? '' : 's'} on the board (${inProgress} in progress), ${booked} booking${booked === 1 ? '' : 's'}, ${fmt(invoiced)} invoiced through Platform OS.`;
+    return `${jobs.length} job${jobs.length === 1 ? '' : 's'} on the board (${inProgress} in progress), ${bookings.length} booking${bookings.length === 1 ? '' : 's'}, ${fmt(invoiced)} invoiced through Platform OS.`;
   }
 
-  return "I can answer from what's in the system — try one of the prompts below. Free-form questions aren't wired to a language model yet, so I'd rather say that than guess.";
+  return "I can answer from what's in the system — try one of the prompts. For anything else, sign in so I can reach the full agent.";
 }
 
+// --- Vehicle Health Alerts (left rail card) --------------------------------
+function VehicleHealthAlerts() {
+  const { vehicles } = useStore();
+  const [polling, setPolling] = useState(false);
+  const alerts = useMemo(
+    () => (vehicles || []).filter((v) => v.status === 'Overdue' || v.status === 'Due soon'),
+    [vehicles],
+  );
+  const poll = () => { setPolling(true); setTimeout(() => setPolling(false), 900); };
+  return (
+    <div style={{ background: 'rgba(198,113,57,.06)', border: '1px solid var(--border-c)', borderRadius: 14, padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <AlertTriangle size={13} color={alerts.length ? ACCENT : 'var(--text-mute)'} />
+          <span className="fg" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Vehicle Health Alerts</span>
+        </div>
+        <button onClick={poll} className="fg" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700, color: ACCENT, background: 'rgba(198,113,57,.12)', border: 'none', borderRadius: 999, padding: '4px 9px', cursor: 'pointer' }}>
+          <RefreshCw size={11} style={{ animation: polling ? 'spin .9s linear infinite' : 'none' }} /> Poll Now
+        </button>
+      </div>
+      {alerts.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 0' }}>
+          <CheckCircle2 size={26} color="#7a8a5e" />
+          <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute)', textAlign: 'center' }}>All vehicles healthy — no active alerts</span>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {alerts.map((v) => (
+            <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.model} · {v.rego}</div>
+                <div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)' }}>{v.owner} · due {v.nextDue}</div>
+              </div>
+              <span className="fg" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, color: '#fff', background: v.status === 'Overdue' ? '#b4522f' : ACCENT, borderRadius: 999, padding: '2px 8px' }}>{v.status}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Shared pieces ----------------------------------------------------------
+function IconBtn({ children, onClick, primary, active, disabled }) {
+  const bg = disabled ? 'var(--text-mute2)' : active ? '#b4522f' : primary ? ACCENT : 'var(--panel-bg)';
+  const col = primary || active ? '#fff' : 'var(--text-soft)';
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: bg, color: col, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1, flexShrink: 0 }}>
+      {children}
+    </button>
+  );
+}
+
+function Bubble({ m, thinking, onSpeak, speaking }) {
+  const user = m.from === 'user';
+  return (
+    <div style={{ display: 'flex', gap: 8, justifyContent: user ? 'flex-end' : 'flex-start', alignItems: 'flex-end' }}>
+      {!user && (
+        <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Zap size={14} color={ACCENT} />
+        </div>
+      )}
+      <div className="fg" style={{
+        maxWidth: '76%', padding: '11px 15px', fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+        borderRadius: user ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+        background: user ? ACCENT : 'var(--panel-bg)', color: user ? '#fff' : 'var(--text)', opacity: thinking ? 0.6 : 1,
+      }}>{thinking ? 'Thinking…' : m.text}</div>
+      {!user && !thinking && onSpeak && (
+        <span onClick={onSpeak} title="Hear Mercedes say this" style={{ fontSize: 15, cursor: 'pointer', flexShrink: 0, opacity: speaking ? 1 : 0.5 }}>{speaking ? '🔊' : '🔈'}</span>
+      )}
+    </div>
+  );
+}
+
+function Composer({ draft, setDraft, send, thinking, listening, toggleMic, variant }) {
+  const hero = variant === 'hero';
+  const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+  if (hero) {
+    return (
+      <div style={{ width: '100%', maxWidth: 520, background: 'var(--panel-bg)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border-c)' }}>
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} rows={3} placeholder="Ask Mercedes anything…"
+          style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', background: 'transparent', padding: '14px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 12px' }}>
+          <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>Press Enter to send</span>
+          <div style={{ display: 'flex', gap: 7 }}>
+            <IconBtn onClick={toggleMic} active={listening}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</IconBtn>
+            <IconBtn onClick={() => send()} primary disabled={!draft.trim() || thinking}><Send size={14} /></IconBtn>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ borderTop: '1px solid var(--border-c)', padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} placeholder={listening ? 'Listening…' : 'Ask Mercedes anything…'}
+        style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+      <IconBtn onClick={toggleMic} active={listening}>{listening ? <MicOff size={15} /> : <Mic size={15} />}</IconBtn>
+      <IconBtn onClick={() => send()} primary disabled={!draft.trim() || thinking}><Send size={15} /></IconBtn>
+    </div>
+  );
+}
+
+function EmptyHero({ draft, setDraft, send, listening, toggleMic }) {
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: 28 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Zap size={26} color={ACCENT} />
+        </div>
+        <div className="cap" style={{ fontSize: 26, color: 'var(--text)' }}>Mercedes here</div>
+        <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Let's get to work · Tell me what needs fixing</div>
+      </div>
+      <Composer variant="hero" draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} thinking={false} />
+      <div style={{ width: '100%', maxWidth: 520 }}>
+        <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', marginBottom: 8 }}>Get started with some examples</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {EXAMPLES.map((ex) => (
+            <button key={ex.label} onClick={() => send(ex.label)} style={{ textAlign: 'left', background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 14, padding: 12, cursor: 'pointer' }}>
+              <ex.icon size={16} color={ACCENT} style={{ marginBottom: 8 }} />
+              <div className="fg" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{ex.label}</div>
+              <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', marginTop: 2 }}>{ex.sub}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Mercedes screen --------------------------------------------------------
 export function Mercedes() {
   const store = useStore();
-  const [messages, setMessages] = useState([
-    { from: 'bot', text: "Ask me about overdue invoices, low stock, or today's summary — I'll answer from what's actually in the system." },
-  ]);
+  const [conversations, setConversations] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
+  const [thinking, setThinking] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
   const [listening, setListening] = useState(false);
-  const [reviewsOn, setReviewsOn] = useState(false);
-  const [speakingIdx, setSpeakingIdx] = useState(null); // message index currently fetching/playing
+  const [speakingIdx, setSpeakingIdx] = useState(null);
   const [voiceError, setVoiceError] = useState('');
+  const bottomRef = useRef(null);
+  const recognitionRef = useRef(null);
 
-  const send = (text) => {
-    const q = (text ?? draft).trim();
-    if (!q) return;
-    setMessages((m) => [...m, { from: 'user', text: q }, { from: 'bot', text: buildReply(q, store) }]);
-    setDraft('');
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, thinking]);
+
+  const newChat = () => { setActiveId(null); setMessages([]); setDraft(''); };
+  const selectChat = (c) => { setActiveId(c.id); setMessages(c.messages || []); };
+  const deleteChat = (e, id) => {
+    e.stopPropagation();
+    setConversations((cs) => cs.filter((c) => c.id !== id));
+    if (activeId === id) newChat();
   };
 
-  // Real call to api/mercedes/speak.js (MiniMax T2A) — decodes the returned
-  // base64 audio and plays it. Surfaces the actual { ok, configured, message }
-  // from the route rather than swallowing failures, same pattern as the rest
-  // of the app's Supabase/Xero "not configured" states.
+  // MiniMax voice — real call to api/mercedes/speak.js; plays the base64 audio.
   const speak = async (text, idx) => {
     setVoiceError('');
     setSpeakingIdx(idx);
     try {
       const res = await fetch('/api/mercedes/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
       });
       const data = await res.json();
-      if (!data.ok) {
-        setVoiceError(data.message || 'Voice synthesis failed');
-        setSpeakingIdx(null);
-        return;
-      }
+      if (!data.ok) { setVoiceError(data.message || 'Voice synthesis failed'); setSpeakingIdx(null); return; }
       const audio = new Audio(`data:audio/${data.format};base64,${data.audioBase64}`);
       audio.onended = () => setSpeakingIdx(null);
       audio.onerror = () => { setVoiceError('Audio failed to play'); setSpeakingIdx(null); };
       await audio.play();
-    } catch (err) {
-      setVoiceError(err.message);
-      setSpeakingIdx(null);
+    } catch (err) { setVoiceError(err.message); setSpeakingIdx(null); }
+  };
+
+  const send = async (text) => {
+    const q = (text ?? draft).trim();
+    if (!q || thinking) return;
+
+    let convId = activeId;
+    if (!convId) {
+      convId = 'c-' + Date.now().toString(36);
+      setConversations((cs) => [{ id: convId, title: q.slice(0, 40), messages: [] }, ...cs]);
+      setActiveId(convId);
     }
+    const history = [...messages, { from: 'user', text: q }];
+    setMessages(history);
+    setDraft('');
+    const persist = (msgs) => setConversations((cs) => cs.map((c) => (c.id === convId ? { ...c, messages: msgs, title: c.title || q.slice(0, 40) } : c)));
+    persist(history);
+
+    const finish = (botText) => {
+      const next = [...history, { from: 'bot', text: botText }];
+      setMessages(next); persist(next);
+      if (voiceOn) speak(botText, next.length - 1);
+    };
+
+    if (!isSupabaseConfigured) { finish(buildReply(q, store)); return; }
+    setThinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mercedesChat', { body: { messages: history } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      finish(data.content);
+    } catch (err) {
+      console.error('mercedesChat:', err);
+      finish(buildReply(q, store)); // graceful fall back to the data-driven engine
+    } finally { setThinking(false); }
+  };
+
+  const toggleMic = async () => {
+    if (listening) {
+      setListening(false);
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+      return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'en-AU'; rec.continuous = true; rec.interimResults = false;
+    rec.onstart = () => setListening(true);
+    rec.onresult = (e) => {
+      let t = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
+      if (t.trim()) setDraft((d) => (d + ' ' + t).trim());
+    };
+    rec.onerror = () => { setListening(false); recognitionRef.current = null; };
+    rec.onend = () => { setListening(false); recognitionRef.current = null; };
+    recognitionRef.current = rec;
+    try { rec.start(); } catch { /* ignore */ }
   };
 
   return (
-    <div style={{ padding: '6px 30px 26px', display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 14, alignItems: 'start' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Hero + threads */}
-        <div style={{ background: 'var(--ink)', borderRadius: 24, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f5ead8' }} />
+    <div style={{ display: 'flex', gap: 14, padding: '6px 24px 20px', height: 'calc(100vh - 128px)', minHeight: 560 }}>
+      {/* Left rail */}
+      <aside style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Zap size={14} color={ACCENT} />
             </div>
-            <div>
-              <div className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</div>
-              <div className="cap" style={{ color: '#f5ead8', fontSize: 22, marginTop: 4 }}>Watching the floor and the books</div>
-              <div className="fg" style={{ fontSize: 11, color: '#a8b48e', fontWeight: 600, marginTop: 4 }}>{THREADS.length > 0 ? `● Live · ${THREADS.length} open threads` : 'No open threads'}</div>
-            </div>
+            <span className="fg" style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Mercedes</span>
+            <span className="fg" style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: ACCENT, background: 'rgba(198,113,57,.14)', borderRadius: 5, padding: '2px 5px' }}>AI</span>
           </div>
-          {THREADS.map((t) => (
-            <div key={t.title} style={{ background: 'rgba(245,234,216,.06)', borderRadius: 16, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div className="fg" style={{ color: '#f5ead8', fontSize: 13.5, fontWeight: 600 }}>{t.title}</div>
-                <div className="fg" style={{ color: '#a49a8c', fontSize: 11, marginTop: 3 }}>{t.detail}</div>
+          <button onClick={() => setVoiceOn((v) => !v)} title={voiceOn ? 'Auto-speak replies: on' : 'Auto-speak replies: off'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: voiceOn ? ACCENT : 'var(--text-mute2)', display: 'flex' }}>
+            {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+        </div>
+
+        <button onClick={newChat} className="fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', fontSize: 12.5, fontWeight: 700, color: ACCENT, background: 'rgba(198,113,57,.1)', border: '1px solid rgba(198,113,57,.25)', borderRadius: 12, padding: '9px 12px', cursor: 'pointer' }}>
+          <Plus size={14} /> New Chat
+        </button>
+
+        <VehicleHealthAlerts />
+
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div className="fg" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--text-mute2)', fontWeight: 700, padding: '8px 4px 6px' }}>HISTORY</div>
+          {conversations.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '18px 0' }}>
+              <FolderOpen size={22} color="var(--text-mute2)" />
+              <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>No chats yet</span>
+            </div>
+          ) : conversations.map((c) => (
+            <div key={c.id} onClick={() => selectChat(c)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : 'transparent' }}>
+              {activeId === c.id ? <FolderOpen size={14} color={ACCENT} style={{ flexShrink: 0 }} /> : <Folder size={14} color="var(--text-mute2)" style={{ flexShrink: 0 }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="fg" style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title || 'Untitled'}</div>
+                {c.messages?.length > 0 && <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{c.messages.length} msg{c.messages.length !== 1 ? 's' : ''}</div>}
               </div>
-              <span className="fg" style={{ fontSize: 11, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '5px 13px' }}>{t.action}</span>
+              <button onClick={(e) => deleteChat(e, c.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mute2)', display: 'flex', flexShrink: 0 }}><Trash2 size={12} /></button>
             </div>
           ))}
         </div>
+      </aside>
 
-        {/* Chat */}
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
-            {messages.map((m, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: m.from === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 6 }}>
-                <div className="fg" style={{
-                  background: m.from === 'user' ? '#201e1d' : 'var(--panel-bg)',
-                  color: m.from === 'user' ? '#f5ead8' : 'var(--text)',
-                  borderRadius: m.from === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  padding: '11px 15px', fontSize: 13, lineHeight: 1.5, maxWidth: '80%', whiteSpace: 'pre-wrap',
-                }}>{m.text}</div>
-                {m.from === 'bot' && (
-                  <span onClick={() => speak(m.text, i)} title="Hear Mercedes say this" className="fg"
-                    style={{ fontSize: 15, cursor: speakingIdx === null ? 'pointer' : 'default', flexShrink: 0, opacity: speakingIdx === i ? 1 : 0.55 }}>
-                    {speakingIdx === i ? '🔊' : '🔈'}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          {voiceError && (
-            <div className="fg" style={{ fontSize: 11.5, color: '#c67139', fontWeight: 600 }}>Voice: {voiceError}</div>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {PROMPTS.map((p) => (
-              <span key={p} onClick={() => send(p)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer' }}>{p}</span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Ask Mercedes anything about the floor…"
-              style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
-            <span onClick={() => setListening((v) => !v)} style={{ width: 38, height: 38, borderRadius: '50%', background: listening ? '#c67139' : 'var(--text-mute2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0014 0M12 19v3" /></svg>
-            </span>
-            <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Ask</span>
-          </div>
-        </div>
-
-        {listening && (
-          <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: '14px 18px', boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 18 }}>
-              {[8, 16, 10, 14].map((h, i) => <span key={i} style={{ width: 3, height: h, background: '#c67139', borderRadius: 2 }} />)}
+      {/* Main */}
+      <section style={{ flex: 1, minWidth: 0, background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {messages.length === 0 ? (
+          <EmptyHero draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} />
+        ) : (
+          <>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {messages.map((m, i) => (
+                <Bubble key={i} m={m} onSpeak={m.from === 'bot' ? () => speak(m.text, i) : undefined} speaking={speakingIdx === i} />
+              ))}
+              {thinking && <Bubble m={{ from: 'bot' }} thinking />}
+              <div ref={bottomRef} />
             </div>
-            <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', fontWeight: 600 }}>London is listening — say a command…</span>
-          </div>
+            {voiceError && <div className="fg" style={{ fontSize: 11.5, color: ACCENT, fontWeight: 600, padding: '0 16px 6px' }}>Voice: {voiceError}</div>}
+            <Composer draft={draft} setDraft={setDraft} send={send} thinking={thinking} listening={listening} toggleMic={toggleMic} />
+          </>
         )}
-      </div>
-
-      {/* Right column */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Resolved today</div></div>
-          <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Time saved</div></div>
-          <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>{THREADS.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Open threads</div></div>
-          <div><div className="cap" style={{ color: 'var(--text-mute2)', fontSize: 26, lineHeight: 1 }}>&mdash;</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Call answer rate</div></div>
-        </div>
-
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-          <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Recent activity</div>
-          {ACTIVITY.length === 0 && (
-            <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6 }}>
-              Nothing logged yet. Actions Mercedes takes on your behalf will appear here.
-            </div>
-          )}
-          {ACTIVITY.map(([time, text], i) => (
-            <div key={i} style={{ display: 'flex', gap: 11, padding: '8px 0', borderBottom: '1px solid var(--border-c)' }}>
-              <span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600, width: 38, flexShrink: 0 }}>{time}</span>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', flex: 1 }}>{text}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-          <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Automations</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[['Service reminders', true], ['Stock chase-up', true], ['After-hours call answer · London', true], ['Overdue invoice nudges', false]].map(([label, on]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="fg" style={{ fontSize: 12.5, color: on ? 'var(--text)' : 'var(--text-mute)', fontWeight: 600 }}>{label}</span>
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: on ? '#fff' : 'var(--text-soft)', background: on ? '#7a8a5e' : 'transparent', border: on ? 'none' : '1px solid var(--border-c)', borderRadius: 999, padding: '2px 9px' }}>{on ? 'On' : 'Off'}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>Review requests <span style={{ color: 'var(--text-mute2)' }}>· London</span></span>
-              <span onClick={() => setReviewsOn((v) => !v)} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: reviewsOn ? '#7a8a5e' : 'var(--text-mute2)', borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}>{reviewsOn ? 'On' : 'Off'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
