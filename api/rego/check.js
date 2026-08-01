@@ -39,23 +39,39 @@ async function viaAutograb(plate, state) {
   };
 }
 
+// CarJam — GET {base}/api/car/?plate=..&key=..&{product}=1. Returns XML: a
+// <message> block on success, or <error .../>. AU datasets are selected by a
+// product flag (au_vdrsbc = vehicle data + rego status bundle; au_rs = rego
+// status only). Override the flag with CARJAM_PRODUCT if your enabled product
+// differs. Field tag names below are best-effort against CarJam's schema and
+// the full XML is returned as `raw` so mapping can be confirmed against a real
+// response.
 async function viaCarjam(plate) {
   const key = process.env.CARJAM_API_KEY;
   if (!key) return { ok: false, configured: false, message: 'CarJam not configured — set CARJAM_API_KEY.' };
-  const tmpl = process.env.CARJAM_URL_TEMPLATE || 'https://www.carjam.co.nz/api/car/?plate={plate}&key={key}';
-  const url = tmpl.replace('{plate}', encodeURIComponent(plate)).replace('{key}', encodeURIComponent(key));
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  const base = process.env.CARJAM_BASE || 'https://www.carjam.co.nz';
+  const product = process.env.CARJAM_PRODUCT || 'au_vdrsbc';
+  const extra = process.env.CARJAM_EXTRA_PARAMS || `${product}=1`;
+  const url = `${base}/api/car/?plate=${encodeURIComponent(plate)}&key=${encodeURIComponent(key)}&${extra}`;
+
+  const r = await fetch(url, { headers: { Accept: 'application/xml, application/json' } });
   const text = await r.text();
-  let data = null; try { data = JSON.parse(text); } catch { /* CarJam may return XML — surface raw so we can map fields once confirmed */ }
-  if (!r.ok) return { ok: false, configured: true, message: `CarJam lookup failed (HTTP ${r.status}).`, raw: data ?? text.slice(0, 800) };
-  if (!data) return { ok: true, configured: true, found: true, provider: 'carjam', plate, note: 'CarJam returned non-JSON (likely XML). Send one example response and I will map the fields.', raw: text.slice(0, 1200) };
-  const v = data.vehicle || data.result || data;
-  const status = v.registration_status || v.reg_status || v.status || null;
+  const tag = (name) => { const m = text.match(new RegExp(`<${name}[^>]*>([^<]*)</${name}>`, 'i')); return m ? m[1].trim() : null; };
+  const attr = (name) => { const m = text.match(new RegExp(`${name}="([^"]*)"`, 'i')); return m ? m[1].trim() : null; };
+
+  const errMsg = /<error/i.test(text) ? (attr('message') || tag('error') || 'CarJam returned an error') : null;
+  if (!r.ok || errMsg) return { ok: false, configured: true, message: errMsg || `CarJam lookup failed (HTTP ${r.status}).`, raw: text.slice(0, 1200) };
+
+  const status = tag('registration_status') || tag('license_status') || tag('reg_status') || tag('status');
+  const found = /<message|<vehicle|<plate/i.test(text);
   return {
-    ok: true, configured: true, found: true, provider: 'carjam', plate,
-    registered: registeredFrom(status), status, expiry: v.registration_expiry || v.expiry || null,
-    vin: v.vin || null, make: v.make || null, model: v.model || null, year: v.year || v.year_of_manufacture || null,
-    raw: data,
+    ok: true, configured: true, found, provider: 'carjam',
+    plate: tag('plate') || plate,
+    registered: registeredFrom(status), status,
+    expiry: tag('license_expiry') || tag('registration_expiry') || tag('expiry') || null,
+    vin: tag('vin') || null, make: tag('make') || null, model: tag('model') || null,
+    year: tag('year_of_manufacture') || tag('year') || null,
+    raw: text.slice(0, 1600),
   };
 }
 
