@@ -1,57 +1,210 @@
-import { useState } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  Zap, Plus, Send, Mic, MicOff, Volume2, VolumeX,
+  Folder, FolderOpen, Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
+} from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useStore } from '@/core/store';
 
 /**
- * Mercedes — the Hyper Agent screen. Faithful to the prototype: dark hero
- * with open threads, a real chat thread + quick-prompt chips, a mic toggle
- * (visual "London" voice-agent state), stats, activity log, and automation
- * toggles. Chat replies come from the mercedesChat Supabase Edge Function
- * (Claude + tools, scoped to the caller's org) when Supabase is configured;
- * otherwise a small canned/contextual engine keeps the screen usable on
- * sample data, same fallback pattern as the rest of the app.
+ * Mercedes — the Hyper Agent screen, rebuilt to the clean chat layout: a left
+ * rail (New Chat · Vehicle Health Alerts · history) and a centred "Mercedes
+ * here" hero with a composer + example prompts. Replies come from the
+ * mercedesChat Supabase Edge Function (Claude + tools, scoped to the caller's
+ * org) when Supabase is configured; otherwise a small canned engine keeps the
+ * screen usable on sample data — same fallback pattern as the rest of the app.
  */
-const THREADS = [
-  { title: 'T. Nguyen credit hold', detail: 'Invoice #1042 past Net 14 — 12 days overdue', action: 'Chase' },
-  { title: 'Burson part delayed', detail: 'Front brake pads for Ranger, ETA unknown', action: 'Follow up' },
-  { title: 'NPS detractor', detail: 'T. Nguyen scored 6/10 — needs a call', action: 'Call' },
+
+const ACCENT = '#c67139';
+
+const EXAMPLES = [
+  { icon: Zap, label: 'Create a new job', sub: "Let's knock it out" },
+  { icon: MessageSquare, label: 'Send customer an SMS', sub: 'Keep them in the loop' },
+  { icon: Send, label: 'Draft a follow-up', sub: 'Follow up with them' },
 ];
 
-const ACTIVITY = [
-  ['09:14', 'Sent service reminder to A. Costa — booked for Wed'],
-  ['08:52', 'Chased Burson for the Ranger brake pad ETA'],
-  ['08:30', 'Answered after-hours call — logged as new booking'],
-  ['Yest', 'Sent 3 overdue-invoice nudges'],
-  ['Yest', 'Requested review from S. Bianchi (Google)'],
-];
-
-const PROMPTS = ["Who's overdue?", "What's low on stock?", 'Summarise today'];
-
-function reply(q) {
+// Offline fallback so the screen works before the backend is wired / signed in.
+function cannedReply(q) {
   const s = q.toLowerCase();
   if (s.includes('overdue')) return 'T. Nguyen is 12 days past Net 14 on invoice #1042 ($1,364.00), and M. Petrakis is 4 days over on #1039 ($594.00). Want me to send reminders?';
-  if (s.includes('stock') || s.includes('low')) return "Penrite 5W-30 is down to 2 L and Ryco Z516 to 1 ea — both below reorder point. NGK BKR6E is on order from Burson.";
+  if (s.includes('stock') || s.includes('low')) return 'Penrite 5W-30 is down to 2 L and Ryco Z516 to 1 ea — both below reorder point. NGK BKR6E is on order from Burson.';
   if (s.includes('summar')) return 'Today: 4 jobs in progress, 3 booked, $0 invoiced so far. One account on credit hold, one NPS detractor needs a follow-up call.';
-  return "I've got the floor, parts, invoices and GST covered — ask me anything, or try one of the quick prompts.";
+  if (s.includes('job')) return "Sure — tell me the customer and vehicle and I'll open a job card.";
+  if (s.includes('sms') || s.includes('follow')) return "Give me the customer and the gist, and I'll draft the message for you to send.";
+  return "I've got the floor, parts, invoices and GST covered — ask me anything, or pick one of the examples.";
 }
 
+// --- Vehicle Health Alerts (left rail card) --------------------------------
+function VehicleHealthAlerts() {
+  const { vehicles } = useStore();
+  const [polling, setPolling] = useState(false);
+  const alerts = useMemo(
+    () => vehicles.filter((v) => v.status === 'Overdue' || v.status === 'Due soon'),
+    [vehicles],
+  );
+  const poll = () => { setPolling(true); setTimeout(() => setPolling(false), 900); };
+  return (
+    <div style={{ background: 'rgba(198,113,57,.06)', border: '1px solid var(--border-c)', borderRadius: 14, padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <AlertTriangle size={13} color={alerts.length ? ACCENT : 'var(--text-mute)'} />
+          <span className="fg" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Vehicle Health Alerts</span>
+        </div>
+        <button onClick={poll} className="fg" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700, color: ACCENT, background: 'rgba(198,113,57,.12)', border: 'none', borderRadius: 999, padding: '4px 9px', cursor: 'pointer' }}>
+          <RefreshCw size={11} style={{ animation: polling ? 'spin .9s linear infinite' : 'none' }} /> Poll Now
+        </button>
+      </div>
+      {alerts.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 0' }}>
+          <CheckCircle2 size={26} color="#7a8a5e" />
+          <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute)', textAlign: 'center' }}>All vehicles healthy — no active alerts</span>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {alerts.map((v) => (
+            <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.model} · {v.rego}</div>
+                <div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)' }}>{v.owner} · due {v.nextDue}</div>
+              </div>
+              <span className="fg" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, color: '#fff', background: v.status === 'Overdue' ? '#b4522f' : ACCENT, borderRadius: 999, padding: '2px 8px' }}>{v.status}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Small shared pieces ----------------------------------------------------
+function IconBtn({ children, onClick, primary, active, danger, disabled }) {
+  const bg = disabled ? 'var(--text-mute2)' : danger || active ? '#b4522f' : primary ? ACCENT : 'var(--panel-bg)';
+  const col = primary || danger || active ? '#fff' : 'var(--text-soft)';
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: bg, color: col, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1, flexShrink: 0 }}>
+      {children}
+    </button>
+  );
+}
+
+function Bubble({ m, thinking }) {
+  const user = m.from === 'user';
+  return (
+    <div style={{ display: 'flex', gap: 10, justifyContent: user ? 'flex-end' : 'flex-start' }}>
+      {!user && (
+        <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Zap size={14} color={ACCENT} />
+        </div>
+      )}
+      <div className="fg" style={{
+        maxWidth: '78%', padding: '11px 15px', fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+        borderRadius: user ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+        background: user ? ACCENT : 'var(--panel-bg)', color: user ? '#fff' : 'var(--text)', opacity: thinking ? 0.6 : 1,
+      }}>{thinking ? 'Thinking…' : m.text}</div>
+    </div>
+  );
+}
+
+function Composer({ draft, setDraft, send, thinking, listening, toggleMic, variant }) {
+  const hero = variant === 'hero';
+  const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+  if (hero) {
+    return (
+      <div style={{ width: '100%', maxWidth: 520, background: 'var(--panel-bg)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border-c)' }}>
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} rows={3} placeholder="Ask Mercedes anything…"
+          style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', background: 'transparent', padding: '14px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 12px' }}>
+          <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>Press Enter to send</span>
+          <div style={{ display: 'flex', gap: 7 }}>
+            <IconBtn onClick={toggleMic} active={listening}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</IconBtn>
+            <IconBtn onClick={() => send()} primary disabled={!draft.trim() || thinking}><Send size={14} /></IconBtn>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ borderTop: '1px solid var(--border-c)', padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} placeholder={listening ? 'Listening…' : 'Ask Mercedes anything…'}
+        style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+      <IconBtn onClick={toggleMic} active={listening}>{listening ? <MicOff size={15} /> : <Mic size={15} />}</IconBtn>
+      <IconBtn onClick={() => send()} primary disabled={!draft.trim() || thinking}><Send size={15} /></IconBtn>
+    </div>
+  );
+}
+
+// --- Empty-state hero -------------------------------------------------------
+function EmptyHero({ draft, setDraft, send, listening, toggleMic }) {
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: 28 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Zap size={26} color={ACCENT} />
+        </div>
+        <div className="cap" style={{ fontSize: 26, color: 'var(--text)' }}>Mercedes here</div>
+        <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Let's get to work · Tell me what needs fixing</div>
+      </div>
+      <Composer variant="hero" draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} thinking={false} />
+      <div style={{ width: '100%', maxWidth: 520 }}>
+        <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', marginBottom: 8 }}>Get started with some examples</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {EXAMPLES.map((ex) => (
+            <button key={ex.label} onClick={() => send(ex.label)} style={{ textAlign: 'left', background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 14, padding: 12, cursor: 'pointer' }}>
+              <ex.icon size={16} color={ACCENT} style={{ marginBottom: 8 }} />
+              <div className="fg" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{ex.label}</div>
+              <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', marginTop: 2 }}>{ex.sub}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Mercedes screen --------------------------------------------------------
 export function Mercedes() {
-  const [messages, setMessages] = useState([
-    { from: 'bot', text: "Morning. Three cars in, one waiting on a Burson part — want me to chase it?" },
-  ]);
+  const [conversations, setConversations] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
-  const [listening, setListening] = useState(false);
-  const [reviewsOn, setReviewsOn] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [listening, setListening] = useState(false);
+  const bottomRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  const active = conversations.find((c) => c.id === activeId) || null;
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, thinking]);
+
+  const newChat = () => { setActiveId(null); setMessages([]); setDraft(''); };
+  const selectChat = (c) => { setActiveId(c.id); setMessages(c.messages || []); };
+  const deleteChat = (e, id) => {
+    e.stopPropagation();
+    setConversations((cs) => cs.filter((c) => c.id !== id));
+    if (activeId === id) newChat();
+  };
 
   const send = async (text) => {
     const q = (text ?? draft).trim();
     if (!q || thinking) return;
+
+    let convId = activeId;
+    if (!convId) {
+      convId = 'c-' + Date.now().toString(36);
+      setConversations((cs) => [{ id: convId, title: q.slice(0, 40), messages: [] }, ...cs]);
+      setActiveId(convId);
+    }
+
     const history = [...messages, { from: 'user', text: q }];
     setMessages(history);
     setDraft('');
+    const persist = (msgs) => setConversations((cs) => cs.map((c) => (c.id === convId ? { ...c, messages: msgs, title: c.title || q.slice(0, 40) } : c)));
+    persist(history);
 
     if (!isSupabaseConfigured) {
-      setMessages((m) => [...m, { from: 'bot', text: reply(q) }]);
+      const next = [...history, { from: 'bot', text: cannedReply(q) }];
+      setMessages(next); persist(next);
       return;
     }
 
@@ -60,120 +213,98 @@ export function Mercedes() {
       const { data, error } = await supabase.functions.invoke('mercedesChat', { body: { messages: history } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setMessages((m) => [...m, { from: 'bot', text: data.content }]);
+      const next = [...history, { from: 'bot', text: data.content }];
+      setMessages(next); persist(next);
     } catch (err) {
       console.error('mercedesChat:', err);
-      setMessages((m) => [...m, { from: 'bot', text: "Couldn't reach the backend just now — try again in a moment." }]);
+      const next = [...history, { from: 'bot', text: "Couldn't reach the backend just now — try again in a moment." }];
+      setMessages(next); persist(next);
     } finally {
       setThinking(false);
     }
   };
 
+  const toggleMic = async () => {
+    if (listening) {
+      setListening(false);
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+      return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'en-AU'; rec.continuous = true; rec.interimResults = false;
+    rec.onstart = () => setListening(true);
+    rec.onresult = (e) => {
+      let t = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
+      if (t.trim()) setDraft((d) => (d + ' ' + t).trim());
+    };
+    rec.onerror = () => { setListening(false); recognitionRef.current = null; };
+    rec.onend = () => { setListening(false); recognitionRef.current = null; };
+    recognitionRef.current = rec;
+    try { rec.start(); } catch { /* ignore */ }
+  };
+
   return (
-    <div style={{ padding: '6px 30px 26px', display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 14, alignItems: 'start' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Hero + threads */}
-        <div style={{ background: '#201e1d', borderRadius: 24, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f5ead8' }} />
+    <div style={{ display: 'flex', gap: 14, padding: '6px 24px 20px', height: 'calc(100vh - 128px)', minHeight: 560 }}>
+      {/* Left rail */}
+      <aside style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Zap size={14} color={ACCENT} />
             </div>
-            <div>
-              <div className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</div>
-              <div className="cap" style={{ color: '#f5ead8', fontSize: 22, marginTop: 4 }}>Watching the floor and the books</div>
-              <div className="fg" style={{ fontSize: 11, color: '#a8b48e', fontWeight: 600, marginTop: 4 }}>● Live · {THREADS.length} open threads</div>
-            </div>
+            <span className="fg" style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Mercedes</span>
+            <span className="fg" style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: ACCENT, background: 'rgba(198,113,57,.14)', borderRadius: 5, padding: '2px 5px' }}>AI</span>
           </div>
-          {THREADS.map((t) => (
-            <div key={t.title} style={{ background: 'rgba(245,234,216,.06)', borderRadius: 16, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div className="fg" style={{ color: '#f5ead8', fontSize: 13.5, fontWeight: 600 }}>{t.title}</div>
-                <div className="fg" style={{ color: '#a49a8c', fontSize: 11, marginTop: 3 }}>{t.detail}</div>
+          <button onClick={() => setVoiceOn((v) => !v)} title={voiceOn ? 'Mute Mercedes' : 'Unmute Mercedes'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: voiceOn ? ACCENT : 'var(--text-mute2)', display: 'flex' }}>
+            {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+        </div>
+
+        <button onClick={newChat} className="fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', fontSize: 12.5, fontWeight: 700, color: ACCENT, background: 'rgba(198,113,57,.1)', border: '1px solid rgba(198,113,57,.25)', borderRadius: 12, padding: '9px 12px', cursor: 'pointer' }}>
+          <Plus size={14} /> New Chat
+        </button>
+
+        <VehicleHealthAlerts />
+
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div className="fg" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--text-mute2)', fontWeight: 700, padding: '8px 4px 6px' }}>HISTORY</div>
+          {conversations.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '18px 0' }}>
+              <FolderOpen size={22} color="var(--text-mute2)" />
+              <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>No chats yet</span>
+            </div>
+          ) : conversations.map((c) => (
+            <div key={c.id} onClick={() => selectChat(c)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : 'transparent' }}>
+              {activeId === c.id ? <FolderOpen size={14} color={ACCENT} style={{ flexShrink: 0 }} /> : <Folder size={14} color="var(--text-mute2)" style={{ flexShrink: 0 }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="fg" style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title || 'Untitled'}</div>
+                {c.messages?.length > 0 && <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{c.messages.length} msg{c.messages.length !== 1 ? 's' : ''}</div>}
               </div>
-              <span className="fg" style={{ fontSize: 11, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '5px 13px' }}>{t.action}</span>
+              <button onClick={(e) => deleteChat(e, c.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mute2)', display: 'flex', flexShrink: 0 }}><Trash2 size={12} /></button>
             </div>
           ))}
         </div>
+      </aside>
 
-        {/* Chat */}
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 18, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
-            {messages.map((m, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: m.from === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div className="fg" style={{
-                  background: m.from === 'user' ? '#201e1d' : 'var(--panel-bg)',
-                  color: m.from === 'user' ? '#f5ead8' : 'var(--text)',
-                  borderRadius: m.from === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  padding: '11px 15px', fontSize: 13, lineHeight: 1.5, maxWidth: '80%', whiteSpace: 'pre-wrap',
-                }}>{m.text}</div>
-              </div>
-            ))}
-            {thinking && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div className="fg" style={{ background: 'var(--panel-bg)', color: 'var(--text-mute)', borderRadius: '16px 16px 16px 4px', padding: '11px 15px', fontSize: 13 }}>Thinking…</div>
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {PROMPTS.map((p) => (
-              <span key={p} onClick={() => !thinking && send(p)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: thinking ? 'default' : 'pointer', opacity: thinking ? 0.5 : 1 }}>{p}</span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} disabled={thinking} placeholder="Ask Mercedes anything about the floor…"
-              style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', opacity: thinking ? 0.6 : 1 }} />
-            <span onClick={() => setListening((v) => !v)} style={{ width: 38, height: 38, borderRadius: '50%', background: listening ? '#c67139' : 'var(--text-mute2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0014 0M12 19v3" /></svg>
-            </span>
-            <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 18px', cursor: thinking ? 'default' : 'pointer', opacity: thinking ? 0.6 : 1 }}>Ask</span>
-          </div>
-        </div>
-
-        {listening && (
-          <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: '14px 18px', boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 18 }}>
-              {[8, 16, 10, 14].map((h, i) => <span key={i} style={{ width: 3, height: h, background: '#c67139', borderRadius: 2 }} />)}
+      {/* Main */}
+      <section style={{ flex: 1, minWidth: 0, background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {messages.length === 0 ? (
+          <EmptyHero draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} />
+        ) : (
+          <>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {messages.map((m, i) => <Bubble key={i} m={m} />)}
+              {thinking && <Bubble m={{ from: 'bot' }} thinking />}
+              <div ref={bottomRef} />
             </div>
-            <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', fontWeight: 600 }}>London is listening — say a command…</span>
-          </div>
+            <Composer draft={draft} setDraft={setDraft} send={send} thinking={thinking} listening={listening} toggleMic={toggleMic} />
+          </>
         )}
-      </div>
-
-      {/* Right column */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div><div className="cap" style={{ color: '#c67139', fontSize: 26, lineHeight: 1 }}>14</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Resolved today</div></div>
-          <div><div className="cap" style={{ color: '#7a8a5e', fontSize: 26, lineHeight: 1 }}>6.2h</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Time saved</div></div>
-          <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>{THREADS.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Open threads</div></div>
-          <div><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>98%</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 7, fontWeight: 600 }}>Call answer rate</div></div>
-        </div>
-
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-          <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Recent activity</div>
-          {ACTIVITY.map(([time, text], i) => (
-            <div key={i} style={{ display: 'flex', gap: 11, padding: '8px 0', borderBottom: '1px solid var(--border-c)' }}>
-              <span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600, width: 38, flexShrink: 0 }}>{time}</span>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', flex: 1 }}>{text}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-          <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Automations</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[['Service reminders', true], ['Stock chase-up', true], ['After-hours call answer · London', true], ['Overdue invoice nudges', false]].map(([label, on]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="fg" style={{ fontSize: 12.5, color: on ? 'var(--text)' : 'var(--text-mute)', fontWeight: 600 }}>{label}</span>
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: on ? '#fff' : 'var(--text-soft)', background: on ? '#7a8a5e' : 'transparent', border: on ? 'none' : '1px solid var(--border-c)', borderRadius: 999, padding: '2px 9px' }}>{on ? 'On' : 'Off'}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>Review requests <span style={{ color: 'var(--text-mute2)' }}>· London</span></span>
-              <span onClick={() => setReviewsOn((v) => !v)} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: reviewsOn ? '#7a8a5e' : 'var(--text-mute2)', borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}>{reviewsOn ? 'On' : 'Off'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
