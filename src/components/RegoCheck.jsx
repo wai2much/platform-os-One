@@ -71,6 +71,11 @@ export function RegoCheck({ onResult }) {
               {[result.year, result.make, result.model].filter(Boolean).join(' ') || 'Vehicle'}{result.vin ? ` · VIN ${result.vin}` : ''}
             </div>
           )}
+          {result.valuation != null && (
+            <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+              Estimated value: {typeof result.valuation === 'number' ? '$' + result.valuation.toLocaleString('en-AU') : String(result.valuation)}
+            </div>
+          )}
           {result.note && <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute)' }}>{result.note}</div>}
         </div>
       )}

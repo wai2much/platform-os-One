@@ -8,34 +8,45 @@
 // NEVDIS broker like MotorWeb) means editing only the adapter below, not the UI.
 //
 // Secrets — set in Vercel -> Project -> Environment Variables, never committed:
-//   REGO_PROVIDER        'carjam' (default) or 'autograb'
-//   CARJAM_API_KEY       your CarJam API key         (provider=carjam)
-//   CARJAM_URL_TEMPLATE  optional override, use {plate}/{key} placeholders,
-//                        e.g. https://www.carjam.co.nz/api/car/?plate={plate}&key={key}
+//   REGO_PROVIDER        'autograb' (default) or 'carjam'
 //   AUTOGRAB_API_KEY     your AutoGrab API key        (provider=autograb)
-//   AUTOGRAB_BASE        optional, defaults to https://api.autograb.com
+//   AUTOGRAB_BASE        optional, defaults to https://api.autograb.com.au
+//   CARJAM_API_KEY       your CarJam API key          (provider=carjam)
+//   CARJAM_PRODUCT       optional, defaults to au_vdrsbc
 
 const AU_STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'NT', 'TAS', 'ACT'];
 const registeredFrom = (status) => (typeof status === 'string' ? /register|current|active/i.test(status) && !/expired|cancel|unregister/i.test(status) : null);
 
+// AutoGrab — POST {base}/v2/valuations/registrations/{plate}?region=au with a
+// JSON body {state, region} and header ApiKey (matches the account's curl).
+// Returns vehicle identity + valuation, plus registration fields when the
+// product includes them. Raw kept so mapping can be confirmed on a live hit.
 async function viaAutograb(plate, state) {
   const key = process.env.AUTOGRAB_API_KEY;
   if (!key) return { ok: false, configured: false, message: 'AutoGrab not configured — set AUTOGRAB_API_KEY.' };
-  const base = process.env.AUTOGRAB_BASE || 'https://api.autograb.com';
-  const url = `${base}/v2/vehicles/${encodeURIComponent(plate)}/status?region=au&state=${state}`;
-  const r = await fetch(url, { headers: { ApiKey: key, Accept: 'application/json' } });
+  const base = process.env.AUTOGRAB_BASE || 'https://api.autograb.com.au';
+  const url = `${base}/v2/valuations/registrations/${encodeURIComponent(plate)}?region=au`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { ApiKey: key, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ state, region: 'au' }),
+  });
   const text = await r.text();
   let data = {}; try { data = JSON.parse(text); } catch { /* non-JSON */ }
   if (r.status === 404) return { ok: true, configured: true, found: false, plate, state };
-  if (!r.ok) return { ok: false, configured: true, message: data?.message || `AutoGrab lookup failed (HTTP ${r.status}).` };
-  const status = data.registration_status || data.status || null;
-  const incidents = Array.isArray(data.incidents) ? data.incidents : [];
+  if (!r.ok) return { ok: false, configured: true, message: data?.message || data?.error || `AutoGrab lookup failed (HTTP ${r.status}).`, raw: text.slice(0, 1200) };
+  const v = data.vehicle || data.result || data.data || data;
+  const status = v.registration_status || data.registration_status || null;
+  const valuation = data.valuation ?? v.valuation ?? data.price ?? v.price ?? null;
+  const incidents = Array.isArray(data.incidents) ? data.incidents : Array.isArray(v.incidents) ? v.incidents : [];
   return {
     ok: true, configured: true, found: true, provider: 'autograb',
-    plate: data.plate_number || plate, state: data.state || state,
-    registered: registeredFrom(status), status, expiry: data.registration_expiry || null,
-    vin: data.vin || null, make: data.make || null, model: data.model || null, year: data.year || null,
-    writtenOff: incidents.length > 0, incidents, raw: data,
+    plate: v.plate || v.registration || plate, state: v.state || state,
+    registered: registeredFrom(status), status,
+    expiry: v.registration_expiry || data.registration_expiry || null,
+    vin: v.vin || null, make: v.make || null, model: v.model || null,
+    year: v.year || v.year_of_manufacture || null,
+    valuation, writtenOff: incidents.length > 0, incidents, raw: data,
   };
 }
 
@@ -76,7 +87,7 @@ async function viaCarjam(plate) {
 }
 
 export default async function handler(req, res) {
-  const provider = (process.env.REGO_PROVIDER || 'carjam').toLowerCase();
+  const provider = (process.env.REGO_PROVIDER || 'autograb').toLowerCase();
   const src = req.method === 'POST' ? (req.body || {}) : (req.query || {});
   const plate = String(src.plate || '').trim().toUpperCase().replace(/\s+/g, '');
   const state = String(src.state || 'VIC').trim().toUpperCase();
