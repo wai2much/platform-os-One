@@ -133,12 +133,6 @@ export function Bookings() {
             <div key={h} style={{ display: 'grid', gridTemplateColumns: '64px repeat(3,1fr)' }}>
               <div style={{ padding: '18px 10px 0', textAlign: 'right' }}><span className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{h}:00</span></div>
               {[0, 1, 2].map((bay) => {
-                const blk = bookings.find((b) => bookingHour(b) === h && bookingBay(b) === bay);
-                return (
-                  <div key={bay} style={{ minHeight: 56, borderTop: '1px solid var(--border-c)', borderLeft: '1px solid var(--border-c)', padding: 6 }}>
-                    {blk && (
-                      <div style={{ background: SERVICE_COLOR[blk.service] || '#c67139', borderRadius: 10, padding: '8px 10px', overflow: 'hidden' }}>
-                        <div className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{blk.vehicle}</div>
                 const blk = calBlocks.find((c) => c.hour === h && c.bay === bay);
                 return (
                   <div key={bay} style={{ minHeight: 56, borderTop: '1px solid var(--border-c)', borderLeft: '1px solid var(--border-c)', padding: 6 }}>
