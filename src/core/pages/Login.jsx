@@ -25,13 +25,18 @@ const GoogleG = () => (
 // Folded-paper accents: each is a triangle split into a lit half and a
 // shadowed half, like a crease catching the light. Positioned around the
 // card and left to drift slowly so the screen doesn't feel static.
-const CREAM = { light: '#fffaf0', dark: '#e0dccf' };
+// Washi/kraft rather than near-white — against the lighter page background
+// below, pure cream would read as invisible instead of "paper."
+const CREAM = { light: '#f3ecdd', dark: '#d9c9a8' };
 const BLUSH = { light: '#e8b4ac', dark: '#c17b71' };
 const SAGE = { light: '#a8bb8b', dark: '#63744a' };
 const INK = { light: '#3c3936', dark: '#201e1d' };
+// Vermillion — the accent from the Origami Paper design system, used here
+// as one bold fold rather than the whole page like the earlier terracotta fill.
+const VERMILLION = { light: '#d9432e', dark: '#8a2417' };
 
 const ORIGAMI_SHAPES = [
-  { size: 160, top: '2%', left: '3%', rot: -12, duration: '7s', delay: '-2s', ...CREAM },
+  { size: 160, top: '2%', left: '3%', rot: -12, duration: '7s', delay: '-2s', ...VERMILLION },
   { size: 56, top: '11%', right: '9%', rot: 20, duration: '6s', delay: '-5s', ...SAGE },
   { size: 96, bottom: '8%', left: '7%', rot: 8, duration: '6.5s', delay: '-1s', ...CREAM },
   { size: 174, bottom: '-6%', right: '-4%', rot: -18, duration: '8s', delay: '-4s', ...BLUSH },
@@ -72,17 +77,17 @@ export function Login() {
         overflow: 'hidden',
         perspective: 900,
         background: `
-          radial-gradient(50rem 40rem at 8% -8%, rgba(255,255,255,.16), transparent 55%),
-          radial-gradient(46rem 42rem at 106% 112%, rgba(32,30,29,.22), transparent 60%),
-          #c67139
+          radial-gradient(52rem 42rem at 8% -8%, rgba(255,255,255,.65), transparent 55%),
+          radial-gradient(48rem 44rem at 106% 112%, rgba(191,51,36,.16), transparent 60%),
+          linear-gradient(160deg, #f8efdf 0%, #f2dfc4 55%, #e9c9a1 100%)
         `,
       }}
     >
       <div
         aria-hidden="true"
         style={{
-          position: 'absolute', inset: 0, opacity: .5, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(rgba(255,250,240,.16) 1px, transparent 1px)',
+          position: 'absolute', inset: 0, opacity: .6, pointerEvents: 'none',
+          backgroundImage: 'radial-gradient(rgba(60,57,54,.08) 1px, transparent 1px)',
           backgroundSize: '22px 22px',
           maskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
           WebkitMaskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
