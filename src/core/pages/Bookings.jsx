@@ -5,6 +5,8 @@ const SVC = { Service: 'Logbook service', Brakes: 'Brakes', Diagnostic: 'Diagnos
 
 /**
  * Bookings — core screen. Calendar (bay grid) / List tab switcher, appointment
+ * type chips, and a per-row Send-reminder action. Faithful to the prototype;
+ * both tabs read the same real `bookings` from the store.
  * type chips, and a per-row Send-reminder action.
  *
  * The calendar grid used to render three hardcoded blocks (BMW 320i, Golf GTI,
@@ -15,6 +17,16 @@ const SVC = { Service: 'Logbook service', Brakes: 'Brakes', Diagnostic: 'Diagnos
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16];
 const APPT_TYPES = ['Service', 'Tyres & alignment', 'Brakes', 'Diagnostic', 'Roadworthy'];
 
+const BAYS = ['Bay 1', 'Bay 2', 'Bay 3'];
+const SERVICE_COLOR = {
+  Service: '#c67139',
+  Brakes: '#7a8a5e',
+  Diagnostic: '#b5703f',
+  'Tyres & alignment': '#8a9b6e',
+  Roadworthy: '#5a6a3c',
+};
+const bookingHour = (b) => parseInt((b.time || '').split(':')[0], 10);
+const bookingBay = (b) => BAYS.indexOf(b.bay);
 const BAY_COLORS = ['#c67139', '#7a8a5e', '#b5703f'];
 
 /** "1:00"/"13:15"/"8:30am" -> 24h hour int, or null if unparseable. */
