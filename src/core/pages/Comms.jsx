@@ -1,38 +1,23 @@
 import { useState } from 'react';
 
 /**
- * Comms — unified SMS/Email inbox. Faithful to the prototype: searchable
- * thread list, active thread with real message state, quick-reply chips,
- * live send, and per-thread Mark resolved. Sample threads/messages for now.
+ * Comms — unified SMS/Email inbox.
+ *
+ * There is no messaging backend yet: no SMS gateway, no mailbox connection,
+ * nothing that would put a real customer message on this screen. It used to
+ * open with four fabricated conversations (T. Nguyen chasing a Ranger,
+ * A. Costa asking about alignment) written to look like live customer
+ * traffic. With real customers now in the system, staff could reasonably
+ * believe someone was waiting on a reply that doesn't exist.
+ *
+ * The UI is kept and works — threads, search, send, resolve all function on
+ * whatever's in state — it simply starts empty until a real channel is wired.
  */
-const THREADS = [
-  { id: 't1', name: 'T. Nguyen', phone: '0412 663 921', channel: 'SMS', unread: true,
-    messages: [
-      { from: 'them', text: "Hey, is the Ranger ready? Was hoping to grab it before 5" },
-      { from: 'us', text: "Just checking with the tech now, one sec" },
-    ] },
-  { id: 't2', name: 'A. Costa', phone: 'a.costa@email.com', channel: 'Email', unread: false,
-    messages: [
-      { from: 'them', text: "Can you confirm the alignment is included in the Service B price?" },
-      { from: 'us', text: "Yep, alignment check is included — no extra charge unless it's out of spec." },
-      { from: 'them', text: "Perfect, thank you!" },
-    ] },
-  { id: 't3', name: 'L. Farrow', phone: '0418 907 233', channel: 'SMS', unread: true,
-    messages: [
-      { from: 'them', text: "Do you have 2 of the 225/65/R17 in stock for the fleet job?" },
-    ] },
-  { id: 't4', name: 'M. Petrakis', phone: 'm.petrakis@email.com', channel: 'Email', unread: false,
-    messages: [
-      { from: 'them', text: "Following up on invoice #1039 — will pay Friday, apologies for the delay." },
-      { from: 'us', text: "No worries, thanks for the heads up!" },
-    ] },
-];
-
 const QUICK_REPLIES = ["It's ready for pickup", 'Running about 30 min behind', "I'll check and call you back"];
 
 export function Comms() {
-  const [threads, setThreads] = useState(THREADS);
-  const [activeId, setActiveId] = useState(THREADS[0].id);
+  const [threads, setThreads] = useState([]);
+  const [activeId, setActiveId] = useState(null);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
   const [resolved, setResolved] = useState({});
@@ -100,7 +85,13 @@ export function Comms() {
               {t.unread && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} />}
             </div>
           ))}
-          {!visible.length && <div className="fg" style={{ padding: 16, fontSize: 12.5, color: 'var(--text-mute)', textAlign: 'center' }}>No matches</div>}
+          {!visible.length && (
+            <div className="fg" style={{ padding: 16, fontSize: 12.5, color: 'var(--text-mute)', textAlign: 'center', lineHeight: 1.6 }}>
+              {threads.length === 0 && !term
+                ? 'No conversations yet. Messages will appear here once an SMS or email channel is connected.'
+                : 'No matches'}
+            </div>
+          )}
         </div>
 
         {active && (
@@ -127,7 +118,7 @@ export function Comms() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '10px 15px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
-              <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Send</span>
+              <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Send</span>
             </div>
           </div>
         )}

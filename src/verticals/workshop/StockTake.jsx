@@ -22,7 +22,7 @@ export function StockTake() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{counted.length}/{stockTakeItems.length} counted</span>
         <span style={{ flex: 1 }} />
-        <span onClick={() => setStockTakeFinalized(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#201e1d', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>{stockTakeFinalized ? '✓ Finalized' : 'Finalize count'}</span>
+        <span onClick={() => setStockTakeFinalized(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>{stockTakeFinalized ? '✓ Finalized' : 'Finalize count'}</span>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
@@ -76,7 +76,7 @@ export function StockTake() {
               <div><div className="fg" style={{ fontSize: 10.5, letterSpacing: '.08em', color: '#8a857c', fontWeight: 700, marginBottom: 5 }}>NET VARIANCE</div><div className="fg" style={{ fontSize: 14, fontWeight: 700 }}>{netVarianceValue > 0 ? `+${netVarianceValue}` : netVarianceValue} units</div></div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 36 }}>
-              <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>
+              <span onClick={() => window.print()} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Print / Save as PDF</span>
               <span onClick={() => setShowReport(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: '#3c3936', border: '1.5px solid rgba(32,30,29,.2)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Back</span>
             </div>
           </div>

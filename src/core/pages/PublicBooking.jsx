@@ -1,21 +1,40 @@
 import { useState } from 'react';
+import { useStore } from '@/core/store';
 
 /**
  * Public Booking — core (admin settings for the customer booking portal).
- * Booking-link toggle + copyable link, real scheduling-rule sliders,
- * recent-online-bookings feed, appointment types. Faithful to the prototype.
+ * Booking-link toggle + copyable link, scheduling-rule sliders, appointment
+ * types, and a feed of bookings that actually came in through the portal.
+ *
+ * That feed used to be three hardcoded names (R. Kelso, P. Nguyen, K. Osei)
+ * shown as if real portal activity. It now reads the store — bookings with
+ * source 'portal' — so an empty portal reads as empty instead of inventing
+ * customers who never booked.
  */
-const RECENT = [
-  { name: 'R. Kelso', service: 'Wheel alignment', when: '2h ago' },
-  { name: 'P. Nguyen', service: 'Tyre replacement (2)', when: 'Yesterday' },
-  { name: 'K. Osei', service: 'Logbook service', when: '2 days ago' },
-];
-
 const APPT_TYPES = [
   ['Service', 1.5], ['Tyres & alignment', 1], ['Brakes', 1.5], ['Diagnostic', 1], ['Roadworthy', 1],
 ];
 
+/** Rough relative age for the feed. Bookings predating createdAt show nothing. */
+function relativeTime(iso) {
+  if (!iso) return '';
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return '';
+  const mins = Math.floor((Date.now() - then.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
 export function PublicBooking() {
+  const { bookings } = useStore();
+  const recent = bookings
+    .filter((b) => b.source === 'portal')
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 5);
   const [linkOn, setLinkOn] = useState(true);
   const [copied, setCopied] = useState(false);
   const [leadTime, setLeadTime] = useState(4);
@@ -56,12 +75,20 @@ export function PublicBooking() {
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
           <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Recent online bookings</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {RECENT.map((rb) => (
-              <div key={rb.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border-c)' }}>
-                <div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{rb.name}</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>{rb.service} · {rb.when}</div></div>
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 10px' }}>Confirmed</span>
+            {recent.length === 0 && (
+              <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6, padding: '4px 0' }}>
+                No bookings through the portal yet. They&apos;ll appear here as customers use the link above.
               </div>
-            ))}
+            )}
+            {recent.map((rb) => {
+              const when = relativeTime(rb.createdAt);
+              return (
+                <div key={rb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border-c)' }}>
+                  <div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{rb.customer || 'Unnamed'}</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>{[rb.service, when].filter(Boolean).join(' · ')}</div></div>
+                  <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 10px' }}>Booked</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { useStore } from '@/core/store';
 import { useAuth } from '@/core/auth';
@@ -28,7 +29,19 @@ import { StockTake } from '@/verticals/workshop/StockTake';
 
 const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings, hr: HR, pubBooking: PublicBooking, phone: Phone, stock: StockTake };
 
-const TITLES = { dashboard: 'Good morning', bookings: "Today's bookings", assistant: 'Mercedes', settings: 'Settings' };
+const TITLES = { bookings: "Today's bookings", assistant: 'Mercedes', settings: 'Settings' };
+
+/**
+ * Dashboard greeting. Was hardcoded "Good morning" — which read as wrong for
+ * most of a workshop's day, since the shop is open well past noon and staff
+ * have this on screen until close. Boundaries chosen for a trade business:
+ * morning until midday, afternoon until 5, then evening.
+ */
+function greeting(hour) {
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 function Placeholder({ label }) {
   return (
@@ -61,6 +74,14 @@ export default function App() {
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
 
+  // Re-evaluated every 5 min so the greeting rolls over on a screen that
+  // sits open from open to close, rather than being fixed at page load.
+  const [greet, setGreet] = useState(() => greeting(new Date().getHours()));
+  useEffect(() => {
+    const id = setInterval(() => setGreet(greeting(new Date().getHours())), 300000);
+    return () => clearInterval(id);
+  }, []);
+
   // Filter nav by the tenant's vertical: core items always show; pack items only
   // when their pack matches the tenant's vertical. Badges swap in live counts
   // where the store has real data (see useLiveBadges).
@@ -69,7 +90,7 @@ export default function App() {
     .filter((s) => s.items.length);
 
   const label = sections.flatMap((s) => s.items).find((i) => i.key === active)?.label ?? active;
-  const title = active === 'dashboard' ? `Good morning, ${firstName}` : (TITLES[active] ?? label);
+  const title = active === 'dashboard' ? `${greet}, ${firstName}` : (TITLES[active] ?? label);
 
   const Screen = SCREENS[active];
 

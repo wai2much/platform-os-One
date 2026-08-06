@@ -130,7 +130,7 @@ export function Customers() {
               )) : <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute)' }}>No jobs yet.</div>}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <span className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#201e1d', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Call</span>
+              <span className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Call</span>
               <span className="fg" onClick={() => setOpen(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
             </div>
           </div>
