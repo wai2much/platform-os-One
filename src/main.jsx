@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App.jsx';
 import { CustomerPortal } from '@/core/CustomerPortal';
 import { StoreProvider } from '@/core/store';
@@ -57,5 +58,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </AuthProvider>
     )}
     <Analytics />
+    <SpeedInsights />
   </React.StrictMode>
 );
