@@ -1,4 +1,17 @@
+import { Wrench, CalendarCheck, Receipt, Sparkles, Lock } from 'lucide-react';
 import { useAuth } from '@/core/auth';
+
+const FEATURE_TERRACOTTA = '#c67139';
+const FEATURE_SAGE = '#7a8a5e';
+const FEATURE_BLUSH = '#c17b71';
+const FEATURE_INK = '#3c3936';
+
+const FEATURES = [
+  { icon: Wrench, label: 'Jobs', color: FEATURE_TERRACOTTA },
+  { icon: CalendarCheck, label: 'Bookings', color: FEATURE_SAGE },
+  { icon: Receipt, label: 'Invoices', color: FEATURE_BLUSH },
+  { icon: Sparkles, label: 'Mercedes AI', color: FEATURE_INK },
+];
 
 const GoogleG = () => (
   <svg width="18" height="18" viewBox="0 0 48 48">
@@ -78,15 +91,37 @@ export function Login() {
       {ORIGAMI_SHAPES.map((s, i) => (
         <OrigamiShape key={i} {...s} />
       ))}
-      <div className="origami-card-in" style={{ width: '100%', maxWidth: 380, position: 'relative', background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '40px 36px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)' }}>
-        <img src="/hos-mark-black.png" alt="Haus" style={{ width: 40, height: 40, objectFit: 'contain', margin: '0 auto 16px' }} />
-        <div className="cap" style={{ fontSize: 26, color: 'var(--text)', marginBottom: 6 }}>Platform OS</div>
-        <p className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginBottom: 28 }}>
-          Sign in to get to your workspace.
+      <div className="origami-card-in" style={{ width: '100%', maxWidth: 400, position: 'relative', background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '38px 36px 32px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)', overflow: 'hidden' }}>
+        <div aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${FEATURE_TERRACOTTA}, ${FEATURE_BLUSH}, ${FEATURE_SAGE})` }} />
+
+        <img src="/hos-mark-black.png" alt="Haus" style={{ width: 36, height: 36, objectFit: 'contain', margin: '0 auto 14px' }} />
+        <div className="fg" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: FEATURE_TERRACOTTA, marginBottom: 10 }}>
+          BUSINESS OPERATING SYSTEM
+        </div>
+        <div className="cap" style={{ fontSize: 28, color: 'var(--text)', marginBottom: 8 }}>Welcome back</div>
+        <p className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginBottom: 20, lineHeight: 1.5 }}>
+          One workspace for jobs, bookings, invoices and your AI floor manager.
         </p>
+
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 26 }}>
+          {FEATURES.map((f) => (
+            <span
+              key={f.label}
+              className="fg"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700,
+                color: f.color, background: `${f.color}1f`, borderRadius: 999, padding: '5px 10px',
+              }}
+            >
+              <f.icon size={11} />
+              {f.label}
+            </span>
+          ))}
+        </div>
+
         <button
           onClick={signInWithGoogle}
-          className="fg"
+          className="fg login-google-btn"
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             padding: '11px 16px', borderRadius: 999, border: '1px solid var(--border-c)',
@@ -96,6 +131,11 @@ export function Login() {
           <GoogleG />
           Sign in with Google
         </button>
+
+        <div className="fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 10.5, color: 'var(--text-mute2)', marginTop: 18 }}>
+          <Lock size={10} />
+          Encrypted · scoped to your organisation
+        </div>
       </div>
     </div>
   );

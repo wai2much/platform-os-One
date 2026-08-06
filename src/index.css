@@ -123,6 +123,14 @@
   .origami-card-in { animation: none; opacity: 1; transform: none; }
 }
 
+.login-google-btn {
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+.login-google-btn:hover {
+  box-shadow: 0 6px 16px rgba(32, 30, 29, .12);
+  transform: translateY(-1px);
+}
+
 /* Job-card print: only the two pages print, chrome hidden, one page each. */
 .jobcard-page[data-active="false"] { display: none; }
 @media print {
