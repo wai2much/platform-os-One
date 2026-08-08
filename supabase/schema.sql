@@ -554,6 +554,14 @@ create policy "member update stock_take_items" on stock_take_items for update
   using (org_id in (select org_id from memberships where user_id = auth.uid()));
 
 -- ============================================================================
+-- Phase 7: Mercedes (Hyper Agent)
+-- Adds the one column her update_job tool needs that didn't exist yet —
+-- everything else she reads/writes (jobs, invoices, customers, vehicles,
+-- team_members, parts, tyre_stock) already exists from the phases above.
+-- See supabase/functions/mercedesChat/.
+-- ============================================================================
+
+alter table jobs add column if not exists notes text not null default '';
 -- Phase 7: Voice Agent Events (Grok Voice Agent / "London")
 -- Raw log of realtime.call.incoming webhook payloads from api/grok/voice-webhook.js.
 -- No org_id yet (single-tenant during this phase; add when multi-tenancy lands).
