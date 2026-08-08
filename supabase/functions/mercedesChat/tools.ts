@@ -6,10 +6,12 @@ import type { Role } from './identity.ts';
 // auto_part/employee tables — different names, different columns, every
 // query scoped to the caller's org_id so one tenant can never see another's.
 //
-// Reads are broad. Writes are internal and reversible only: she can move a
-// job across the floor, assign a tech, add a note. She cannot touch invoices,
-// stock counts, or contact a customer. Those are outward-facing or hard to
-// undo, and a model that can be talked into one is a model that will be.
+// Reads are broad. Writes are internal to the business: she can move a job
+// across the floor, assign a tech, add a note, and — as of 2026-08-08, by
+// Wai's explicit instruction — raise an invoice when told to. She still
+// cannot touch payments (mark paid, void, take money) or contact a customer
+// directly. Money movement stays a human's call; everything short of that,
+// she executes on instruction, no refusal, for owner and staff alike.
 
 export const JOB_STATUSES = ['Booked', 'In progress', 'Awaiting approval', 'Ready', 'Completed'] as const;
 
@@ -98,6 +100,23 @@ export const TOOLS = [
         note: { type: 'string', description: 'Appended to internal notes with a timestamp. Never overwrites.' },
       },
       required: ['job_number'],
+    },
+  },
+  {
+    name: 'create_invoice',
+    description:
+      "Raise a real invoice. Use when told to invoice a customer, bill a job, or enter an invoice into the system — do it, don't draft it. Standalone (account/fleet billing) or linked to an existing job number. Amount is GST-inclusive AUD. This creates the invoice as Sent (or On account) — it never marks something paid or takes a payment; that stays a human call.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        customer: { type: 'string', description: 'Customer or account name the invoice is billed to.' },
+        amount: { type: 'number', description: 'GST-inclusive total, AUD.' },
+        job_number: { type: 'string', description: "Optional. Link to an existing job — its number, e.g. 'J-425'." },
+        terms: { type: 'string', description: "Payment terms text, e.g. 'Due on receipt', '14 days'. Default 'Due on receipt'." },
+        due_by: { type: 'string', description: "Due date as shown to the customer, e.g. 'Today', '21 Aug'. Default 'Today'." },
+        on_account: { type: 'boolean', description: 'True if this bills to a standing account rather than requiring immediate payment.' },
+      },
+      required: ['customer', 'amount'],
     },
   },
 ];
@@ -300,6 +319,101 @@ export async function runTool(
     const { error: updErr } = await svc.from('jobs').update(patch).eq('id', job.id);
     if (updErr) return { error: updErr.message };
     return { updated: true, job_number: job.id, changed };
+  }
+
+  if (name === 'create_invoice') {
+    const customer = String(input?.customer || '').trim();
+    if (!customer) return { error: 'customer is required. Nothing created.' };
+
+    const amount = Number(input?.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { error: 'amount must be a positive number (GST-inclusive AUD). Nothing created.' };
+    }
+
+    // If it's billed against a job, that job has to actually exist in this org.
+    // Inventing a job number on an invoice is worse than refusing to raise it.
+    let jobLabel = '';
+    let fromJob = false;
+    const jn = String(input?.job_number || '').trim();
+    if (jn) {
+      const { data: job, error: jobErr } = await svc
+        .from('jobs').select('id').eq('org_id', orgId).eq('id', jn).maybeSingle();
+      if (jobErr) return { error: jobErr.message };
+      if (!job) return { error: `No job with number ${jn} in this org. Nothing created.` };
+      jobLabel = `Job #${job.id}`;
+      fromJob = true;
+    }
+
+    // Next invoice number, scoped to this org. Mirrors the client's
+    // nextNum(invoices, 'INV-', 1055): highest existing number wins, floor 1055,
+    // zero-padded to the widest id on file (min 4).
+    //
+    // Two reads, because neither alone is safe. PostgREST caps a plain select at
+    // ~1000 rows, and this org already carries 1,830 migrated invoices — scanning
+    // "recent" alone can miss the real maximum and hand back a number that's
+    // already taken. So: newest 1000 by date, plus the lexically-largest id
+    // (which IS the numeric largest while ids stay the same width). Take the
+    // higher of the two, then let the insert retry settle any remaining tie.
+    const [recent, largest] = await Promise.all([
+      svc.from('invoices').select('id').eq('org_id', orgId)
+        .order('created_at', { ascending: false }).limit(1000),
+      svc.from('invoices').select('id').eq('org_id', orgId)
+        .order('id', { ascending: false }).limit(1),
+    ]);
+    if (recent.error) return { error: recent.error.message };
+    if (largest.error) return { error: largest.error.message };
+
+    let max = 1055;
+    let width = 4;
+    for (const row of [...(recent.data || []), ...(largest.data || [])]) {
+      const digits = (String(row.id).match(/\d+/) || [])[0];
+      if (!digits) continue;
+      const n = parseInt(digits, 10);
+      if (Number.isFinite(n) && n > max) max = n;
+      if (digits.length > width) width = digits.length;
+    }
+
+    const onAccount = input?.on_account === true;
+    const base = {
+      org_id: orgId,
+      customer,
+      job: jobLabel,
+      terms: String(input?.terms || '').trim() || 'Due on receipt',
+      due_by: String(input?.due_by || '').trim() || 'Today',
+      // Raised, not paid. She has no tool that can mark an invoice paid or void
+      // one — money movement stays with a human, by design.
+      status: onAccount ? 'On account' : 'Sent',
+      amount,
+      credit_hold: false,
+      from_job: fromJob,
+      on_account: onAccount,
+    };
+
+    // Insert, and walk the number up if something already holds it — covers both
+    // a partial scan above and a second invoice raised at the same moment.
+    let invId = '';
+    let lastErr = '';
+    for (let attempt = 0; attempt < 25; attempt++) {
+      const candidate = `INV-${String(max + 1 + attempt).padStart(width, '0')}`;
+      const { error: insErr } = await svc.from('invoices').insert({ id: candidate, ...base });
+      if (!insErr) { invId = candidate; break; }
+      // 23505 = unique violation. Anything else is a real failure, stop.
+      if ((insErr as { code?: string }).code !== '23505') return { error: insErr.message };
+      lastErr = insErr.message;
+    }
+    if (!invId) return { error: `Could not allocate an invoice number after 25 tries. Nothing created. (${lastErr})` };
+
+    return {
+      created: true,
+      invoice_number: invId,
+      customer,
+      amount,
+      status: base.status,
+      job: jobLabel || null,
+      // Xero sync happens client-side on the Invoices screen; an invoice raised
+      // through Mercedes lands in Platform OS only until that's wired server-side.
+      note: 'Raised in Platform OS. Not marked paid — payment is handled by a person.',
+    };
   }
 
   return { error: `Unknown tool: ${name}` };
