@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useAuth } from '@/core/auth';
 
 /**
  * Settings — core screen. Business profile, bank details, credit &
@@ -7,21 +9,38 @@ import { useEffect, useState } from 'react';
  * and XERO_INTEGRATION.md handoffs — they degrade gracefully to "not
  * configured" until Wai adds the real secrets as Vercel env vars (never in
  * chat, never client-side), same pattern as the Supabase wiring.
+ *
+ * Business profile + bank details are now real per-org columns on
+ * `organizations` (see supabase/add-business-profile.sql). They used to be
+ * hardcoded here — every org, including demo signups, showed Wai's real
+ * business name and real bank BSB/account number. Fixed 2026-08-08.
  */
 const inp = { width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' };
 const label = { fontSize: 11, color: 'var(--text-mute)', fontWeight: 700, letterSpacing: '.06em' };
 
-function Card({ title, children }) {
+function Card({ title, children, action }) {
   return (
     <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>{title}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>{title}</div>
+        {action}
+      </div>
       {children}
     </div>
   );
 }
 
-function Field({ l, defaultValue }) {
-  return <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}><span className="fg" style={label}>{l}</span><input defaultValue={defaultValue} style={inp} /></div>;
+function Field({ l, value, onChange, placeholder }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}><span className="fg" style={label}>{l}</span><input value={value ?? ''} placeholder={placeholder} onChange={onChange} style={inp} /></div>;
+}
+
+function SaveButton({ onClick, status }) {
+  const label = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : status === 'error' ? 'Retry' : 'Save';
+  return (
+    <span onClick={status === 'saving' ? undefined : onClick} className="fg" style={{ fontSize: 11, fontWeight: 700, color: status === 'saved' ? '#fff' : 'var(--text-soft)', background: status === 'saved' ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: status === 'saving' ? 'default' : 'pointer' }}>
+      {label}
+    </span>
+  );
 }
 
 function Toggle({ on, onClick }) {
@@ -40,7 +59,55 @@ const XERO_BANNER = {
   error: { color: '#c67139', text: 'Something went wrong connecting Xero.' },
 };
 
+const BLANK_PROFILE = { business_name: '', trading_as: '', address: '', phone: '', email: '' };
+const BLANK_BANK = { bank_name: '', bank_bsb: '', bank_account: '' };
+
 export function Settings() {
+  const { org, user, refreshOrg, signOut } = useAuth();
+
+  const [profile, setProfile] = useState(BLANK_PROFILE);
+  const [bank, setBank] = useState(BLANK_BANK);
+  const [profileStatus, setProfileStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+  const [bankStatus, setBankStatus] = useState(null);
+
+  // Load this org's own saved values once it's known. Re-runs if the user
+  // switches org (e.g. signs into a different account in the same tab).
+  useEffect(() => {
+    if (!org) return;
+    setProfile({
+      business_name: org.business_name || '',
+      trading_as: org.trading_as || '',
+      address: org.address || '',
+      phone: org.phone || '',
+      email: org.email || '',
+    });
+    setBank({
+      bank_name: org.bank_name || '',
+      bank_bsb: org.bank_bsb || '',
+      bank_account: org.bank_account || '',
+    });
+  }, [org?.id]);
+
+  const saveProfile = async () => {
+    if (!org || !isSupabaseConfigured) return;
+    setProfileStatus('saving');
+    const { error } = await supabase.from('organizations').update(profile).eq('id', org.id);
+    if (error) { console.error('Failed to save business profile', error); setProfileStatus('error'); return; }
+    setProfileStatus('saved');
+    refreshOrg?.();
+    setTimeout(() => setProfileStatus(null), 2000);
+  };
+
+  const saveBank = async () => {
+    if (!org || !isSupabaseConfigured) return;
+    setBankStatus('saving');
+    const { error } = await supabase.from('organizations').update(bank).eq('id', org.id);
+    if (error) { console.error('Failed to save bank details', error); setBankStatus('error'); return; }
+    setBankStatus('saved');
+    refreshOrg?.();
+    setTimeout(() => setBankStatus(null), 2000);
+  };
+
   const [creditHold, setCreditHold] = useState(true);
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroConfigured, setXeroConfigured] = useState(null); // null = checking
@@ -96,19 +163,19 @@ export function Settings() {
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 }}>
-      <Card title="Business profile">
-        <Field l="BUSINESS NAME" defaultValue="Haus Of Technik Pty. Ltd." />
-        <Field l="TRADING AS" defaultValue="TyrePlus Thomastown" />
-        <Field l="ADDRESS" defaultValue="218 Mahoneys Rd, Thomastown VIC" />
-        <Field l="PHONE" defaultValue="03 9462 4400" />
-        <Field l="EMAIL" defaultValue="info@hausoftechnik.com.au" />
+      <Card title="Business profile" action={<SaveButton onClick={saveProfile} status={profileStatus} />}>
+        <Field l="BUSINESS NAME" placeholder="Your business name" value={profile.business_name} onChange={(e) => setProfile((p) => ({ ...p, business_name: e.target.value }))} />
+        <Field l="TRADING AS" placeholder="Trading name (if different)" value={profile.trading_as} onChange={(e) => setProfile((p) => ({ ...p, trading_as: e.target.value }))} />
+        <Field l="ADDRESS" placeholder="Business address" value={profile.address} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} />
+        <Field l="PHONE" placeholder="Phone number" value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} />
+        <Field l="EMAIL" placeholder="Contact email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />
       </Card>
 
-      <Card title="Bank details">
-        <Field l="BANK" defaultValue="Zeller Australia" />
+      <Card title="Bank details" action={<SaveButton onClick={saveBank} status={bankStatus} />}>
+        <Field l="BANK" placeholder="Bank name" value={bank.bank_name} onChange={(e) => setBank((b) => ({ ...b, bank_name: e.target.value }))} />
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}><Field l="BSB" defaultValue="803-439" /></div>
-          <div style={{ flex: 1 }}><Field l="ACCOUNT NUMBER" defaultValue="242373674" /></div>
+          <div style={{ flex: 1 }}><Field l="BSB" placeholder="000-000" value={bank.bank_bsb} onChange={(e) => setBank((b) => ({ ...b, bank_bsb: e.target.value }))} /></div>
+          <div style={{ flex: 1 }}><Field l="ACCOUNT NUMBER" placeholder="Account number" value={bank.bank_account} onChange={(e) => setBank((b) => ({ ...b, bank_account: e.target.value }))} /></div>
         </div>
         <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontWeight: 600 }}>Used on invoices for direct bank transfer payment</div>
       </Card>
@@ -172,8 +239,8 @@ export function Settings() {
       </Card>
 
       <Card title="Account">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>Wai · Owner</span><span className="fg" style={{ fontSize: 12, fontWeight: 600, color: '#c67139', cursor: 'pointer' }}>Manage team</span></div>
-        <span className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Sign out</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{user?.email || 'Signed in'} · {org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Owner'}</span><span className="fg" style={{ fontSize: 12, fontWeight: 600, color: '#c67139', cursor: 'pointer' }}>Manage team</span></div>
+        <span onClick={signOut} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Sign out</span>
       </Card>
     </div>
   );

@@ -11,10 +11,16 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 const Ctx = createContext(null);
 export const useAuth = () => useContext(Ctx);
 
+// Business profile + bank details used to be hardcoded in Settings.jsx
+// (same values shown for every org, including your real bank BSB/account
+// number). They're real per-org columns now — selected here so every org
+// gets its own, defaulting to blank until someone fills them in.
+const ORG_COLUMNS = 'id, name, vertical, business_name, trading_as, address, phone, email, bank_name, bank_bsb, bank_account';
+
 async function fetchOrg(userId) {
   const { data, error } = await supabase
     .from('memberships')
-    .select('role, organizations(id, name, vertical)')
+    .select(`role, organizations(${ORG_COLUMNS})`)
     .eq('user_id', userId)
     .limit(1)
     .maybeSingle();
@@ -89,12 +95,17 @@ export function AuthProvider({ children }) {
 
   const signOut = () => supabase.auth.signOut();
 
+  // Called after Settings saves changes to the org's business profile, so
+  // the rest of the app (which reads org.* from context) sees the update
+  // immediately without needing a full page reload.
+  const refreshOrg = () => { if (user) loadOrgFor(user); };
+
   return (
     <Ctx.Provider value={{
       user, org,
       loading: phase !== 'ready',
       provisioning: phase === 'provisioning',
-      signInWithGoogle, signOut,
+      signInWithGoogle, signOut, refreshOrg,
     }}>
       {children}
     </Ctx.Provider>
