@@ -88,17 +88,17 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div style={{ background: 'var(--ink)', borderRadius: 24, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 22 }}>
+      <div style={{ background: '#0ABAB5', borderRadius: 24, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 22 }}>
         <div style={{ width: 78, height: 78, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><div style={{ width: 34, height: 34, borderRadius: '50%', background: '#f5ead8' }} /></div>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><span className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#e2b48a', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</span><span className="fg" style={{ fontSize: 10, color: '#a8b48e', fontWeight: 600 }}>● On the floor</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><span className="fg" style={{ fontSize: 11, letterSpacing: '.14em', color: '#0d3b39', fontWeight: 700 }}>MERCEDES LEE · HYPER AGENT</span><span className="fg" style={{ fontSize: 10, color: '#0d3b39', fontWeight: 600 }}>● On the floor</span></div>
           {overdue[0] && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#f0c9a8', fontWeight: 600 }}>{overdue[0].creditHold ? 'Account on credit hold' : 'Overdue invoice'} — {overdue[0].customer}, invoice {overdue[0].id}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#0d3b39', fontWeight: 600 }}>{overdue[0].creditHold ? 'Account on credit hold' : 'Overdue invoice'} — {overdue[0].customer}, invoice {overdue[0].id}</span></div>
           )}
           {lowParts[0] && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#f0c9a8', fontWeight: 600 }}>{lowParts.length} part{lowParts.length !== 1 ? 's' : ''} low on stock — starting with {lowParts[0].name}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} /><span className="fg" style={{ fontSize: 12, color: '#0d3b39', fontWeight: 600 }}>{lowParts.length} part{lowParts.length !== 1 ? 's' : ''} low on stock — starting with {lowParts[0].name}</span></div>
           )}
-          <div className="cap" style={{ color: '#f5ead8', fontSize: 20, lineHeight: 1.3 }}>
+          <div className="cap" style={{ color: '#0d3b39', fontSize: 20, lineHeight: 1.3 }}>
             {inProgress.length} car{inProgress.length !== 1 ? 's' : ''} in progress{lowParts[0] ? `, waiting on ${lowParts[0].name}` : ''}. Shall I chase it?
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
