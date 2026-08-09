@@ -4,6 +4,7 @@ import {
   DollarSign, Calendar, StickyNote, MoreHorizontal, ChevronDown,
 } from 'lucide-react';
 import { fmt } from '@/core/store';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 /**
  * Leads Funnel — proof-of-concept add-on.
@@ -403,14 +404,37 @@ export function LeadsFunnel() {
 
   // Request payment: models Podium's text-to-pay pattern -- the request
   // lands as a Pending entry in the lead's own activity feed (same feed as
-  // calls/texts), not a separate payments screen. No real charge happens.
-  const requestPayment = (leadId, { total }) => {
+  // calls/texts), not a separate payments screen.
+  //
+  // The activity entry is added immediately (local, optimistic) so the
+  // funnel never hangs on a network call. Underneath, if Supabase is
+  // configured, this also fires zellerPayments in the background to attempt
+  // a real payment link -- but that function currently returns an honest
+  // stub until ZELLER_API_KEY is set (see its comments), so today this is
+  // still simulated end to end. No real charge happens from this screen.
+  const requestPayment = (leadId, { items, total }) => {
     const id = uid();
     setActivityByLead((a) => ({
       ...a,
       [leadId]: [{ id, kind: 'payment', status: 'pending', amount: total, icon: DollarSign, label: `Payment request sent -- ${fmt(total)}`, when: 'Just now' }, ...(a[leadId] ?? [])],
     }));
     advanceStage(leadId, 'payment');
+
+    if (isSupabaseConfigured) {
+      const lead = leads.find((l) => l.id === leadId);
+      supabase.functions.invoke('zellerPayments', {
+        body: {
+          customerName: lead?.name,
+          customerPhone: lead?.phone,
+          amount: total,
+          description: (items || []).map((it) => it.desc).filter(Boolean).join(', ') || 'Payment request',
+        },
+      }).then(({ data, error }) => {
+        if (error) { console.warn('zellerPayments: call failed (expected until the function is deployed/configured)', error); return; }
+        if (data?.stub) { console.info('zellerPayments: stub response, no live Zeller key set yet', data); return; }
+        console.info('zellerPayments: live payment link created', data);
+      }).catch((e) => console.warn('zellerPayments: call failed', e));
+    }
   };
 
   // Mark paid (demo): flips the request to Paid, appends the automated
@@ -439,7 +463,7 @@ export function LeadsFunnel() {
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden p-4">
         {/* Proof-of-concept banner -- honest about what this is until it's wired to real data. */}
         <div className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-          Proof of concept -- leads below are sample data to show the layout, not your live pipeline. Reloading the page resets them. "Request payment" simulates a text-to-pay request; no real charge is made.
+          Proof of concept -- leads below are sample data to show the layout, not your live pipeline. Reloading the page resets them. "Request payment" is wired to attempt a real Zeller payment link, but stays simulated until Zeller API keys are configured -- no real charge is made yet.
         </div>
 
         {/* Where leads come in -- London (voice agent) vs staff picking up the phone
