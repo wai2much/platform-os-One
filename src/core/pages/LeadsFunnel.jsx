@@ -61,16 +61,24 @@ const SAMPLE_LEADS = [
   { id: 'l13', name: 'Chris Markovski', phone: '0409 029 643', source: 'portal', stage: 'lost', value: 0, tag: 'Went elsewhere', assignee: null, lastActivity: '8mo ago' },
 ];
 
+// Activity feed entries. `kind: 'payment'` entries are what the payment
+// request feature (below) appends to -- rendered inline in this same feed,
+// same as calls/texts/automations, rather than as a separate payments
+// screen. That's the one thing worth taking straight from Podium's actual
+// payment docs (ours doesn't have the feature turned on to see it live):
+// a payment request shows up as a message in the thread, not a new tab.
 const SAMPLE_ACTIVITY = {
   l9: [
-    { icon: DollarSign, label: 'Invoice #50912 sent -- $386.00', when: '1h ago' },
-    { icon: Phone, label: 'Call completed -- 0:47', when: 'Yesterday' },
-    { icon: Mic, label: 'Booked by London (voice agent)', when: '3 days ago' },
+    { id: 'a1', kind: 'payment', status: 'paid', amount: 386, icon: DollarSign, label: 'Payment request sent -- $386.00', when: '1h ago' },
+    { id: 'a2', kind: 'call', icon: Phone, label: 'Call completed -- 0:47', when: 'Yesterday' },
+    { id: 'a3', kind: 'source', icon: Mic, label: 'Booked by London (voice agent)', when: '3 days ago' },
   ],
   l1: [
-    { icon: Mic, label: 'New lead from London -- asked about tyre pricing', when: '2h ago' },
+    { id: 'a4', kind: 'source', icon: Mic, label: 'New lead from London -- asked about tyre pricing', when: '2h ago' },
   ],
 };
+
+const uid = () => Math.random().toString(36).slice(2, 10);
 
 function initialsOf(name) {
   return (name || '').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
@@ -201,9 +209,69 @@ function NewLeadModal({ onClose, onCreate }) {
   );
 }
 
-function LeadDetail({ lead, onClose, onMove }) {
+// Podium's real payment request is an itemised amount that sends as a
+// text-to-pay link inline in the customer's message thread. This models
+// that shape -- items + running total -- but nothing here moves real
+// money. It appends a "Pending" entry to the activity feed on send; see
+// the "Mark as paid (demo)" button on that entry for the rest of the flow.
+function PaymentRequestModal({ lead, onClose, onSend }) {
+  const [items, setItems] = useState([{ desc: '', price: '' }]);
+  const total = items.reduce((sum, it) => sum + (parseFloat(it.price) || 0), 0);
+
+  const setItem = (i, key) => (e) => {
+    const v = e.target.value;
+    setItems((its) => its.map((it, idx) => (idx === i ? { ...it, [key]: v } : it)));
+  };
+  const addItem = () => setItems((its) => [...its, { desc: '', price: '' }]);
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div onClick={(e) => e.stopPropagation()} className="w-[400px] rounded-lg bg-card p-5 shadow-pop">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="font-display text-lg text-foreground">Request payment</span>
+          <button onClick={onClose} className="text-muted-foreground"><X size={16} /></button>
+        </div>
+        <div className="mb-4 text-[11px] text-muted-foreground">
+          Sends a text-to-pay link to <span className="font-semibold text-foreground">{lead.name}</span> ({lead.phone}) -- demo only, no real charge.
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {items.map((it, i) => (
+            <div key={i} className="flex gap-2">
+              <input value={it.desc} onChange={setItem(i, 'desc')} placeholder="Item / description"
+                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none" />
+              <input value={it.price} onChange={setItem(i, 'price')} placeholder="0.00" inputMode="decimal"
+                className="w-24 rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none" />
+            </div>
+          ))}
+        </div>
+        <button onClick={addItem} className="mt-2 text-[12px] font-semibold text-primary">+ Add another item</button>
+
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+          <span className="text-[12px] font-semibold text-muted-foreground">Total</span>
+          <span className="text-[15px] font-bold text-foreground">{fmt(total)}</span>
+        </div>
+
+        <div className="mt-5 flex gap-2">
+          <button
+            disabled={total <= 0}
+            onClick={() => total > 0 && onSend({ items: items.filter((it) => it.desc || it.price), total })}
+            className="rounded-full bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40"
+          >
+            Send payment request
+          </button>
+          <button onClick={onClose} className="rounded-full border border-border px-4 py-2 text-[13px] font-semibold text-muted-foreground">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeadDetail({ lead, activity, onClose, onMove, onRequestPayment, onMarkPaid }) {
   const stageIndex = STAGE_KEYS.indexOf(lead.stage);
-  const activity = SAMPLE_ACTIVITY[lead.id] ?? [];
+  const [showPayment, setShowPayment] = useState(false);
   const s = SOURCES[lead.source] ?? SOURCES.internal;
 
   return (
@@ -227,7 +295,14 @@ function LeadDetail({ lead, onClose, onMove }) {
       </div>
 
       <div className="flex gap-2">
-        {[Phone, DollarSign, Calendar, StickyNote, MoreHorizontal].map((Icon, i) => (
+        <button
+          onClick={() => setShowPayment(true)}
+          title="Request payment"
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground"
+        >
+          <DollarSign size={15} />
+        </button>
+        {[Phone, Calendar, StickyNote, MoreHorizontal].map((Icon, i) => (
           <button key={i} className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground">
             <Icon size={15} />
           </button>
@@ -253,25 +328,49 @@ function LeadDetail({ lead, onClose, onMove }) {
         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Activity</div>
         <div className="flex flex-col gap-3">
           {activity.length === 0 && <div className="text-[11px] text-muted-foreground">No activity logged yet.</div>}
-          {activity.map((a, i) => (
-            <div key={i} className="flex items-start gap-2">
+          {activity.map((a) => (
+            <div key={a.id ?? a.label} className="flex items-start gap-2">
               <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <a.icon size={12} />
               </div>
-              <div>
-                <div className="text-[12px] text-foreground">{a.label}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] text-foreground">{a.label}</span>
+                  {a.kind === 'payment' && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${a.status === 'paid' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                      {a.status}
+                    </span>
+                  )}
+                </div>
                 <div className="text-[10px] text-muted-foreground">{a.when}</div>
+                {a.kind === 'payment' && a.status === 'pending' && (
+                  <button
+                    onClick={() => onMarkPaid(lead.id, a.id)}
+                    className="mt-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    Mark as paid (demo)
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {showPayment && (
+        <PaymentRequestModal
+          lead={lead}
+          onClose={() => setShowPayment(false)}
+          onSend={(request) => { onRequestPayment(lead.id, request); setShowPayment(false); }}
+        />
+      )}
     </div>
   );
 }
 
 export function LeadsFunnel() {
   const [leads, setLeads] = useState(SAMPLE_LEADS);
+  const [activityByLead, setActivityByLead] = useState(SAMPLE_ACTIVITY);
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState(null);
   const [showNew, setShowNew] = useState(false);
@@ -291,6 +390,48 @@ export function LeadsFunnel() {
   }, [leads]);
 
   const move = (id, stage) => setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, stage } : l)));
+
+  // Advance-only stage nudge: a payment event pulls a lead further down the
+  // funnel automatically, but never pushes it backward (e.g. a lead a staff
+  // member already marked Won won't get yanked back to Payment).
+  const advanceStage = (id, stageKey) => setLeads((ls) => ls.map((l) => {
+    if (l.id !== id) return l;
+    const cur = STAGE_KEYS.indexOf(l.stage);
+    const next = STAGE_KEYS.indexOf(stageKey);
+    return next > cur ? { ...l, stage: stageKey } : l;
+  }));
+
+  // Request payment: models Podium's text-to-pay pattern -- the request
+  // lands as a Pending entry in the lead's own activity feed (same feed as
+  // calls/texts), not a separate payments screen. No real charge happens.
+  const requestPayment = (leadId, { total }) => {
+    const id = uid();
+    setActivityByLead((a) => ({
+      ...a,
+      [leadId]: [{ id, kind: 'payment', status: 'pending', amount: total, icon: DollarSign, label: `Payment request sent -- ${fmt(total)}`, when: 'Just now' }, ...(a[leadId] ?? [])],
+    }));
+    advanceStage(leadId, 'payment');
+  };
+
+  // Mark paid (demo): flips the request to Paid, appends the automated
+  // receipt line Podium's docs describe, and reflects the amount on the
+  // lead's card/column totals -- so the funnel's $ figures stay honest.
+  const markPaid = (leadId, activityId) => {
+    setActivityByLead((a) => ({
+      ...a,
+      [leadId]: (a[leadId] ?? []).map((entry) => (entry.id === activityId ? { ...entry, status: 'paid' } : entry)),
+    }));
+    const paidEntry = (activityByLead[leadId] ?? []).find((e) => e.id === activityId);
+    if (paidEntry) {
+      setActivityByLead((a) => ({
+        ...a,
+        [leadId]: [{ id: uid(), kind: 'receipt', icon: StickyNote, label: `Receipt sent automatically -- ${fmt(paidEntry.amount)}`, when: 'Just now' }, ...(a[leadId] ?? [])],
+      }));
+      setLeads((ls) => ls.map((l) => (l.id === leadId ? { ...l, value: paidEntry.amount } : l)));
+    }
+    advanceStage(leadId, 'won');
+  };
+
   const openLead = leads.find((l) => l.id === openId);
 
   return (
@@ -298,7 +439,7 @@ export function LeadsFunnel() {
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden p-4">
         {/* Proof-of-concept banner -- honest about what this is until it's wired to real data. */}
         <div className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-          Proof of concept -- leads below are sample data to show the layout, not your live pipeline. Reloading the page resets them.
+          Proof of concept -- leads below are sample data to show the layout, not your live pipeline. Reloading the page resets them. "Request payment" simulates a text-to-pay request; no real charge is made.
         </div>
 
         {/* Where leads come in -- London (voice agent) vs staff picking up the phone
@@ -346,7 +487,16 @@ export function LeadsFunnel() {
         </div>
       </div>
 
-      {openLead && <LeadDetail lead={openLead} onClose={() => setOpenId(null)} onMove={move} />}
+      {openLead && (
+        <LeadDetail
+          lead={openLead}
+          activity={activityByLead[openLead.id] ?? []}
+          onClose={() => setOpenId(null)}
+          onMove={move}
+          onRequestPayment={requestPayment}
+          onMarkPaid={markPaid}
+        />
+      )}
 
       {showNew && (
         <NewLeadModal
