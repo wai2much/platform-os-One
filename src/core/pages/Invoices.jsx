@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/core/store';
+import { useAuth } from '@/core/auth';
 import { useTerminal } from '@/lib/zeller';
+import { generateInvoicePdf } from '@/lib/invoicePdf';
 
 /**
  * Invoices — core screen. Faithful to the prototype: table with credit-hold /
@@ -129,12 +131,15 @@ function NewInvoiceModal({ onClose, onCreate }) {
 
 export function Invoices() {
   const { invoices, flash, markInvoicePaid, addInvoice } = useStore();
+  const { org } = useAuth();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
   const [creating, setCreating] = useState(false);
+  const [notifyNote, setNotifyNote] = useState('');
 
   const open = invoices.find((i) => i.id === openId) || null;
   const outstanding = invoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
+  const downloadPdf = () => open && generateInvoicePdf(open, org);
 
   const markPaid = () => {
     markInvoicePaid(openId);
@@ -162,7 +167,7 @@ export function Invoices() {
           ))}
         </div>
         {invoices.map((inv) => (
-          <div key={inv.id} onClick={() => { setMethod('Card'); setOpenId(inv.id); }}
+          <div key={inv.id} onClick={() => { setMethod('Card'); setNotifyNote(''); setOpenId(inv.id); }}
             style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border-c)', alignItems: 'center', cursor: 'pointer', minWidth: 720 }}>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{inv.id}</span>
             <span className="fg" style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 600 }}>{inv.customer}</span>
@@ -227,10 +232,13 @@ export function Invoices() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-                {['Notify · SMS', 'Notify · Email', 'Download PDF'].map((l) => (
-                  <span key={l} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>{l}</span>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                {notifyNote && <span className="fg" style={{ fontSize: 11.5, color: '#c67139', flexBasis: '100%', textAlign: 'right' }}>{notifyNote}</span>}
+                {['Notify · SMS', 'Notify · Email'].map((l) => (
+                  <span key={l} className="fg" onClick={() => setNotifyNote(`${l.split(' · ')[1]} sending isn't wired up yet — needs a provider set up first.`)}
+                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mute)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'not-allowed', opacity: 0.6 }}>{l}</span>
                 ))}
+                <span className="fg" onClick={downloadPdf} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Download PDF</span>
                 <span className="fg" onClick={() => setOpenId(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
                 {open.status !== 'Paid' && method === 'Card' && <ZellerCharge invoice={open} onPaid={onZellerPaid} />}
                 {open.status !== 'Paid' && method !== 'Card' && <span className="fg" onClick={markPaid} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Mark as paid</span>}
