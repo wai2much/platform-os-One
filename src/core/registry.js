@@ -28,6 +28,7 @@ const I = {
   accounts: '<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 9h10M7 13h6M7 17h4"></path>',
   reports: '<path d="M4 20V10M11 20V4M18 20v-7"></path>',
   reviews: '<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6-4.5-4.2 6.1-.7z"></path>',
+  leadsFunnel: '<path d="M4 4h16l-6.5 8.2V19l-3 1.5v-8.3z"></path>',
 };
 
 export const SECTIONS = [
@@ -47,6 +48,7 @@ export const SECTIONS = [
   {
     title: 'REGISTER',
     items: [
+      { key: 'leadsFunnel', label: 'Leads Funnel', icon: I.leadsFunnel },
       { key: 'jobs', label: 'Jobs', icon: I.jobs, badge: '4' },
       { key: 'invoices', label: 'Invoices', icon: I.invoices, badge: '2' },
       { key: 'statements', label: 'Statements', icon: I.statements },

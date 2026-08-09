@@ -8,6 +8,7 @@ import { Customers } from '@/core/pages/Customers';
 import { Invoices } from '@/core/pages/Invoices';
 import { Jobs } from '@/core/pages/Jobs';
 import { Bookings } from '@/core/pages/Bookings';
+import { LeadsFunnel } from '@/core/pages/LeadsFunnel';
 import { JobCard } from '@/verticals/workshop/JobCard';
 import { Mercedes } from '@/core/pages/Mercedes';
 import { Team } from '@/core/pages/Team';
@@ -27,7 +28,7 @@ import { PublicBooking } from '@/core/pages/PublicBooking';
 import { Phone } from '@/core/pages/Phone';
 import { StockTake } from '@/verticals/workshop/StockTake';
 
-const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings, hr: HR, pubBooking: PublicBooking, phone: Phone, stock: StockTake };
+const SCREENS = { dashboard: Dashboard, customers: Customers, invoices: Invoices, jobs: Jobs, bookings: Bookings, leadsFunnel: LeadsFunnel, inspections: JobCard, assistant: Mercedes, team: Team, comms: Comms, accounts: Accounts, reports: Reports, suppliers: Suppliers, vehicles: Vehicles, statements: Statements, reviews: Reviews, products: Products, tyreStock: TyreStock, loanCars: LoanCars, settings: Settings, hr: HR, pubBooking: PublicBooking, phone: Phone, stock: StockTake };
 
 const TITLES = { bookings: "Today's bookings", assistant: 'Mercedes', settings: 'Settings' };
 
