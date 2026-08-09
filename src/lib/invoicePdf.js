@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { CaprasimoRegular, FigtreeRegular, FigtreeBold, FigtreeExtraBold } from './fonts/invoiceFonts';
+import { HOS_MARK_PNG } from './assets/hosMark';
 
 /**
  * Real invoice PDF generation — client-side, no backend call, no fake
@@ -46,6 +47,28 @@ const STATUS_STYLE = {
   'On account': { fg: TEXT_SOFT, bg: PANEL_BG },
 };
 
+// Real pixel size of public/hos-mark-black.png — used to keep the watermark's
+// aspect ratio correct when scaling it up.
+const HOS_MARK_W = 106;
+const HOS_MARK_H = 120;
+
+// Faint background watermark of the Haus of Technik mark, large and sat
+// right-of-center on the page. Drawn first, before the header band and body
+// content, so those opaque fills naturally sit on top of it — the same way
+// any print watermark works — rather than fighting with the text for
+// attention. Low opacity keeps it from competing with the actual invoice
+// numbers even where it falls across blank canvas.
+function drawWatermark(doc, pageW, pageH) {
+  const w = 320;
+  const h = (w / HOS_MARK_W) * HOS_MARK_H;
+  const cx = pageW / 2 + 90; // right of center
+  const cy = pageH / 2;
+  doc.saveGraphicsState();
+  doc.setGState(new doc.GState({ opacity: 0.07 }));
+  doc.addImage(HOS_MARK_PNG, 'PNG', cx - w / 2, cy - h / 2, w, h);
+  doc.restoreGraphicsState();
+}
+
 function registerFonts(doc) {
   doc.addFileToVFS('Figtree-Regular.ttf', FigtreeRegular);
   doc.addFont('Figtree-Regular.ttf', 'Figtree', 'normal');
@@ -62,9 +85,12 @@ export function generateInvoicePdf(invoice, org) {
   registerFonts(doc);
 
   const pageW = 595.28;
+  const pageH = 841.89;
   const left = 48;
   const right = 547;
   const businessName = org?.trading_as || org?.business_name || 'Business name not set (see Settings)';
+
+  drawWatermark(doc, pageW, pageH);
 
   // --- Dark "ink" header band, same as the modal's header ---
   const headerH = 118;
