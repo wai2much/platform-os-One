@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { useStore } from '@/core/store';
 import { useAuth } from '@/core/auth';
+import { ZellerProvider } from '@/lib/zeller';
 import { SECTIONS } from '@/core/registry';
 import { Dashboard } from '@/core/pages/Dashboard';
 import { Customers } from '@/core/pages/Customers';
@@ -96,8 +97,10 @@ export default function App() {
   const Screen = SCREENS[active];
 
   return (
-    <Layout title={title} sections={sections} activeKey={active} onNavigate={setActive} user={user} org={org} onSignOut={signOut}>
-      {Screen ? <Screen /> : <Placeholder label={label} />}
-    </Layout>
+    <ZellerProvider>
+      <Layout title={title} sections={sections} activeKey={active} onNavigate={setActive} user={user} org={org} onSignOut={signOut}>
+        {Screen ? <Screen /> : <Placeholder label={label} />}
+      </Layout>
+    </ZellerProvider>
   );
 }

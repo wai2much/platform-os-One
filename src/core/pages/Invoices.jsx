@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '@/core/store';
+import { useTerminal } from '@/lib/zeller';
 
 /**
  * Invoices — core screen. Faithful to the prototype: table with credit-hold /
@@ -39,6 +40,66 @@ function MethodTab({ label, active, onClick }) {
 
 const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
+const btn = { fontSize: 13, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '9px 20px', cursor: 'pointer', border: 'none', fontFamily: 'Figtree, sans-serif' };
+const btnDisabled = { ...btn, background: 'var(--panel-bg)', color: 'var(--text-mute)', cursor: 'not-allowed' };
+
+/**
+ * Real Zeller Terminal charge — see src/lib/zeller.jsx for why this is a
+ * pure client-side SDK call, no backend involved. `initialise()` runs on
+ * mount to non-interactively check pairing status without popping any UI;
+ * `setup()` only fires when the merchant explicitly taps "Pair Terminal".
+ * Requires a physical Zeller Terminal paired to this browser to actually
+ * complete a tap — can't be exercised headlessly, only by Wai on the floor.
+ */
+function ZellerCharge({ invoice, onPaid }) {
+  const terminal = useTerminal();
+  const [state, setState] = useState('checking'); // checking | setup_required | ready | charging
+  const [note, setNote] = useState('');
+
+  useEffect(() => {
+    let live = true;
+    terminal.initialise().then((result) => {
+      if (!live) return;
+      if (result === true) setState('ready');
+      else {
+        setState('setup_required');
+        setNote(result?.type === 'Setup Required' ? '' : (result?.type || 'Not connected to a Zeller Terminal yet.'));
+      }
+    });
+    return () => { live = false; };
+  }, [terminal]);
+
+  const pair = async () => {
+    setState('checking');
+    setNote('');
+    const result = await terminal.setup();
+    if (result === true) setState('ready');
+    else { setState('setup_required'); setNote(result?.type === 'Cancelled' ? '' : result?.type || 'Pairing failed.'); }
+  };
+
+  const charge = async () => {
+    setState('charging');
+    setNote('');
+    const result = await terminal.purchase({ amount: Math.round(invoice.amount * 100), reference: invoice.id });
+    if (result instanceof Error) {
+      setState('ready');
+      setNote(result.type === 'Cancelled' ? 'Cancelled on the Terminal.' : `${result.type} — try again.`);
+      return;
+    }
+    onPaid({ paidVia: 'zeller', transactionUuid: result.transactionUuid, receiptLink: result.receiptLink, status: result.status });
+  };
+
+  return (
+    <div>
+      {state === 'checking' && <span style={btnDisabled}>Checking Zeller Terminal…</span>}
+      {state === 'setup_required' && <span onClick={pair} className="fg" style={btn}>Pair Zeller Terminal</span>}
+      {state === 'ready' && <span onClick={charge} className="fg" style={btn}>Charge {fmt(invoice.amount)} with Zeller</span>}
+      {state === 'charging' && <span style={btnDisabled}>Waiting for tap on Terminal…</span>}
+      {note && <div className="fg" style={{ fontSize: 11.5, color: '#c67139', marginTop: 6, textAlign: 'right' }}>{note}</div>}
+    </div>
+  );
+}
+
 function NewInvoiceModal({ onClose, onCreate }) {
   const [form, setForm] = useState({ customer: '', terms: 'Due on receipt', dueBy: 'Today', amount: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -77,6 +138,11 @@ export function Invoices() {
 
   const markPaid = () => {
     markInvoicePaid(openId);
+    setOpenId(null);
+  };
+
+  const onZellerPaid = (meta) => {
+    markInvoicePaid(openId, meta);
     setOpenId(null);
   };
 
@@ -134,6 +200,13 @@ export function Invoices() {
                 </div>
               </div>
 
+              {open.paidVia === 'zeller' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                  <span className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>Paid via Zeller Terminal {open.zellerTransactionUuid ? `· ${open.zellerTransactionUuid.slice(0, 8)}` : ''}</span>
+                  {open.zellerReceiptLink && <a href={open.zellerReceiptLink} target="_blank" rel="noreferrer" className="fg" style={{ fontSize: 12, fontWeight: 700, color: '#c67139' }}>Receipt</a>}
+                </div>
+              )}
+
               {open.creditHold && (
                 <div style={{ background: 'var(--ink)', borderRadius: 14, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c67139', flexShrink: 0 }} />
@@ -159,7 +232,8 @@ export function Invoices() {
                   <span key={l} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>{l}</span>
                 ))}
                 <span className="fg" onClick={() => setOpenId(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
-                {open.status !== 'Paid' && <span className="fg" onClick={markPaid} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Mark as paid</span>}
+                {open.status !== 'Paid' && method === 'Card' && <ZellerCharge invoice={open} onPaid={onZellerPaid} />}
+                {open.status !== 'Paid' && method !== 'Card' && <span className="fg" onClick={markPaid} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Mark as paid</span>}
               </div>
             </div>
           </div>

@@ -351,11 +351,18 @@ export function StoreProvider({ orgId, children }) {
     persistJob(saved, orgId);
   };
 
-  // Invoices screen: mark an invoice paid.
-  const markInvoicePaid = (id) => {
+  // Invoices screen: mark an invoice paid. `meta` is optional — the real
+  // Zeller Terminal charge (src/lib/zeller.jsx) passes { paidVia: 'zeller',
+  // transactionUuid, receiptLink, status } after a live purchase() success.
+  // NOTE: invoiceToRow() doesn't whitelist these fields yet, so they show up
+  // in the UI immediately but aren't persisted to Supabase until that row
+  // mapper + a schema migration catch up — a known gap, not a silent one.
+  const markInvoicePaid = (id, meta) => {
     const existing = invoices.find((i) => i.id === id);
     if (!existing) return;
-    const saved = { ...existing, status: 'Paid' };
+    const saved = meta
+      ? { ...existing, status: 'Paid', paidVia: meta.paidVia, zellerTransactionUuid: meta.transactionUuid, zellerReceiptLink: meta.receiptLink }
+      : { ...existing, status: 'Paid' };
     setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
     persistInvoice(saved, orgId);
     syncInvoiceToXero(saved, 'paid');
