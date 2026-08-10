@@ -59,7 +59,7 @@ export function CustomerPortal() {
       <div style={{ width: '100%', maxWidth: 560 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
           <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#c67139', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span className="cap" style={{ fontSize: 19, color: '#f5ead8' }}>T</span></div>
-          <div><div className="cap" style={{ color: '#201e1d', fontSize: 19, lineHeight: 1 }}>TyrePlus Thomastown</div><div className="fg" style={{ color: '#6f6a63', fontSize: 11.5, fontWeight: 600, marginTop: 3 }}>218 Mahoneys Rd, Thomastown VIC · 03 8558 8031</div></div>
+          <div><div className="cap" style={{ color: '#201e1d', fontSize: 19, lineHeight: 1 }}>TyrePlus Thomastown</div><div className="fg" style={{ color: '#6f6a63', fontSize: 11.5, fontWeight: 600, marginTop: 3 }}>218 Mahoneys Rd, Thomastown VIC · 03 9462 4400</div></div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24 }}>
