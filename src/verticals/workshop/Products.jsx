@@ -39,7 +39,7 @@ function NewPartModal({ onClose, onCreate }) {
 }
 
 export function Products() {
-  const { setActive, parts, addPart } = useStore();
+  const { setActive, parts, addPart, suppliers } = useStore();
   const [creating, setCreating] = useState(false);
 
   return (
@@ -75,11 +75,12 @@ export function Products() {
           <span onClick={() => setActive('suppliers')} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>View all →</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {[['Burson Auto Parts', 'Thomastown'], ['Repco', 'Preston'], ['Penrite Oil', 'Bayswater']].map(([name, suburb]) => (
-            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border-c)' }}>
-              <div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{name}</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>{suburb}</div></div>
+          {suppliers.slice(0, 5).map((s) => (
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border-c)' }}>
+              <div><div className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{s.name}</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>{s.suburb}</div></div>
             </div>
           ))}
+          {!suppliers.length && <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)' }}>No suppliers yet.</div>}
         </div>
       </div>
 
