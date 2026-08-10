@@ -59,7 +59,7 @@ export function Statements() {
             <div style={{ position: 'relative', background: '#a8b58a', color: '#2e3a1e', padding: '26px 32px', margin: '-48px -48px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div className="cap" style={{ fontSize: 24 }}>Haus Of Technik Pty. Ltd.</div>
-                <div className="fg" style={{ fontSize: 12.5, color: '#3f4d2a', marginTop: 4, lineHeight: 1.6 }}>Trading as TyrePlus Thomastown<br />218 Mahoneys Rd, Thomastown VIC<br />03 9462 4400 · info@hausoftechnik.com.au</div>
+                <div className="fg" style={{ fontSize: 12.5, color: '#3f4d2a', marginTop: 4, lineHeight: 1.6 }}>Trading as TyrePlus Thomastown<br />218 Mahoneys Rd, Thomastown VIC<br />03 8558 8031 · info@hausoftechnik.com.au</div>
               </div>
               <div style={{ textAlign: 'right' }}><div className="cap" style={{ fontSize: 22 }}>ACCOUNT STATEMENT</div></div>
             </div>
