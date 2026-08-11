@@ -189,6 +189,20 @@ function BackPage() {
 
 const WORK_TYPES = ['Logbook service', 'Tyres', 'Wheel alignment', 'Brakes', 'Battery', 'Air-con regas', 'Roadworthy (RWC)', 'Diagnostic'];
 
+// Hoisted to module scope so its identity is stable across FrontPage re-renders.
+// Previously this was defined *inside* FrontPage(), which meant React saw a new
+// component type on every keystroke (every setF/updateJobCard re-render) and
+// unmounted/remounted the <input>, killing focus after the first character —
+// this was the "job card only accepts 1 letter / spacebar misbehaves" bug.
+function Field({ label, w, value, onChange }) {
+  return (
+    <div style={{ minWidth: w || 0, flex: w ? '0 0 auto' : 1 }}>
+      <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>{label}</div>
+      <input value={value || ''} onChange={onChange} style={inp} />
+    </div>
+  );
+}
+
 function FrontPage() {
   const { jobCard, updateJobCard } = useStore();
   const [f, setF] = useState({});
@@ -196,17 +210,8 @@ function FrontPage() {
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
   const work = jobCard.workTypes;
   const setWork = (fn) => updateJobCard({ workTypes: typeof fn === 'function' ? fn(jobCard.workTypes) : fn });
-
-  const Field = ({ label, k, w, store }) => (
-    <div style={{ minWidth: w || 0, flex: w ? '0 0 auto' : 1 }}>
-      <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>{label}</div>
-      {store ? (
-        <input value={jobCard[k] || ''} onChange={(e) => updateJobCard({ [k]: e.target.value })} style={inp} />
-      ) : (
-        <input value={f[k] || ''} onChange={set(k)} style={inp} />
-      )}
-    </div>
-  );
+  const storeField = (k) => ({ value: jobCard[k], onChange: (e) => updateJobCard({ [k]: e.target.value }) });
+  const localField = (k) => ({ value: f[k], onChange: set(k) });
 
   return (
     <div style={{ padding: '6px 30px 30px', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1180, margin: '0 auto' }}>
@@ -224,17 +229,17 @@ function FrontPage() {
         <Card>
           <SectionTitle>Customer</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Field label="NAME" k="customer" store />
-            <div style={{ display: 'flex', gap: 12 }}><Field label="PHONE" k="phone" /><Field label="EMAIL" k="email" /></div>
-            <Field label="ADDRESS" k="address" />
+            <Field label="NAME" {...storeField("customer")} />
+            <div style={{ display: 'flex', gap: 12 }}><Field label="PHONE" {...localField("phone")} /><Field label="EMAIL" {...localField("email")} /></div>
+            <Field label="ADDRESS" {...localField("address")} />
           </div>
         </Card>
         <Card>
           <SectionTitle>Vehicle</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 12 }}><Field label="MAKE / MODEL" k="vehicle" store /><Field label="YEAR" k="year" w={90} /></div>
-            <div style={{ display: 'flex', gap: 12 }}><Field label="REGO" k="rego" w={120} /><Field label="ODOMETER (KM)" k="odo" /><Field label="COLOUR" k="colour" w={120} /></div>
-            <Field label="VIN" k="vin" />
+            <div style={{ display: 'flex', gap: 12 }}><Field label="MAKE / MODEL" {...storeField("vehicle")} /><Field label="YEAR" w={90} {...localField("year")} /></div>
+            <div style={{ display: 'flex', gap: 12 }}><Field label="REGO" w={120} {...localField("rego")} /><Field label="ODOMETER (KM)" {...localField("odo")} /><Field label="COLOUR" w={120} {...localField("colour")} /></div>
+            <Field label="VIN" {...localField("vin")} />
           </div>
         </Card>
       </div>
@@ -242,10 +247,10 @@ function FrontPage() {
       <Card>
         <SectionTitle>Booking</SectionTitle>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Field label="DATE / TIME IN" k="dateIn" />
-          <Field label="PROMISED OUT" k="promised" />
-          <Field label="SERVICE ADVISOR" k="advisor" />
-          <Field label="BOOKING SOURCE" k="source" />
+          <Field label="DATE / TIME IN" {...localField("dateIn")} />
+          <Field label="PROMISED OUT" {...localField("promised")} />
+          <Field label="SERVICE ADVISOR" {...localField("advisor")} />
+          <Field label="BOOKING SOURCE" {...localField("source")} />
         </div>
       </Card>
 
