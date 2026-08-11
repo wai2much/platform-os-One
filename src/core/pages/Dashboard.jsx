@@ -1,4 +1,5 @@
 import { useStore, fmt, liveInvoices } from '@/core/store';
+import { RegoCheck } from '@/components/RegoCheck';
 
 /**
  * Dashboard — faithful port of the Front-of-House prototype design, now real
