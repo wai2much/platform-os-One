@@ -1,4 +1,4 @@
-import { useState } from 'react';
+—…·import { useState } from 'react';
 
 /**
  * RegoCheck — enter an Australian plate, get registration status + expiry,
