@@ -15,6 +15,16 @@ import { useState } from 'react';
  */
 const QUICK_REPLIES = ["It's ready for pickup", 'Running about 30 min behind', "I'll check and call you back"];
 
+// Hoisted to module scope (found during the 13 Aug health check) — this was
+// previously defined inside Comms(), the same "component defined inside a
+// parent's render" pattern that broke job-card input focus. Low-risk here
+// only because Comms has no real backend yet; fixed anyway before it bites.
+function Toggle({ on, onClick }) {
+  return (
+    <span onClick={onClick} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', cursor: 'pointer', borderRadius: 999, padding: '2px 9px', background: on ? '#7a8a5e' : 'var(--text-mute2)' }}>{on ? 'On' : 'Off'}</span>
+  );
+}
+
 export function Comms() {
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -41,10 +51,6 @@ export function Comms() {
   };
 
   const toggleResolved = () => setResolved((r) => ({ ...r, [activeId]: !r[activeId] }));
-
-  const Toggle = ({ on, onClick }) => (
-    <span onClick={onClick} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', cursor: 'pointer', borderRadius: 999, padding: '2px 9px', background: on ? '#7a8a5e' : 'var(--text-mute2)' }}>{on ? 'On' : 'Off'}</span>
-  );
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
