@@ -23,7 +23,7 @@ const fmt = (n) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, m
 
 export const blankJobCard = () => ({
   customer: '', vehicle: '', workTypes: {},
-  parts: Array.from({ length: 8 }, () => ({ qty: '', desc: '', partNo: '', unit: '' })),
+  parts: Array.from({ length: 8 }, () => ({ qty: '', desc: '', partNo: '', unit: '', productId: null })),
   labour: '', sundries: '',
 });
 
@@ -299,6 +299,23 @@ export function StoreProvider({ orgId, children }) {
     setActive('inspections');
   };
 
+  // Job-card parts rows can be linked to a real inventory item (see
+  // JobCard.jsx's parts picker, keyed by row.productId). On invoice
+  // generation, decrement that item's stock by the qty used — this is the
+  // "push parts into the job to get paid" link Vito asked for on 11 Aug.
+  const consumePartStock = (rows) => {
+    rows.forEach((r) => {
+      if (!r.productId) return;
+      const qty = parseFloat(r.qty) || 0;
+      if (qty <= 0) return;
+      const existing = parts.find((p) => p.id === r.productId);
+      if (!existing) return;
+      const saved = { ...existing, stock: Math.max(0, existing.stock - qty), status: existing.stock - qty <= 0 ? 'Low' : existing.status };
+      setParts((list) => list.map((p) => (p.id === r.productId ? saved : p)));
+      persistPart(saved, orgId);
+    });
+  };
+
   // Filled job card → invoice: carries parts & labour + GST into Invoices, and
   // marks the linked job Completed with the same lines/total. No re-keying.
   const generateInvoice = () => {
@@ -308,6 +325,7 @@ export function StoreProvider({ orgId, children }) {
     const lines = jobCard.parts.filter((r) => r.desc && (parseFloat(r.qty) || 0) > 0).map((r) => [r.desc, parseFloat(r.qty) || 0, (parseFloat(r.qty) || 0) * (parseFloat(r.unit) || 0)]);
     if (parseFloat(jobCard.labour) > 0) lines.push(['Labour', 1, parseFloat(jobCard.labour)]);
     if (parseFloat(jobCard.sundries) > 0) lines.push(['Sundries / disposal', 1, parseFloat(jobCard.sundries)]);
+    consumePartStock(jobCard.parts);
 
     const jobId = activeJobId || nextNum(jobs, 'J-', 424);
     const existingJob = activeJobId ? jobs.find((j) => j.id === activeJobId) : null;

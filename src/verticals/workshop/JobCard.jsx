@@ -37,7 +37,7 @@ function CheckSquare({ on, onClick, color = OLIVE }) {
 }
 
 function BackPage() {
-  const { jobCard, updateJobCard, generateInvoice } = useStore();
+  const { jobCard, updateJobCard, generateInvoice, parts: inventory, addPart } = useStore();
   const [status, setStatus] = useState({});
   const [notes, setNotes] = useState({});
   const [align, setAlign] = useState({ camber: '', toeF: '', toeR: '', caster: '' });
@@ -51,11 +51,47 @@ function BackPage() {
   const [method, setMethod] = useState('');
 
   const setPart = (i, k, v) => setParts((p) => p.map((row, j) => (j === i ? { ...row, [k]: v } : row)));
+  // Set multiple fields on one parts row in a single update — setPart called
+  // twice in a row would lose the first write (setParts reads jobCard.parts
+  // from closure, not a functional-update arg), so picking a product from
+  // the inventory (desc + unit price + the link back to stock) has to land
+  // as one combined write.
+  const setPartFields = (i, fields) => setParts((p) => p.map((row, j) => (j === i ? { ...row, ...fields } : row)));
+  // Picking a description that matches a real inventory item (from the
+  // Products screen) links this row to it — autofills price, and lets
+  // generateInvoice() decrement real stock by the qty used. Free-typed
+  // descriptions with no match still work exactly as before.
+  const pickPart = (i, desc) => {
+    const match = inventory.find((p) => p.name === desc);
+    setPartFields(i, match ? { desc, unit: String(match.price), productId: match.id } : { desc, productId: null });
+  };
+  // A typed description that doesn't match anything in inventory can be
+  // added on the spot — first time using a part shouldn't mean leaving the
+  // job card to go create it on the Products screen first.
+  const addPartToInventory = (i, row) => {
+    const created = addPart({ name: row.desc, stock: parseFloat(row.qty) || 1, price: parseFloat(row.unit) || 0, status: 'In stock' });
+    setPartFields(i, { productId: created.id, unit: String(created.price) });
+  };
   const lineTotal = (r) => (parseFloat(r.qty) || 0) * (parseFloat(r.unit) || 0);
   const partsTotal = parts.reduce((s, r) => s + lineTotal(r), 0);
   const net = partsTotal + (parseFloat(labour) || 0) + (parseFloat(sundries) || 0);
   const gst = net * 0.1;
   const totalDue = net + gst;
+
+  // Warn-not-block: if a linked part doesn't have enough stock for the qty
+  // used, ask before generating the invoice rather than silently going
+  // negative or refusing to invoice a job that's already done.
+  const stockShortfalls = () => parts
+    .map((r) => (r.productId ? { r, item: inventory.find((p) => p.id === r.productId) } : null))
+    .filter((x) => x && x.item && (parseFloat(x.r.qty) || 0) > x.item.stock)
+    .map(({ r, item }) => `${item.name}: need ${parseFloat(r.qty) || 0}, only ${item.stock} in stock`);
+
+  const onGenerateInvoice = () => {
+    if (net <= 0) return;
+    const shortfalls = stockShortfalls();
+    if (shortfalls.length && !window.confirm(`Stock is short on:\n${shortfalls.join('\n')}\n\nGenerate the invoice anyway?`)) return;
+    generateInvoice();
+  };
 
   const flag = (k) => setFlags((f) => ({ ...f, [k]: !f[k] }));
 
@@ -112,17 +148,33 @@ function BackPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 150px 110px 110px', gap: 10, background: OLIVE, borderRadius: 10, padding: '9px 14px' }}>
           {['QTY', 'DESCRIPTION OF PART OR LABOUR', 'PART NO.', 'UNIT $', 'LINE $'].map((h, i) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.05em', color: '#fff', fontWeight: 700, textAlign: i >= 3 ? 'right' : 'left' }}>{h}</span>)}
         </div>
-        {parts.map((r, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 150px 110px 110px', gap: 10, alignItems: 'center', padding: '6px 14px' }}>
-            <input value={r.qty} onChange={(e) => setPart(i, 'qty', e.target.value)} inputMode="decimal" style={{ ...inp, textAlign: 'center' }} />
-            <input value={r.desc} onChange={(e) => setPart(i, 'desc', e.target.value)} style={inp} />
-            <input value={r.partNo} onChange={(e) => setPart(i, 'partNo', e.target.value)} style={inp} />
-            <input value={r.unit} onChange={(e) => setPart(i, 'unit', e.target.value)} inputMode="decimal" style={{ ...inp, textAlign: 'right' }} />
-            <span className="fg" style={{ fontSize: 12.5, color: INK, fontWeight: 700, textAlign: 'right' }}>{lineTotal(r) ? fmt(lineTotal(r)) : '—'}</span>
-          </div>
-        ))}
+        <datalist id="parts-inventory">
+          {inventory.map((p) => <option key={p.id} value={p.name} />)}
+        </datalist>
+        {parts.map((r, i) => {
+          const linked = r.productId ? inventory.find((p) => p.id === r.productId) : null;
+          const unmatched = r.desc.trim() && !linked;
+          return (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 150px 110px 110px', gap: 10, alignItems: 'center', padding: '6px 14px' }}>
+              <input value={r.qty} onChange={(e) => setPart(i, 'qty', e.target.value)} inputMode="decimal" style={{ ...inp, textAlign: 'center' }} />
+              <div>
+                <input value={r.desc} onChange={(e) => pickPart(i, e.target.value)} list="parts-inventory"
+                  title={linked ? `From inventory — ${linked.stock} in stock at ${fmt(linked.price)}` : 'Type to search inventory, or enter a custom description'}
+                  style={linked ? { ...inp, border: `1px solid ${OLIVE}` } : inp} />
+                {unmatched && (
+                  <span className="fg" onClick={() => addPartToInventory(i, r)} style={{ fontSize: 10.5, fontWeight: 700, color: TERRA, cursor: 'pointer', paddingLeft: 4 }}>
+                    + Add "{r.desc}" to Parts inventory
+                  </span>
+                )}
+              </div>
+              <input value={r.partNo} onChange={(e) => setPart(i, 'partNo', e.target.value)} style={inp} />
+              <input value={r.unit} onChange={(e) => setPart(i, 'unit', e.target.value)} inputMode="decimal" style={{ ...inp, textAlign: 'right' }} />
+              <span className="fg" style={{ fontSize: 12.5, color: INK, fontWeight: 700, textAlign: 'right' }}>{lineTotal(r) ? fmt(lineTotal(r)) : '—'}</span>
+            </div>
+          );
+        })}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-          <span className="fg" onClick={() => setParts((p) => [...p, { qty: '', desc: '', partNo: '', unit: '' }])} style={{ fontSize: 12, fontWeight: 700, color: TERRA, cursor: 'pointer' }}>+ Add row</span>
+          <span className="fg" onClick={() => setParts((p) => [...p, { qty: '', desc: '', partNo: '', unit: '', productId: null }])} style={{ fontSize: 12, fontWeight: 700, color: TERRA, cursor: 'pointer' }}>+ Add row</span>
         </div>
       </Card>
 
@@ -160,7 +212,7 @@ function BackPage() {
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-            <span className="fg" onClick={() => net > 0 && generateInvoice()} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? '#fff' : 'var(--text-mute2)', background: net > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
+            <span className="fg" onClick={onGenerateInvoice} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? '#fff' : 'var(--text-mute2)', background: net > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
           </div>
         </Card>
       </div>
