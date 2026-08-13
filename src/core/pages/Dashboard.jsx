@@ -1,4 +1,5 @@
 import { useStore, fmt, liveInvoices } from '@/core/store';
+import { RegoCheck } from '@/components/RegoCheck';
 
 /**
  * Dashboard — faithful port of the Front-of-House prototype design, now real
@@ -152,9 +153,9 @@ export function Dashboard() {
           </div>
         </div>
       </div>
-
+      <RegoCheck />
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr 1fr', gap: 12 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Revenue</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
             {[['LAST 7 DAYS', rev7], ['MONTH TO DATE', revMtd], ['YEAR TO DATE', revYtd]].map(([l, v]) => (
