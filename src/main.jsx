@@ -6,6 +6,7 @@ import { CustomerPortal } from '@/core/CustomerPortal';
 import { StoreProvider } from '@/core/store';
 import { AuthProvider, useAuth } from '@/core/auth';
 import { Login } from '@/core/pages/Login';
+import { ErrorBoundary } from '@/core/ErrorBoundary';
 import { applyTheme, getThemePreference } from '@/core/theme';
 import './index.css';
 
@@ -47,15 +48,17 @@ function AuthGate() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {isPortal ? (
-      <StoreProvider orgId={import.meta.env.VITE_DEFAULT_ORG_ID}>
-        <CustomerPortal />
-      </StoreProvider>
-    ) : (
-      <AuthProvider>
-        <AuthGate />
-      </AuthProvider>
-    )}
+    <ErrorBoundary>
+      {isPortal ? (
+        <StoreProvider orgId={import.meta.env.VITE_DEFAULT_ORG_ID}>
+          <CustomerPortal />
+        </StoreProvider>
+      ) : (
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
+      )}
+    </ErrorBoundary>
     <Analytics />
   </React.StrictMode>
 );
