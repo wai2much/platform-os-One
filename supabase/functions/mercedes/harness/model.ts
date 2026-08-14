@@ -35,6 +35,40 @@ export type ModelCallOptions = {
   fetchImpl?: typeof fetch;
 };
 
+/**
+ * Strip harness-private bookkeeping from content blocks before they go over
+ * the wire.
+ *
+ * The harness annotates each tool_result with `_hop` so the context masker
+ * knows what has gone stale. The Anthropic API validates content blocks
+ * strictly and rejects ANY field it does not recognise:
+ *
+ *   messages.2.content.0.tool_result._hop: Extra inputs are not permitted
+ *
+ * That is a hard 400 on the second hop of every tool-using conversation — it
+ * took a live call to find, because a stubbed endpoint accepts anything. The
+ * annotation stays on the local conversation (masking needs it); it just
+ * never leaves the process. Any future `_`-prefixed field is covered too.
+ */
+export function stripPrivateFields(messages: ConvoMessage[]): ConvoMessage[] {
+  return messages.map((message) => {
+    if (!Array.isArray(message.content)) return message;
+
+    let touched = false;
+    const blocks = (message.content as Array<Record<string, unknown>>).map((block) => {
+      if (!block || typeof block !== 'object') return block;
+      const priv = Object.keys(block).filter((k) => k.startsWith('_'));
+      if (!priv.length) return block;
+      touched = true;
+      const clean = { ...block };
+      for (const k of priv) delete clean[k];
+      return clean;
+    });
+
+    return touched ? { ...message, content: blocks } : message;
+  });
+}
+
 export async function callModel(opts: ModelCallOptions): Promise<ModelResponse> {
   const doFetch = opts.fetchImpl ?? fetch;
   const cache = opts.cache !== false;
@@ -53,7 +87,7 @@ export async function callModel(opts: ModelCallOptions): Promise<ModelResponse> 
         i === opts.tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
       )
       : opts.tools,
-    messages: opts.messages,
+    messages: stripPrivateFields(opts.messages),
     // No temperature: recent Claude models reject it on this endpoint —
     // "`temperature` is deprecated for this model" → 400 on every call.
   };

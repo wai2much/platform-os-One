@@ -109,21 +109,60 @@ export class MemoryStore {
     const scope: MemoryScope = entry.scope ?? 'org';
     if (scope === 'user' && !this.userId) return { ok: false, error: 'no user id for a user-scoped memory' };
 
-    const { error } = await this.svc.from('mercedes_memory').upsert(
-      {
-        org_id: this.orgId,
-        scope,
-        user_id: scope === 'user' ? this.userId : null,
-        key,
-        summary,
-        body: (entry.body ?? '').slice(0, MAX_BODY_CHARS),
-        tags: entry.tags ?? [],
-        confidence: clamp(entry.confidence ?? 1, 0, 1),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'org_id,scope,user_id,key' },
-    );
-    return error ? { ok: false, error: error.message } : { ok: true };
+    const row = {
+      org_id: this.orgId,
+      scope,
+      user_id: scope === 'user' ? this.userId : null,
+      key,
+      summary,
+      body: (entry.body ?? '').slice(0, MAX_BODY_CHARS),
+      tags: entry.tags ?? [],
+      confidence: clamp(entry.confidence ?? 1, 0, 1),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Update-then-insert rather than upsert(onConflict).
+    //
+    // The obvious `.upsert(row, { onConflict: 'org_id,scope,user_id,key' })`
+    // fails in production with:
+    //
+    //   there is no unique or exclusion constraint matching the ON CONFLICT
+    //   specification
+    //
+    // because the unique index is on the EXPRESSION
+    // coalesce(user_id, '000…'::uuid) — needed so two org-scoped rows with a
+    // NULL user_id still collide — and Postgres cannot infer a conflict target
+    // from plain column names against an expression index.
+    //
+    // The index still ENFORCES uniqueness correctly; only the inference fails.
+    // So: try the update, insert if nothing matched, and if that insert loses
+    // a race (23505) fall back to the update. Works on any Postgres version
+    // and needs no schema change.
+    const scopeMatch = (q: ReturnType<typeof this.matcher>) =>
+      scope === 'user' ? q.eq('user_id', this.userId as string) : q.is('user_id', null);
+
+    const { data: updated, error: updateError } = await scopeMatch(
+      this.svc.from('mercedes_memory').update(row).eq('org_id', this.orgId).eq('scope', scope).eq('key', key),
+    ).select('id');
+
+    if (updateError) return { ok: false, error: updateError.message };
+    if (updated?.length) return { ok: true };
+
+    const { error: insertError } = await this.svc.from('mercedes_memory').insert(row);
+    if (!insertError) return { ok: true };
+
+    if ((insertError as { code?: string }).code === '23505') {
+      const { error: retryError } = await scopeMatch(
+        this.svc.from('mercedes_memory').update(row).eq('org_id', this.orgId).eq('scope', scope).eq('key', key),
+      );
+      return retryError ? { ok: false, error: retryError.message } : { ok: true };
+    }
+    return { ok: false, error: insertError.message };
+  }
+
+  /** Type helper: the builder shape scopeMatch narrows. */
+  private matcher() {
+    return this.svc.from('mercedes_memory').update({}).eq('org_id', '').eq('scope', '').eq('key', '');
   }
 
   async forget(key: string): Promise<boolean> {

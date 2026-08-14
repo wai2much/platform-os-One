@@ -18,6 +18,7 @@ import {
   writeRateCap,
 } from '../harness/guardrails.ts';
 import { GuardrailTripped } from '../harness/errors.ts';
+import { stripPrivateFields } from '../harness/model.ts';
 import { manageContext, packObservation } from '../harness/context.ts';
 import type { ConvoMessage } from '../harness/types.ts';
 
@@ -536,4 +537,72 @@ Deno.test('prompt caching markers are set on system and the last tool', async ()
   const tools = body.tools as Array<Record<string, unknown>>;
   assertEquals(tools[tools.length - 1].cache_control, { type: 'ephemeral' });
   assertEquals(tools[0].cache_control, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// Wire format — regression tests for bugs found in live deployment
+// ---------------------------------------------------------------------------
+
+Deno.test('no harness-private field ever reaches the Anthropic API', async () => {
+  // Live failure, first deploy, 14 Aug 2026:
+  //   messages.2.content.0.tool_result._hop: Extra inputs are not permitted
+  // A hard 400 on hop 2 of every tool-using conversation. The stub endpoint
+  // used by the other tests accepts anything, so only the wire shape catches it.
+  const { stub, result } = run(
+    [
+      { kind: 'tools', calls: [{ name: 'look', input: { q: 'a' } }] },
+      { kind: 'tools', calls: [{ name: 'look', input: { q: 'b' } }] },
+      { kind: 'text', text: 'done' },
+    ],
+    [tool('look', 'read', () => ({ ok: true }))],
+  );
+  await result;
+
+  for (const body of stub.calls) {
+    for (const message of body.messages as ConvoMessage[]) {
+      if (!Array.isArray(message.content)) continue;
+      for (const block of message.content as Array<Record<string, unknown>>) {
+        const priv = Object.keys(block).filter((k) => k.startsWith('_'));
+        assertEquals(priv, [], `private field(s) ${priv.join(', ')} sent to the API`);
+      }
+    }
+  }
+});
+
+Deno.test('tool_result blocks carry only fields the API accepts', async () => {
+  const ALLOWED = new Set(['type', 'tool_use_id', 'content', 'is_error', 'cache_control']);
+  const { stub, result } = run(
+    [
+      { kind: 'tools', calls: [{ name: 'look', input: {} }] },
+      { kind: 'text', text: 'done' },
+    ],
+    [tool('look', 'read', () => ({ ok: true }))],
+  );
+  await result;
+
+  let seen = 0;
+  for (const body of stub.calls) {
+    for (const message of body.messages as ConvoMessage[]) {
+      if (!Array.isArray(message.content)) continue;
+      for (const block of message.content as Array<Record<string, unknown>>) {
+        if (block.type !== 'tool_result') continue;
+        seen++;
+        for (const key of Object.keys(block)) {
+          assert(ALLOWED.has(key), `unexpected tool_result field: ${key}`);
+        }
+      }
+    }
+  }
+  assert(seen > 0, 'the test never actually sent a tool_result');
+});
+
+Deno.test('stripping does not disturb the local conversation', () => {
+  const convo: ConvoMessage[] = [{
+    role: 'user',
+    content: [{ type: 'tool_result', tool_use_id: 'c1', content: 'x', _hop: 3 }],
+  }];
+  const wire = stripPrivateFields(convo);
+  assertEquals((wire[0].content as Array<Record<string, unknown>>)[0]._hop, undefined);
+  // The masker still needs _hop on the original — stripping must not mutate.
+  assertEquals((convo[0].content as Array<Record<string, unknown>>)[0]._hop, 3);
 });
