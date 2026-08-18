@@ -351,7 +351,15 @@ function Bubble({ m, thinking, onSpeak, speaking }) {
   );
 }
 
-function Composer({ draft, setDraft, send, thinking, listening, toggleMic, variant, attach }) {
+// Dictation language for the mic. zh-HK is the standard code for spoken
+// Cantonese (as opposed to zh-CN/zh-TW, which are Mandarin) — Chrome's Web
+// Speech API recognises it directly, no separate "language pack" involved.
+const MIC_LANGS = [
+  { code: 'en-AU', label: 'EN' },
+  { code: 'zh-HK', label: '粵' },
+];
+
+function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLang, cycleMicLang, variant, attach }) {
   const hero = variant === 'hero';
   const fileRef = useRef(null);
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
@@ -380,6 +388,9 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, varia
           <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>Press Enter to send · drop a file anywhere</span>
           <div style={{ display: 'flex', gap: 7 }}>
             <IconBtn onClick={pick} title="Attach a photo, PDF or file"><Paperclip size={14} /></IconBtn>
+            <IconBtn onClick={cycleMicLang} disabled={listening} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
+              <span className="fg" style={{ fontSize: 11, fontWeight: 800 }}>{MIC_LANGS.find((l) => l.code === micLang)?.label}</span>
+            </IconBtn>
             <IconBtn onClick={toggleMic} active={listening} title="Dictate">{listening ? <MicOff size={14} /> : <Mic size={14} />}</IconBtn>
             <IconBtn onClick={() => send()} primary disabled={!canSend} title="Send"><Send size={14} /></IconBtn>
           </div>
@@ -395,6 +406,9 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, varia
         <IconBtn onClick={pick} title="Attach a photo, PDF or file"><Paperclip size={15} /></IconBtn>
         <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} placeholder={listening ? 'Listening…' : 'Ask Mercedes anything…'}
           style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+        <IconBtn onClick={cycleMicLang} disabled={listening} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
+          <span className="fg" style={{ fontSize: 12, fontWeight: 800 }}>{MIC_LANGS.find((l) => l.code === micLang)?.label}</span>
+        </IconBtn>
         <IconBtn onClick={toggleMic} active={listening} title="Dictate">{listening ? <MicOff size={15} /> : <Mic size={15} />}</IconBtn>
         <IconBtn onClick={() => send()} primary disabled={!canSend} title="Send"><Send size={15} /></IconBtn>
       </div>
@@ -410,7 +424,7 @@ function greetingFor(hour) {
   return { text: 'Good evening', icon: '🌙' };
 }
 
-function EmptyHero({ draft, setDraft, send, listening, toggleMic, attach }) {
+function EmptyHero({ draft, setDraft, send, listening, toggleMic, micLang, cycleMicLang, attach }) {
   const { user } = useAuth();
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
   const { text: greetText, icon: greetIcon } = greetingFor(new Date().getHours());
@@ -423,7 +437,7 @@ function EmptyHero({ draft, setDraft, send, listening, toggleMic, attach }) {
         </div>
         <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Mercedes here — let's get to work · Tell me what needs fixing</div>
       </div>
-      <Composer variant="hero" draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} thinking={false} attach={attach} />
+      <Composer variant="hero" draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} micLang={micLang} cycleMicLang={cycleMicLang} thinking={false} attach={attach} />
       <div style={{ width: '100%', maxWidth: 520 }}>
         <div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', marginBottom: 8 }}>Get started with some examples</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -451,6 +465,8 @@ export function Mercedes() {
   const [thinking, setThinking] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
   const [listening, setListening] = useState(false);
+  const [micLang, setMicLang] = useState('en-AU');
+  const cycleMicLang = () => setMicLang((l) => (l === 'en-AU' ? 'zh-HK' : 'en-AU'));
   const [speakingIdx, setSpeakingIdx] = useState(null);
   const [voiceError, setVoiceError] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -641,7 +657,7 @@ export function Mercedes() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
-    rec.lang = 'en-AU'; rec.continuous = true; rec.interimResults = false;
+    rec.lang = micLang; rec.continuous = true; rec.interimResults = false;
     rec.onstart = () => setListening(true);
     rec.onresult = (e) => {
       let t = '';
@@ -712,7 +728,7 @@ export function Mercedes() {
           </div>
         )}
         {messages.length === 0 ? (
-          <EmptyHero draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} attach={attach} />
+          <EmptyHero draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} micLang={micLang} cycleMicLang={cycleMicLang} attach={attach} />
         ) : (
           <>
             <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -723,7 +739,7 @@ export function Mercedes() {
               <div ref={bottomRef} />
             </div>
             {voiceError && <div className="fg" style={{ fontSize: 11.5, color: ACCENT, fontWeight: 600, padding: '0 16px 6px' }}>Voice: {voiceError}</div>}
-            <Composer draft={draft} setDraft={setDraft} send={send} thinking={thinking} listening={listening} toggleMic={toggleMic} attach={attach} />
+            <Composer draft={draft} setDraft={setDraft} send={send} thinking={thinking} listening={listening} toggleMic={toggleMic} micLang={micLang} cycleMicLang={cycleMicLang} attach={attach} />
           </>
         )}
       </section>
