@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Zap, Plus, Send, Mic, MicOff, Volume2, VolumeX, Paperclip, X, FileText,
-  Folder, FolderOpen, Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
+  Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/core/auth';
@@ -9,7 +9,7 @@ import { useStore, fmt, liveInvoices } from '@/core/store';
 
 // Her face in the left rail and on her chat bubbles. Ships as a plain public
 // asset rather than a bundled import so swapping the file doesn't need a
-// rebuild — drop a new /mercedes-avatar.png in and it's live. Falls back to
+// rebuild — drop a new /mercedes-avatar.jpg in and it's live. Falls back to
 // the lightning-bolt mark if the file is missing, so this never blocks on it.
 function MercedesAvatar({ size = 26, rounded = 9 }) {
   const [broken, setBroken] = useState(false);
@@ -22,7 +22,7 @@ function MercedesAvatar({ size = 26, rounded = 9 }) {
   }
   return (
     <img
-      src="/mercedes-avatar.png" alt="Mercedes" onError={() => setBroken(true)}
+      src="/mercedes-avatar.jpg" alt="Mercedes" onError={() => setBroken(true)}
       style={{ width: size, height: size, borderRadius: rounded, flexShrink: 0, objectFit: 'cover', border: '1px solid var(--border-c)' }}
     />
   );
@@ -402,15 +402,26 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, varia
   );
 }
 
+// Same three-way split as the Dashboard's greeting, plus the sun/moon that
+// went with it in the Claude Code layout this hero is modelled on.
+function greetingFor(hour) {
+  if (hour < 12) return { text: 'Good morning', icon: '🌅' };
+  if (hour < 17) return { text: 'Good afternoon', icon: '☀️' };
+  return { text: 'Good evening', icon: '🌙' };
+}
+
 function EmptyHero({ draft, setDraft, send, listening, toggleMic, attach }) {
+  const { user } = useAuth();
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
+  const { text: greetText, icon: greetIcon } = greetingFor(new Date().getHours());
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: 28 }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Zap size={26} color={ACCENT} />
+        <MercedesAvatar size={64} rounded={20} />
+        <div className="cap" style={{ fontSize: 26, color: 'var(--text)', marginTop: 14 }}>
+          {greetIcon} {greetText}{firstName ? `, ${firstName}` : ''}
         </div>
-        <div className="cap" style={{ fontSize: 26, color: 'var(--text)' }}>Mercedes here</div>
-        <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Let's get to work · Tell me what needs fixing</div>
+        <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Mercedes here — let's get to work · Tell me what needs fixing</div>
       </div>
       <Composer variant="hero" draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} thinking={false} attach={attach} />
       <div style={{ width: '100%', maxWidth: 520 }}>
@@ -672,12 +683,12 @@ export function Mercedes() {
           <div className="fg" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--text-mute2)', fontWeight: 700, padding: '8px 4px 6px' }}>HISTORY</div>
           {conversations.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '18px 0' }}>
-              <FolderOpen size={22} color="var(--text-mute2)" />
+              <MessageSquare size={22} color="var(--text-mute2)" />
               <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>No chats yet</span>
             </div>
           ) : conversations.map((c) => (
             <div key={c.id} onClick={() => selectChat(c)} className="mercedes-history-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : undefined }}>
-              {activeId === c.id ? <FolderOpen size={14} color={ACCENT} style={{ flexShrink: 0 }} /> : <Folder size={14} color="var(--text-mute2)" style={{ flexShrink: 0 }} />}
+              <MessageSquare size={14} color={activeId === c.id ? ACCENT : 'var(--text-mute2)'} style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fg" style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title || 'Untitled'}</div>
                 {c.updatedAt && <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{relativeTime(c.updatedAt)}</div>}
