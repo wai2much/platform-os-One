@@ -4,7 +4,53 @@ import {
   Folder, FolderOpen, Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useAuth } from '@/core/auth';
 import { useStore, fmt, liveInvoices } from '@/core/store';
+
+// Her face in the left rail and on her chat bubbles. Ships as a plain public
+// asset rather than a bundled import so swapping the file doesn't need a
+// rebuild — drop a new /mercedes-avatar.png in and it's live. Falls back to
+// the lightning-bolt mark if the file is missing, so this never blocks on it.
+function MercedesAvatar({ size = 26, rounded = 9 }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: rounded, flexShrink: 0, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Zap size={Math.round(size * 0.55)} color={ACCENT} />
+      </div>
+    );
+  }
+  return (
+    <img
+      src="/mercedes-avatar.png" alt="Mercedes" onError={() => setBroken(true)}
+      style={{ width: size, height: size, borderRadius: rounded, flexShrink: 0, objectFit: 'cover', border: '1px solid var(--border-c)' }}
+    />
+  );
+}
+
+// Rough relative age for the HISTORY list, same shape as PublicBooking's.
+function relativeTime(iso) {
+  if (!iso) return '';
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return '';
+  const mins = Math.floor((Date.now() - then.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
+// Attachment bytes ride with the live request but never get persisted — a
+// handful of photos in a thread would otherwise turn into megabytes of jsonb
+// per conversation. Keeps name/type/size so a restored thread still shows
+// "here's the file that was attached," just without the pixels.
+function stripFilesForStorage(messages) {
+  return messages.map((m) => (m.files?.length
+    ? { ...m, files: m.files.map(({ name, type, size }) => ({ name, type, size })) }
+    : m));
+}
 
 /**
  * Mercedes — the Hyper Agent screen, rebuilt to the clean chat layout: a left
@@ -275,15 +321,11 @@ function Bubble({ m, thinking, onSpeak, speaking }) {
   const files = m.files || [];
   return (
     <div style={{ display: 'flex', gap: 8, justifyContent: user ? 'flex-end' : 'flex-start', alignItems: 'flex-end' }}>
-      {!user && (
-        <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Zap size={14} color={ACCENT} />
-        </div>
-      )}
+      {!user && <MercedesAvatar size={28} />}
       <div style={{ maxWidth: '76%', display: 'flex', flexDirection: 'column', alignItems: user ? 'flex-end' : 'flex-start', gap: 6 }}>
         {files.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: user ? 'flex-end' : 'flex-start' }}>
-            {files.map((f, i) => (f.preview || f.type?.startsWith('image/') ? (
+            {files.map((f, i) => (f.preview || f.data ? (
               <img key={i} src={f.preview || `data:${f.type};base64,${f.data}`} alt={f.name} title={f.name}
                 style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border-c)' }} />
             ) : (
@@ -390,6 +432,7 @@ function EmptyHero({ draft, setDraft, send, listening, toggleMic, attach }) {
 // --- Mercedes screen --------------------------------------------------------
 export function Mercedes() {
   const store = useStore();
+  const { user, org } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -407,6 +450,36 @@ export function Mercedes() {
   const dragDepth = useRef(0);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, thinking]);
+
+  // Load the signed-in user's own past threads once org/user are known —
+  // this is what fills in HISTORY instead of it resetting to empty on every
+  // reload. Not org-wide: each person sees only their own chats with her.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !org?.id || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('mercedes_conversations')
+        .select('id, title, messages, updated_at')
+        .eq('org_id', org.id)
+        .eq('created_by', user.id)
+        .order('updated_at', { ascending: false });
+      if (cancelled) return;
+      if (error) { console.error('mercedes_conversations load:', error); return; }
+      setConversations((data || []).map((r) => ({ id: r.id, title: r.title, messages: r.messages || [], updatedAt: r.updated_at })));
+    })();
+    return () => { cancelled = true; };
+  }, [org?.id, user?.id]);
+
+  // Fire-and-forget upsert — the UI already has the optimistic state from
+  // setConversations, this just makes it survive a reload. Attachment bytes
+  // are stripped (see stripFilesForStorage) before they ever reach Postgres.
+  const saveConversation = (id, title, msgs) => {
+    if (!isSupabaseConfigured || !org?.id || !user?.id) return;
+    supabase.from('mercedes_conversations')
+      .upsert({ id, org_id: org.id, created_by: user.id, title: title || 'Untitled', messages: stripFilesForStorage(msgs), updated_at: new Date().toISOString() })
+      .then(({ error }) => { if (error) console.error('mercedes_conversations save:', error); });
+  };
 
   // Validate, shrink, encode. Everything that gets refused says why, at the
   // moment it's refused — nobody should discover a rejected file by noticing
@@ -461,6 +534,10 @@ export function Mercedes() {
     e.stopPropagation();
     setConversations((cs) => cs.filter((c) => c.id !== id));
     if (activeId === id) newChat();
+    if (isSupabaseConfigured && org?.id) {
+      supabase.from('mercedes_conversations').delete().eq('id', id)
+        .then(({ error }) => { if (error) console.error('mercedes_conversations delete:', error); });
+    }
   };
 
   // Drag and drop over the whole chat panel. depth counting because dragleave
@@ -499,10 +576,11 @@ export function Mercedes() {
     if ((!q && !files.length) || thinking) return;
 
     let convId = activeId;
+    let convTitle = conversations.find((c) => c.id === convId)?.title;
     if (!convId) {
-      convId = 'c-' + Date.now().toString(36);
-      const title = q.slice(0, 40) || files[0]?.name?.slice(0, 40) || 'Attachment';
-      setConversations((cs) => [{ id: convId, title, messages: [] }, ...cs]);
+      convId = isSupabaseConfigured ? crypto.randomUUID() : 'c-' + Date.now().toString(36);
+      convTitle = q.slice(0, 40) || files[0]?.name?.slice(0, 40) || 'Attachment';
+      setConversations((cs) => [{ id: convId, title: convTitle, messages: [] }, ...cs]);
       setActiveId(convId);
     }
     const outgoing = { from: 'user', text: q, ...(files.length ? { files } : {}) };
@@ -511,7 +589,10 @@ export function Mercedes() {
     setDraft('');
     setAttachments([]);
     setAttachError('');
-    const persist = (msgs) => setConversations((cs) => cs.map((c) => (c.id === convId ? { ...c, messages: msgs, title: c.title || q.slice(0, 40) } : c)));
+    const persist = (msgs) => {
+      setConversations((cs) => cs.map((c) => (c.id === convId ? { ...c, messages: msgs, title: c.title || convTitle } : c)));
+      saveConversation(convId, convTitle, msgs);
+    };
     persist(history);
 
     const finish = (botText) => {
@@ -568,9 +649,7 @@ export function Mercedes() {
       <aside style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Zap size={14} color={ACCENT} />
-            </div>
+            <MercedesAvatar size={26} rounded={8} />
             <span className="fg" style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Mercedes</span>
             <span className="fg" style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: ACCENT, background: 'rgba(198,113,57,.14)', borderRadius: 5, padding: '2px 5px' }}>AI</span>
             {/* Only ever shows on a ?agent=v2 tab, so you always know which one you are talking to. */}
@@ -597,13 +676,13 @@ export function Mercedes() {
               <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>No chats yet</span>
             </div>
           ) : conversations.map((c) => (
-            <div key={c.id} onClick={() => selectChat(c)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : 'transparent' }}>
+            <div key={c.id} onClick={() => selectChat(c)} className="mercedes-history-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : undefined }}>
               {activeId === c.id ? <FolderOpen size={14} color={ACCENT} style={{ flexShrink: 0 }} /> : <Folder size={14} color="var(--text-mute2)" style={{ flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fg" style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title || 'Untitled'}</div>
-                {c.messages?.length > 0 && <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{c.messages.length} msg{c.messages.length !== 1 ? 's' : ''}</div>}
+                {c.updatedAt && <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{relativeTime(c.updatedAt)}</div>}
               </div>
-              <button onClick={(e) => deleteChat(e, c.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mute2)', display: 'flex', flexShrink: 0 }}><Trash2 size={12} /></button>
+              <button onClick={(e) => deleteChat(e, c.id)} title="Delete" className="mercedes-history-delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mute2)', display: 'flex', flexShrink: 0 }}><Trash2 size={12} /></button>
             </div>
           ))}
         </div>

@@ -612,4 +612,40 @@ update invoices
  where migrated = false
    and created_at <= '2026-07-31T00:00:00Z';
 
+-- ============================================================================
+-- Phase 9: Mercedes conversation history
+-- Chat threads were living only in React state — a page reload wiped the
+-- HISTORY list back to empty. Persisted per user (not shared org-wide; a
+-- staff member's chats with Mercedes are theirs), scoped by org for the same
+-- defense-in-depth as everywhere else. `messages` stores the same shape the
+-- UI already keeps in memory; attachment bytes are stripped before saving
+-- (see stripFilesForStorage in Mercedes.jsx) so a handful of photos in a
+-- thread don't turn into megabytes of jsonb.
+-- ============================================================================
+
+create table if not exists mercedes_conversations (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  created_by uuid not null references auth.users(id),
+  title text not null default 'Untitled',
+  messages jsonb not null default '[]',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table mercedes_conversations enable row level security;
+
+drop policy if exists "member read own mercedes_conversations" on mercedes_conversations;
+drop policy if exists "member write own mercedes_conversations" on mercedes_conversations;
+drop policy if exists "member update own mercedes_conversations" on mercedes_conversations;
+drop policy if exists "member delete own mercedes_conversations" on mercedes_conversations;
+create policy "member read own mercedes_conversations" on mercedes_conversations for select
+  using (created_by = auth.uid() and org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member write own mercedes_conversations" on mercedes_conversations for insert
+  with check (created_by = auth.uid() and org_id in (select org_id from memberships where user_id = auth.uid()));
+create policy "member update own mercedes_conversations" on mercedes_conversations for update
+  using (created_by = auth.uid());
+create policy "member delete own mercedes_conversations" on mercedes_conversations for delete
+  using (created_by = auth.uid());
+
 create index if not exists invoices_migrated_idx on invoices (org_id, migrated);
