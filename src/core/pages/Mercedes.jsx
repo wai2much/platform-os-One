@@ -9,7 +9,7 @@ import { useStore, fmt, liveInvoices } from '@/core/store';
 
 // Her face in the left rail and on her chat bubbles. Ships as a plain public
 // asset rather than a bundled import so swapping the file doesn't need a
-// rebuild — drop a new /mercedes-avatar.png in and it's live. Falls back to
+// rebuild — drop a new /mercedes-avatar.jpg in and it's live. Falls back to
 // the lightning-bolt mark if the file is missing, so this never blocks on it.
 function MercedesAvatar({ size = 26, rounded = 9 }) {
   const [broken, setBroken] = useState(false);
@@ -22,7 +22,7 @@ function MercedesAvatar({ size = 26, rounded = 9 }) {
   }
   return (
     <img
-      src="/mercedes-avatar.png" alt="Mercedes" onError={() => setBroken(true)}
+      src="/mercedes-avatar.jpg" alt="Mercedes" onError={() => setBroken(true)}
       style={{ width: size, height: size, borderRadius: rounded, flexShrink: 0, objectFit: 'cover', border: '1px solid var(--border-c)' }}
     />
   );
