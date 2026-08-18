@@ -402,15 +402,26 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, varia
   );
 }
 
+// Same three-way split as the Dashboard's greeting, plus the sun/moon that
+// went with it in the Claude Code layout this hero is modelled on.
+function greetingFor(hour) {
+  if (hour < 12) return { text: 'Good morning', icon: '🌅' };
+  if (hour < 17) return { text: 'Good afternoon', icon: '☀️' };
+  return { text: 'Good evening', icon: '🌙' };
+}
+
 function EmptyHero({ draft, setDraft, send, listening, toggleMic, attach }) {
+  const { user } = useAuth();
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
+  const { text: greetText, icon: greetIcon } = greetingFor(new Date().getHours());
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: 28 }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Zap size={26} color={ACCENT} />
+        <MercedesAvatar size={64} rounded={20} />
+        <div className="cap" style={{ fontSize: 26, color: 'var(--text)', marginTop: 14 }}>
+          {greetIcon} {greetText}{firstName ? `, ${firstName}` : ''}
         </div>
-        <div className="cap" style={{ fontSize: 26, color: 'var(--text)' }}>Mercedes here</div>
-        <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Let's get to work · Tell me what needs fixing</div>
+        <div className="fg" style={{ fontSize: 13, color: 'var(--text-mute)', marginTop: 4 }}>Mercedes here — let's get to work · Tell me what needs fixing</div>
       </div>
       <Composer variant="hero" draft={draft} setDraft={setDraft} send={send} listening={listening} toggleMic={toggleMic} thinking={false} attach={attach} />
       <div style={{ width: '100%', maxWidth: 520 }}>
