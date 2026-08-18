@@ -360,10 +360,20 @@ function Bubble({ m, thinking, onSpeak, speaking }) {
 // yue-Hant-HK (Cantonese). 'zh-HK' isn't on that list, so Chrome silently
 // falls back to its default locale and transcribes spoken Cantonese as
 // English — which looks exactly like the mic being broken.
+// `boost` is the MiniMax T2A language hint used when she speaks a reply back
+// in this language's script. Written Chinese is shared between Cantonese and
+// Mandarin — the same characters, read aloud completely differently — and
+// MiniMax defaults to Mandarin, so a Cantonese reply comes back sounding
+// Mandarin unless it's told otherwise. English needs no hint.
 const MIC_LANGS = [
   { code: 'en-AU', label: 'EN' },
-  { code: 'yue-Hant-HK', label: '粵' },
+  { code: 'yue-Hant-HK', label: '粵', boost: 'Chinese,Yue' },
 ];
+
+// Does this text actually contain Han characters? Only then is the Chinese
+// hint relevant — nudging MiniMax toward Cantonese on a pure-English reply
+// would just degrade it.
+const HAS_HAN = /[㐀-䶿一-鿿]/;
 
 function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLang, cycleMicLang, variant, attach }) {
   const hero = variant === 'hero';
@@ -589,8 +599,12 @@ export function Mercedes() {
     setVoiceError('');
     setSpeakingIdx(idx);
     try {
+      // Read a Chinese reply in whichever Chinese the conversation is in,
+      // rather than letting MiniMax default it to Mandarin.
+      const boost = MIC_LANGS.find((l) => l.code === micLang)?.boost;
+      const languageBoost = boost && HAS_HAN.test(text) ? boost : 'auto';
       const res = await fetch('/api/mercedes/speak', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, languageBoost }),
       });
       const data = await res.json();
       if (!data.ok) { setVoiceError(data.message || 'Voice synthesis failed'); setSpeakingIdx(null); return; }
