@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Zap, Plus, Send, Mic, MicOff, Volume2, VolumeX, Paperclip, X, FileText,
-  Folder, FolderOpen, Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
+  Trash2, MessageSquare, RefreshCw, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/core/auth';
@@ -683,12 +683,12 @@ export function Mercedes() {
           <div className="fg" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--text-mute2)', fontWeight: 700, padding: '8px 4px 6px' }}>HISTORY</div>
           {conversations.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '18px 0' }}>
-              <FolderOpen size={22} color="var(--text-mute2)" />
+              <MessageSquare size={22} color="var(--text-mute2)" />
               <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>No chats yet</span>
             </div>
           ) : conversations.map((c) => (
             <div key={c.id} onClick={() => selectChat(c)} className="mercedes-history-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : undefined }}>
-              {activeId === c.id ? <FolderOpen size={14} color={ACCENT} style={{ flexShrink: 0 }} /> : <Folder size={14} color="var(--text-mute2)" style={{ flexShrink: 0 }} />}
+              <MessageSquare size={14} color={activeId === c.id ? ACCENT : 'var(--text-mute2)'} style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fg" style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title || 'Untitled'}</div>
                 {c.updatedAt && <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{relativeTime(c.updatedAt)}</div>}
