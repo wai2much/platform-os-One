@@ -14,6 +14,8 @@
 //   - Any one tenant's commercial playbook (pricing floors, haggle scripts) —
 //     that's a business's own policy, not something to bake into the product.
 //   - Bank details, cap tables, anything a chat agent has no reason to hold.
+import { attachmentBlocks, type ContentBlock, textOfContent } from '../_shared/attachments.ts';
+
 export function buildMercedesSystem(org: { name: string; vertical: string }): string {
   const bizName = org.name || 'this business';
   const workshopBlock = org.vertical === 'workshop' ? `
@@ -84,22 +86,38 @@ Uncertain: "I'd want to verify before committing." Confident: commit fully.
 Never say "I'm just an AI". You're Mercedes. Act like it.`;
 }
 
-type Msg = { role?: unknown; content?: unknown };
+type Msg = { role?: unknown; content?: unknown; files?: unknown };
+
+/** What the Anthropic Messages API is handed: plain text, or blocks when the
+ *  turn carries attachments. */
+export type NormalisedMessage = {
+  role: 'user' | 'assistant';
+  content: string | ContentBlock[];
+};
 
 // The Anthropic Messages API is stricter than a canned reply engine: the
 // system prompt is its own parameter (never a message), turns must start
 // with 'user', and roles must alternate. Slim's Mercedes.jsx stores raw
 // { from: 'user'|'bot', text } history, so normalise it here rather than
 // trusting what comes off the wire.
-export function toAnthropicMessages(raw: unknown): Array<{ role: 'user' | 'assistant'; content: string }> {
+//
+// A user turn may also carry `files` — whatever was clipped to it with the
+// paperclip. Those become image/document/text blocks ahead of the words, so
+// "what's wrong with this?" arrives attached to the photo it is about.
+export function toAnthropicMessages(raw: unknown): NormalisedMessage[] {
   const list = Array.isArray(raw) ? (raw as Msg[]) : [];
 
   const cleaned = list
     .map((m) => ({
       role: m?.role === 'user' || m?.role === 'assistant' ? m.role : null,
-      text: typeof m?.content === 'string' ? m.content.trim() : '',
+      text: typeof m?.content === 'string' ? m.content.trim() : textOfContent(m?.content).trim(),
+      // Only a user turn carries attachments. Anything hung off an assistant
+      // turn is ignored rather than trusted.
+      blocks: m?.role === 'user' ? attachmentBlocks(m?.files) : [],
     }))
-    .filter((m): m is { role: 'user' | 'assistant'; text: string } => m.role !== null && m.text.length > 0);
+    .filter((m): m is { role: 'user' | 'assistant'; text: string; blocks: ContentBlock[] } =>
+      m.role !== null && (m.text.length > 0 || m.blocks.length > 0)
+    );
 
   // Drop any leading assistant turns — Anthropic rejects a history that opens
   // with one.
@@ -107,12 +125,20 @@ export function toAnthropicMessages(raw: unknown): Array<{ role: 'user' | 'assis
 
   // Merge consecutive same-role turns instead of dropping them, so nothing
   // the user actually said goes missing.
-  const merged: Array<{ role: 'user' | 'assistant'; text: string }> = [];
+  const merged: Array<{ role: 'user' | 'assistant'; text: string; blocks: ContentBlock[] }> = [];
   for (const m of cleaned) {
     const last = merged[merged.length - 1];
-    if (last && last.role === m.role) last.text = [last.text, m.text].filter(Boolean).join('\n\n');
-    else merged.push({ ...m });
+    if (last && last.role === m.role) {
+      last.text = [last.text, m.text].filter(Boolean).join('\n\n');
+      last.blocks = [...last.blocks, ...m.blocks];
+    } else merged.push({ ...m, blocks: [...m.blocks] });
   }
 
-  return merged.map((m) => ({ role: m.role, content: m.text }));
+  return merged.map((m) => {
+    if (!m.blocks.length) return { role: m.role, content: m.text };
+    // A file sent with no message still needs words on the end, or the turn is
+    // a bare image and she is left guessing what was wanted.
+    const said = m.text || 'Have a look at what I have attached.';
+    return { role: m.role, content: [...m.blocks, { type: 'text', text: said }] };
+  });
 }

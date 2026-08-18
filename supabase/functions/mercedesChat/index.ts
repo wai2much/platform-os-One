@@ -15,9 +15,11 @@ import { identityBlock, orgContextOf } from './identity.ts';
 // identity.ts are rewritten against Slim's multi-tenant schema — see each
 // file's header for what changed and why.
 //
-// v1 scope: no spawn_agent/sub-agent delegation and no file attachments yet
-// (v2.5 has both) — straightforward follow-ups once the core loop is proven
-// live. Contract: POST { messages: [{ from: 'user'|'bot', text }] } -> { content }.
+// v1 scope: no spawn_agent/sub-agent delegation (v2.5 has it) — a
+// straightforward follow-up once the core loop is proven live. Attachments
+// ARE supported: a user turn may carry `files`, which persona.ts turns into
+// image/document/text blocks.
+// Contract: POST { messages: [{ from: 'user'|'bot', text, files? }] } -> { content }.
 // Secret: ANTHROPIC_API_KEY.
 // ============================================================================
 
@@ -40,6 +42,9 @@ Deno.serve(async (req) => {
       ? body.messages.map((m: any) => ({
         role: m?.from === 'user' ? 'user' : m?.from === 'bot' ? 'assistant' : m?.role,
         content: m?.text ?? m?.content,
+        // Whatever was clipped to this turn with the paperclip. Normalised
+        // into content blocks by toAnthropicMessages.
+        files: m?.files,
       }))
       : [];
     const messages = toAnthropicMessages(rawMessages);
