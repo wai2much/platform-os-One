@@ -388,7 +388,7 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLa
           <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>Press Enter to send · drop a file anywhere</span>
           <div style={{ display: 'flex', gap: 7 }}>
             <IconBtn onClick={pick} title="Attach a photo, PDF or file"><Paperclip size={14} /></IconBtn>
-            <IconBtn onClick={cycleMicLang} disabled={listening} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
+            <IconBtn onClick={cycleMicLang} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
               <span className="fg" style={{ fontSize: 11, fontWeight: 800 }}>{MIC_LANGS.find((l) => l.code === micLang)?.label}</span>
             </IconBtn>
             <IconBtn onClick={toggleMic} active={listening} title="Dictate">{listening ? <MicOff size={14} /> : <Mic size={14} />}</IconBtn>
@@ -406,7 +406,7 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLa
         <IconBtn onClick={pick} title="Attach a photo, PDF or file"><Paperclip size={15} /></IconBtn>
         <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} placeholder={listening ? 'Listening…' : 'Ask Mercedes anything…'}
           style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
-        <IconBtn onClick={cycleMicLang} disabled={listening} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
+        <IconBtn onClick={cycleMicLang} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
           <span className="fg" style={{ fontSize: 12, fontWeight: 800 }}>{MIC_LANGS.find((l) => l.code === micLang)?.label}</span>
         </IconBtn>
         <IconBtn onClick={toggleMic} active={listening} title="Dictate">{listening ? <MicOff size={15} /> : <Mic size={15} />}</IconBtn>
@@ -466,7 +466,6 @@ export function Mercedes() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [listening, setListening] = useState(false);
   const [micLang, setMicLang] = useState('en-AU');
-  const cycleMicLang = () => setMicLang((l) => (l === 'en-AU' ? 'zh-HK' : 'en-AU'));
   const [speakingIdx, setSpeakingIdx] = useState(null);
   const [voiceError, setVoiceError] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -647,27 +646,52 @@ export function Mercedes() {
     } finally { setThinking(false); }
   };
 
-  const toggleMic = async () => {
-    if (listening) {
-      setListening(false);
-      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
-      recognitionRef.current = null;
-      return;
-    }
+  const startRecognition = (lang) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
-    rec.lang = micLang; rec.continuous = true; rec.interimResults = false;
+    rec.lang = lang; rec.continuous = true; rec.interimResults = false;
     rec.onstart = () => setListening(true);
     rec.onresult = (e) => {
       let t = '';
       for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
       if (t.trim()) setDraft((d) => (d + ' ' + t).trim());
     };
-    rec.onerror = () => { setListening(false); recognitionRef.current = null; };
-    rec.onend = () => { setListening(false); recognitionRef.current = null; };
+    // Guard against a just-replaced recognizer's async callbacks clobbering
+    // the one that superseded it (see cycleMicLang's live-switch restart).
+    rec.onerror = () => { if (recognitionRef.current === rec) { setListening(false); recognitionRef.current = null; } };
+    rec.onend = () => { if (recognitionRef.current === rec) { setListening(false); recognitionRef.current = null; } };
     recognitionRef.current = rec;
     try { rec.start(); } catch { /* ignore */ }
+  };
+
+  const toggleMic = async () => {
+    if (listening) {
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+      setListening(false);
+      return;
+    }
+    startRecognition(micLang);
+  };
+
+  // Switching language while the mic is live used to be a dead click (the
+  // button was disabled during listening) — the most natural way to hit it
+  // is start dictating, hear it come out wrong, then reach for the toggle.
+  // So: mid-listen, stop the current recognizer and restart immediately in
+  // the new language instead of requiring stop-switch-start.
+  const cycleMicLang = () => {
+    const next = micLang === 'en-AU' ? 'zh-HK' : 'en-AU';
+    setMicLang(next);
+    const rec = recognitionRef.current;
+    if (listening && rec) {
+      // Starting a fresh recognizer before Chrome has actually released the
+      // old one throws InvalidStateError, so chain the restart off the old
+      // one's own onend rather than firing both at once.
+      rec.onend = () => startRecognition(next);
+      rec.onerror = () => startRecognition(next);
+      try { rec.stop(); } catch { startRecognition(next); }
+    }
   };
 
   return (
