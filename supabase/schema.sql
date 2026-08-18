@@ -649,3 +649,30 @@ create policy "member delete own mercedes_conversations" on mercedes_conversatio
   using (created_by = auth.uid());
 
 create index if not exists invoices_migrated_idx on invoices (org_id, migrated);
+
+-- ============================================================================
+-- Phase 10: Mercedes' own memory
+-- Ported from platform-os-ver-2.5's mercedes-memory.sql. There she runs
+-- single-tenant so the table carries no org_id at all — every row is just
+-- "the shop's memory." Slim is multi-tenant, so unlike that version every
+-- row here is scoped to org_id and every read/write in tools.ts filters on
+-- it, the same pattern as jobs/invoices/customers — one tenant's memory can
+-- never leak into another's.
+--
+-- Same as voice_agent_events/xero_tokens: RLS on, zero policies. Only the
+-- mercedesChat edge function touches this (service-role client, bypasses
+-- RLS regardless), no anon-facing UI reads it directly.
+-- ============================================================================
+
+create table if not exists mercedes_memory (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations(id),
+  category text,
+  content text not null,
+  created_date timestamptz not null default now()
+);
+
+create index if not exists mercedes_memory_org_idx on mercedes_memory (org_id, created_date desc);
+create index if not exists mercedes_memory_category_idx on mercedes_memory (org_id, category);
+
+alter table mercedes_memory enable row level security;

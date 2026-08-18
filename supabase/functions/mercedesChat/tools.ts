@@ -119,6 +119,32 @@ export const TOOLS = [
       required: ['customer', 'amount'],
     },
   },
+  {
+    name: 'remember',
+    description:
+      "Save something worth keeping past this conversation: a decision the owner made, a standing preference, a durable fact about a client, supplier, or ongoing situation. Use it whenever you learn something that should still be true next time, not for one-off details already captured elsewhere (jobs, invoices, customers) — this is for things nothing else stores.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        content: { type: 'string', description: 'The fact or memory, written plainly and completely enough to make sense on its own weeks from now.' },
+        category: { type: 'string', description: "Optional freeform grouping, e.g. 'client', 'company', 'preference', 'decision', 'todo'." },
+      },
+      required: ['content'],
+    },
+  },
+  {
+    name: 'recall',
+    description:
+      "Search what you've remembered before. Use this before saying you don't know something about this business, its people, or past decisions — check first, then answer.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Free text to search saved memories for. Omit to get the most recent ones.' },
+        category: { type: 'string', description: 'Optional exact category filter.' },
+        limit: { type: 'integer', description: 'Max rows, default 20.' },
+      },
+    },
+  },
 ];
 
 const ACTIVE_EXCLUDED = ['Completed'];
@@ -414,6 +440,36 @@ export async function runTool(
       // through Mercedes lands in Platform OS only until that's wired server-side.
       note: 'Raised in Platform OS. Not marked paid — payment is handled by a person.',
     };
+  }
+
+  if (name === 'remember') {
+    const content = String(input?.content || '').trim();
+    if (!content) return { error: 'content is required' };
+    const category = input?.category ? String(input.category).trim() : null;
+    const { data, error } = await svc
+      .from('mercedes_memory')
+      .insert({ org_id: orgId, content, category })
+      .select('id')
+      .single();
+    if (error) return { error: error.message };
+    return { saved: true, id: data.id };
+  }
+
+  if (name === 'recall') {
+    let q = svc
+      .from('mercedes_memory')
+      .select('id, category, content, created_date')
+      .eq('org_id', orgId)
+      .order('created_date', { ascending: false })
+      .limit(Math.min(Number(input?.limit) || 20, 100));
+    if (input?.category) q = q.eq('category', String(input.category));
+    if (input?.query) {
+      const safe = String(input.query).replace(/[%,()]/g, ' ');
+      q = q.ilike('content', `%${safe}%`);
+    }
+    const { data, error } = await q;
+    if (error) return { error: error.message };
+    return { count: data?.length || 0, memories: data || [] };
   }
 
   return { error: `Unknown tool: ${name}` };
