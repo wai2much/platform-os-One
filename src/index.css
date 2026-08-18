@@ -131,6 +131,12 @@
   transform: translateY(-1px);
 }
 
+/* Mercedes HISTORY rows — delete only appears on hover, same declutter as
+   the Claude Code chat-list reference this was modelled on. */
+.mercedes-history-row:hover { background: rgba(198, 113, 57, .06); }
+.mercedes-history-delete { opacity: 0; transition: opacity .12s ease; }
+.mercedes-history-row:hover .mercedes-history-delete { opacity: 1; }
+
 /* Job-card print: only the two pages print, chrome hidden, one page each. */
 .jobcard-page[data-active="false"] { display: none; }
 @media print {
