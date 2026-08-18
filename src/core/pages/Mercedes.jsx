@@ -351,12 +351,18 @@ function Bubble({ m, thinking, onSpeak, speaking }) {
   );
 }
 
-// Dictation language for the mic. zh-HK is the standard code for spoken
-// Cantonese (as opposed to zh-CN/zh-TW, which are Mandarin) — Chrome's Web
-// Speech API recognises it directly, no separate "language pack" involved.
+// Dictation language for the mic.
+//
+// Cantonese is 'yue-Hant-HK' here, NOT the 'zh-HK' you'd expect from BCP-47
+// in general. Chrome's SpeechRecognition doesn't accept arbitrary language
+// tags — it matches against Google's own speech-service list, where the
+// Chinese entries are cmn-Hans-CN / cmn-Hans-HK / cmn-Hant-TW (Mandarin) and
+// yue-Hant-HK (Cantonese). 'zh-HK' isn't on that list, so Chrome silently
+// falls back to its default locale and transcribes spoken Cantonese as
+// English — which looks exactly like the mic being broken.
 const MIC_LANGS = [
   { code: 'en-AU', label: 'EN' },
-  { code: 'zh-HK', label: '粵' },
+  { code: 'yue-Hant-HK', label: '粵' },
 ];
 
 function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLang, cycleMicLang, variant, attach }) {
@@ -648,10 +654,10 @@ export function Mercedes() {
 
   const startRecognition = (lang) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) { setVoiceError('this browser has no speech recognition. Chrome works.'); return; }
     const rec = new SR();
     rec.lang = lang; rec.continuous = true; rec.interimResults = false;
-    rec.onstart = () => setListening(true);
+    rec.onstart = () => { setVoiceError(''); setListening(true); };
     rec.onresult = (e) => {
       let t = '';
       for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
@@ -659,7 +665,20 @@ export function Mercedes() {
     };
     // Guard against a just-replaced recognizer's async callbacks clobbering
     // the one that superseded it (see cycleMicLang's live-switch restart).
-    rec.onerror = () => { if (recognitionRef.current === rec) { setListening(false); recognitionRef.current = null; } };
+    //
+    // Surface the failure rather than dying quietly: a wrong lang tag makes
+    // Chrome fail with 'language-not-supported' and otherwise look identical
+    // to a working mic that just isn't hearing you.
+    rec.onerror = (e) => {
+      if (recognitionRef.current !== rec) return;
+      const kind = e?.error;
+      if (kind === 'language-not-supported') setVoiceError(`${lang} isn't supported by this browser's speech engine.`);
+      else if (kind === 'not-allowed' || kind === 'service-not-allowed') setVoiceError('microphone permission is blocked for this site.');
+      else if (kind === 'no-speech') setVoiceError('did not catch anything. Try again.');
+      else if (kind && kind !== 'aborted') setVoiceError(kind);
+      setListening(false);
+      recognitionRef.current = null;
+    };
     rec.onend = () => { if (recognitionRef.current === rec) { setListening(false); recognitionRef.current = null; } };
     recognitionRef.current = rec;
     try { rec.start(); } catch { /* ignore */ }
@@ -681,7 +700,10 @@ export function Mercedes() {
   // So: mid-listen, stop the current recognizer and restart immediately in
   // the new language instead of requiring stop-switch-start.
   const cycleMicLang = () => {
-    const next = micLang === 'en-AU' ? 'zh-HK' : 'en-AU';
+    // Derived from MIC_LANGS rather than hardcoded, so the codes only ever
+    // live in one place.
+    const i = MIC_LANGS.findIndex((l) => l.code === micLang);
+    const next = MIC_LANGS[(i + 1) % MIC_LANGS.length].code;
     setMicLang(next);
     const rec = recognitionRef.current;
     if (listening && rec) {
