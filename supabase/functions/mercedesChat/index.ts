@@ -4,6 +4,7 @@ import { buildMercedesSystem, toAnthropicMessages } from './persona.ts';
 import { TOOLS, runTool } from './tools.ts';
 import { runAgent } from './agent.ts';
 import { identityBlock, orgContextOf } from './identity.ts';
+import { SPAWN_TOOL, runWorker, WORKER_TOOL_NAMES, MAX_WORKERS_PER_MESSAGE } from './subagent.ts';
 
 // ============================================================================
 // Mercedes — the Hyper Agent's brain. Claude, with eyes and hands scoped to
@@ -15,10 +16,12 @@ import { identityBlock, orgContextOf } from './identity.ts';
 // identity.ts are rewritten against Slim's multi-tenant schema — see each
 // file's header for what changed and why.
 //
-// v1 scope: no spawn_agent/sub-agent delegation (v2.5 has it) — a
-// straightforward follow-up once the core loop is proven live. Attachments
-// ARE supported: a user turn may carry `files`, which persona.ts turns into
-// image/document/text blocks.
+// She now has workers (subagent.ts): spawn_agent hands a self-contained
+// research task to a read-only Sonnet worker with the caller's org_id and
+// role baked in, so delegation can never leak across tenants or let a
+// staff-login worker see owner-only data. Attachments ARE supported: a user
+// turn may carry `files`, which persona.ts turns into image/document/text
+// blocks.
 // Contract: POST { messages: [{ from: 'user'|'bot', text, files? }] } -> { content }.
 // Secret: ANTHROPIC_API_KEY.
 // ============================================================================
@@ -61,15 +64,42 @@ Deno.serve(async (req) => {
     const ctx = await orgContextOf(user, svc);
     if (!ctx) return json({ error: 'No organization found for this account.' }, 403);
 
+    const workerTools = TOOLS.filter((t) => WORKER_TOOL_NAMES.includes(t.name));
+    let workersSpawned = 0;
+
+    // Everything except spawn_agent is a plain tool call; spawn_agent starts a
+    // worker that gets read-only tools, no spawn of its own, and inherits this
+    // caller's org_id and role — so delegation can never recurse, cross a
+    // tenant boundary, or hand a staff login owner-level data.
+    const dispatch = async (name: string, input: Record<string, any>): Promise<unknown> => {
+      if (name !== 'spawn_agent') return runTool(name, input, svc, ctx.orgId, ctx.role);
+
+      if (workersSpawned >= MAX_WORKERS_PER_MESSAGE) {
+        return {
+          error: `Worker limit reached (${MAX_WORKERS_PER_MESSAGE} per message). Do the rest yourself or ask the owner to narrow it.`,
+        };
+      }
+      workersSpawned++;
+
+      return runWorker({
+        apiKey,
+        bizName: ctx.orgName,
+        task: input?.task,
+        label: input?.label,
+        tools: workerTools,
+        runTool: (n, i) => runTool(n, i, svc, ctx.orgId, ctx.role),
+      });
+    };
+
     const result = await runAgent({
       apiKey,
       model: MODEL,
       system: `${identityBlock(user, ctx)}\n\n${buildMercedesSystem({ name: ctx.orgName, vertical: ctx.vertical })}`,
-      tools: TOOLS,
+      tools: [...TOOLS, SPAWN_TOOL],
       messages,
       maxHops: MAX_HOPS,
       maxTokens: MAX_TOKENS,
-      runTool: (name, input) => runTool(name, input, svc, ctx.orgId, ctx.role),
+      runTool: dispatch,
     });
 
     if (result.stopped === 'max_hops') {
