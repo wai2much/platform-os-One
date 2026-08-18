@@ -23,6 +23,11 @@ export default async function handler(req, res) {
   }
   const voiceId = req.body?.voiceId || process.env.MERCEDES_VOICE_ID || DEFAULT_VOICE_ID;
   const model = req.body?.model || 'speech-02-turbo'; // -turbo for real-time, -hd for quality-first
+  // Which language to read the text as. Matters for Chinese: the written form
+  // is shared between Cantonese and Mandarin, and MiniMax reads it as Mandarin
+  // unless told 'Chinese,Yue' (their exact value for Cantonese, comma included).
+  // 'auto' lets it detect, which is right for everything else.
+  const languageBoost = req.body?.languageBoost || 'auto';
 
   try {
     const r = await fetch(`${MINIMAX_ENDPOINT}?GroupId=${encodeURIComponent(groupId)}`, {
@@ -32,6 +37,7 @@ export default async function handler(req, res) {
         model,
         text,
         stream: false,
+        language_boost: languageBoost,
         voice_setting: { voice_id: voiceId, speed: 1.0, vol: 1.0, pitch: 0 },
         audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 },
       }),
