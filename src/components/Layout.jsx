@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/core/store';
 import { getThemePreference, setThemePreference, getResolvedTheme, watchSystemTheme } from '@/core/theme';
+import { BrandLockup } from '@/components/Brand';
 
 function NavIcon({ icon, color }) {
   return (
@@ -82,8 +83,10 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
       {/* Sidebar */}
       <aside style={{ width: 224, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '0 14px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 6px 12px' }}>
-          <img src="/hos-mark-black.png" alt="Haus" style={{ width: 26, height: 26, objectFit: 'contain' }} />
-          <span className="cap" style={{ fontSize: 19, color: 'var(--text)' }}>Platform OS</span>
+          {/* 24/13 rather than the default ratio: the full lockup is much
+              wider than the old mark and the rail only gives it 184px.
+              Measured at 172px, so it still has room if Figtree falls back. */}
+          <BrandLockup size={24} wordSize={13} />
         </div>
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>

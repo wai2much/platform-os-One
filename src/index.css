@@ -34,6 +34,11 @@
     --text-mute2: #8a857c;
     --border-c: #e0dccf;
 
+    /* The brand mark's square is near-black in both themes so the logo stays
+       one recognisable object. On cream it has plenty of contrast on its own,
+       so no ring is drawn here (see the dark block for why one exists). */
+    --brand-mark-ring: transparent;
+
     /* "Ink" surfaces — the dark cards/buttons that sit ON the cream page
        (Mercedes hero, GST banner, live-call card, primary buttons). In light
        mode they're the brand ink. In dark mode a near-black card would vanish
@@ -73,6 +78,10 @@
     --text-mute: #a89e8e;
     --text-mute2: #877d6f;
     --border-c: #332e28;
+
+    /* A near-black square on a near-black sidebar reads as a hole, so the
+       mark gets a hairline edge here to keep its silhouette. */
+    --brand-mark-ring: rgba(245, 234, 216, 0.22);
 
     --ink: #322c26;
     --ink-text: #f5ead8;
