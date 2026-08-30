@@ -10,3 +10,4 @@ go*.sh
 *.tsv
 *.b64
 import.sql
+lines.sql

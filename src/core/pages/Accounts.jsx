@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { balanceDue } from '@/lib/invoiceMoney';
 import { useStore, fmt, liveInvoices, historicalInvoices } from '@/core/store';
 
 /**
@@ -33,10 +34,12 @@ export function Accounts() {
   const totalIncGst = live.reduce((s, i) => s + i.amount, 0);
   const gstCollected = totalIncGst - totalIncGst / 1.1;
   const revenueExGst = totalIncGst / 1.1;
-  const receivable = live.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
+  // Receivable is what's still owed, not the face value of every unpaid
+  // invoice — a deposit already banked is not a receivable.
+  const receivable = live.reduce((s, i) => s + balanceDue(i), 0);
 
-  const histUnpaid = historical.filter((i) => i.status !== 'Paid');
-  const histUnpaidValue = histUnpaid.reduce((s, i) => s + i.amount, 0);
+  const histUnpaid = historical.filter((i) => balanceDue(i) > 0.005);
+  const histUnpaidValue = histUnpaid.reduce((s, i) => s + balanceDue(i), 0);
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { makePayment, makeRefund, balanceDue, isSettled, round2, paidTotal, refundableTotal, lineTotal } from '@/lib/invoiceMoney';
 
 /**
  * App store — shared data layer for the app. Runs on in-memory sample data by
@@ -50,13 +51,17 @@ const nextNum = (list, prefix, floor) => {
 // is just so the row shape matches on the way in.
 const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
 const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
-const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount });
+const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount, lines: i.lines || [], payments: i.payments || [], order_number: i.orderNumber || '',
+  vehicle: i.vehicle || '', rego: i.rego || '', odometer: i.odometer || '', next_service_km: i.nextServiceKm || '',
+  job_status: i.jobStatus || '', job_status_comment: i.jobStatusComment || '', notes: i.notes || '' });
 // `migrated` marks rows imported from MechanicDesk on 2026-07-30 (see schema
 // Phase 8). Their payment state reflects the old system's bookkeeping, which
 // is known to be unreliable, so live financial figures must exclude them —
 // use the isLive/isHistorical helpers below rather than testing the flag
 // ad hoc, so every screen agrees on what counts.
-const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at, migrated: !!r.migrated });
+const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at, migrated: !!r.migrated, lines: r.lines || [], payments: r.payments || [], orderNumber: r.order_number || '',
+  vehicle: r.vehicle || '', rego: r.rego || '', odometer: r.odometer || '', nextServiceKm: r.next_service_km || '',
+  jobStatus: r.job_status || '', jobStatusComment: r.job_status_comment || '', notes: r.notes || '' });
 
 /** Invoices raised in Platform OS — the only ones safe to report money from. */
 export const liveInvoices = (invoices) => invoices.filter((i) => !i.migrated);
@@ -336,7 +341,10 @@ export function StoreProvider({ orgId, children }) {
     persistJob(savedJob, orgId);
 
     const invId = nextNum(invoices, 'INV-', 1055);
-    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true };
+    // Carry the job's parts and labour onto the invoice. Without this the
+    // invoice stored only a total, so the PDF and the Invoices screen both
+    // showed an amount with no explanation of what it was for.
+    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true, lines, payments: [], vehicle: jobCard.vehicle || '', jobStatus: 'Completed' };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
@@ -350,9 +358,9 @@ export function StoreProvider({ orgId, children }) {
   // Invoices screen: "+ New invoice" — a standalone invoice not linked to a job
   // (e.g. account/fleet billing). GST-inclusive amount, same shape as a
   // job-generated one just without `fromJob`/`job`.
-  const addInvoice = ({ customer, terms, dueBy, amount }) => {
+  const addInvoice = ({ customer, terms, dueBy, amount, orderNumber }) => {
     const invId = nextNum(invoices, 'INV-', 1055);
-    const inv = { id: invId, customer, job: '', terms: terms || 'Due on receipt', dueBy: dueBy || 'Today', status: 'Sent', amount: parseFloat(amount) || 0 };
+    const inv = { id: invId, customer, job: '', terms: terms || 'Due on receipt', dueBy: dueBy || 'Today', status: 'Sent', amount: parseFloat(amount) || 0, lines: [], payments: [], orderNumber: orderNumber || '' };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
@@ -369,6 +377,83 @@ export function StoreProvider({ orgId, children }) {
     persistJob(saved, orgId);
   };
 
+  // The job context Workshop Software carries on every invoice: which car it
+  // was, what the odometer read, where the job got to. A workshop invoice
+  // without a rego and an odometer reading isn't a workshop invoice — it's a
+  // receipt. Free text on purpose: rego formats, "150,000 km", "2 years or
+  // 20,000km" — a workshop types what it means and shouldn't fight a picker.
+  const INVOICE_DETAIL_FIELDS = ['vehicle', 'rego', 'odometer', 'nextServiceKm', 'jobStatus', 'jobStatusComment', 'notes', 'orderNumber'];
+
+  const updateInvoiceDetails = (id, patch) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+    const clean = {};
+    for (const k of INVOICE_DETAIL_FIELDS) {
+      if (patch[k] !== undefined) clean[k] = String(patch[k] ?? '').trim();
+    }
+    const saved = { ...existing, ...clean };
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    return { ok: true, invoice: saved };
+  };
+
+  // Editing what's on an invoice. Workshop Software lets you work the line
+  // grid on the invoice itself, which is how a workshop actually operates — a
+  // part gets added, an hour comes off, the total moves. Slim could only ever
+  // display lines, so this is the missing half.
+  //
+  // The invoice total is recomputed from the lines rather than typed, so the
+  // two can never disagree. Returns { ok } or { ok: false, error } — the one
+  // thing it refuses is pulling the total below money already received, which
+  // is a refund, not an edit, and needs its own paperwork.
+  const updateInvoiceLines = (id, lines) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+
+    const clean = (Array.isArray(lines) ? lines : [])
+      .map((l) => ({
+        code: String(l.code || ''),
+        desc: String(l.desc || '').trim(),
+        qty: Number(l.qty) || 0,
+        price: round2(l.price),
+        discount: Number(l.discount) || 0,
+        taxFree: !!l.taxFree,
+        total: lineTotal(l),
+      }))
+      .filter((l) => l.desc || l.total);
+
+    const amount = round2(clean.reduce((a, l) => a + l.total, 0));
+    const received = paidTotal(existing);
+    if (amount + 0.005 < received) {
+      return { ok: false, error: `Already received ${received.toFixed(2)} on this invoice — refund it before invoicing less.` };
+    }
+
+    const saved = { ...existing, lines: clean, amount };
+    // Status follows the ledger, the same rule as everywhere else: raising the
+    // total on a settled invoice reopens it, lowering it can close it.
+    saved.status = received > 0
+      ? (isSettled(saved) ? 'Paid' : (existing.status === 'Paid' ? 'Sent' : existing.status))
+      : existing.status;
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    return { ok: true, invoice: saved };
+  };
+
+  // Pure: append a payment row and let the ledger decide the status. Kept
+  // separate so "mark as paid" and "take a part payment" are the same code
+  // path with a different amount.
+  const recordPaymentOn = (invoice, entry, meta) => {
+    const payments = [...(invoice.payments || []), makePayment(entry)];
+    const next = { ...invoice, payments };
+    next.status = isSettled(next) ? 'Paid' : invoice.status;
+    if (meta?.paidVia) {
+      next.paidVia = meta.paidVia;
+      next.zellerTransactionUuid = meta.transactionUuid;
+      next.zellerReceiptLink = meta.receiptLink;
+    }
+    return next;
+  };
+
   // Invoices screen: mark an invoice paid. `meta` is optional — the real
   // Zeller Terminal charge (src/lib/zeller.jsx) passes { paidVia: 'zeller',
   // transactionUuid, receiptLink, status } after a live purchase() success.
@@ -378,12 +463,72 @@ export function StoreProvider({ orgId, children }) {
   const markInvoicePaid = (id, meta) => {
     const existing = invoices.find((i) => i.id === id);
     if (!existing) return;
-    const saved = meta
-      ? { ...existing, status: 'Paid', paidVia: meta.paidVia, zellerTransactionUuid: meta.transactionUuid, zellerReceiptLink: meta.receiptLink }
-      : { ...existing, status: 'Paid' };
+    const owed = balanceDue(existing);
+    const saved = recordPaymentOn(existing, {
+      amount: owed > 0 ? owed : Number(existing.amount) || 0,
+      method: meta?.method || (meta?.paidVia === 'zeller' ? 'Card' : 'Cash'),
+      ref: meta?.transactionUuid || '',
+      note: meta?.paidVia === 'zeller' ? 'Zeller Terminal' : '',
+    }, meta);
     setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
     persistInvoice(saved, orgId);
     syncInvoiceToXero(saved, 'paid');
+  };
+
+  // Part payment / deposit / applied credit. Workshop Software's model: money
+  // lands against the invoice as a ledger row, the balance falls out of the
+  // ledger, and the invoice only becomes Paid when the balance reaches zero.
+  // A deposit is simply the first row; an applied account credit is a row with
+  // method 'Credit'. Returns the saved invoice so callers can read the balance.
+  const recordPayment = (id, { amount, method, ref, note, date } = {}, meta) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return null;
+    const owed = balanceDue(existing);
+    const amt = round2(Math.min(Number(amount) || 0, owed > 0 ? owed : Number(amount) || 0));
+    if (amt <= 0) return existing;
+    const saved = recordPaymentOn(existing, { amount: amt, method, ref, note, date }, meta);
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    if (isSettled(saved)) syncInvoiceToXero(saved, 'paid');
+    return saved;
+  };
+
+  // Money handed back. A refund is a negative row in the same ledger, so the
+  // balance and the status follow on their own — an invoice refunded in full
+  // simply becomes open again. Capped at what was actually received, because
+  // you cannot refund money you never took.
+  //
+  // Deliberately not the same as removePayment: that erases a keying mistake,
+  // this records a real movement of money that has to stay on the record.
+  const recordRefund = (id, { amount, method, ref, note, date } = {}) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+    const available = refundableTotal(existing);
+    const amt = round2(Math.min(Math.abs(Number(amount) || 0), available));
+    if (amt <= 0) return { ok: false, error: 'Nothing has been received on this invoice to refund.' };
+
+    const payments = [...(existing.payments || []), makeRefund({ amount: amt, method, ref, note, date })];
+    const saved = { ...existing, payments };
+    saved.status = isSettled(saved) ? 'Paid' : (existing.status === 'Paid' ? 'Sent' : existing.status);
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    return { ok: true, invoice: saved };
+  };
+
+  // Undo a mis-keyed payment. The row leaves the ledger, the balance comes
+  // back, and the status follows it — no separate "unpay" concept needed.
+  const removePayment = (id, paymentId) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return;
+    const payments = (existing.payments || []).filter((p) => p.id !== paymentId);
+    const next = { ...existing, payments };
+    // Status follows the ledger: still settled stays Paid, otherwise it drops
+    // back to Sent rather than sitting on a Paid label it no longer earns.
+    next.status = payments.length > 0 && isSettled({ ...next, status: 'Sent' })
+      ? 'Paid'
+      : (existing.status === 'Paid' ? 'Sent' : existing.status);
+    setInvoices((list) => list.map((i) => (i.id === id ? next : i)));
+    persistInvoice(next, orgId);
   };
 
   // Customer Booking Portal → a real booking, persisted the same way staff
@@ -558,7 +703,7 @@ export function StoreProvider({ orgId, children }) {
       tyreStock, setTyreQty, addTyreLine,
       stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized,
       jobCard, updateJobCard,
-      startJobCard, generateInvoice, saveJobLines, markInvoicePaid,
+      startJobCard, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, recordRefund, removePayment, updateInvoiceLines, updateInvoiceDetails,
       flash, setFlash,
     }}>
       {children}
