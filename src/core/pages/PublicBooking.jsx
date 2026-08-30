@@ -94,7 +94,7 @@ export function PublicBooking() {
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Appointment types</span><span className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New type</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Appointment types</span><span className="fg" title="Appointment types are fixed for now — editing them isn't built yet" style={{ fontSize: 12, fontWeight: 700, background: 'var(--panel-bg)', color: 'var(--text-mute2)', borderRadius: 999, padding: '6px 14px', cursor: 'not-allowed', opacity: .7 }}>+ New type</span></div>
         {APPT_TYPES.map(([name, hours]) => (
           <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-c)' }}>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{name}</span>

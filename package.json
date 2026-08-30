@@ -1,9 +1,9 @@
 {
-  "name": "platform-os-slim",
+  "name": "platform-os-one",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Platform OS (Slim) — a multi-vertical business OS. Clean product build on the Front-of-House design; reuses the v2.5 engine. Workshop is the first vertical.",
+  "description": "Platform OS One — a multi-vertical business OS. Workshop is the first vertical.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
