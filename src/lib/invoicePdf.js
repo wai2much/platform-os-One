@@ -279,7 +279,7 @@ export function generateInvoicePdf(invoice, org) {
   // all the data supports and is only right when every line is taxable. The
   // "Total price includes GST" line is the ATO-permitted wording and stays
   // true either way.
-  const { total, exGst, gst } = money;
+  const { exGst, gst } = money;
 
   const amountRow = (label, value, opts = {}) => {
     doc.setFont('Figtree', opts.strong ? 'bold' : 'normal');
