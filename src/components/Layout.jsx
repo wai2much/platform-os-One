@@ -57,8 +57,48 @@ function useClock() {
   return now;
 }
 
+/**
+ * Global search.
+ *
+ * This box sat on all 24 screens with no value and no onChange — someone types
+ * in it, nothing happens, and from then on they don't trust anything else on
+ * the page. It searches what a workshop actually looks things up by: an
+ * invoice number, a customer, a rego, a job. Picking a result takes you to the
+ * screen that holds it.
+ */
+function useGlobalSearch(term) {
+  const { invoices, jobs, customers, vehicles } = useStore();
+  const q = term.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const hit = (v) => String(v || '').toLowerCase().includes(q);
+  const out = [];
+  for (const i of invoices || []) {
+    if (hit(i.id) || hit(i.customer) || hit(i.rego) || hit(i.orderNumber)) {
+      out.push({ key: 'invoices', label: i.id, sub: [i.customer, i.rego].filter(Boolean).join(' · '), kind: 'Invoice' });
+    }
+  }
+  for (const j of jobs || []) {
+    if (hit(j.id) || hit(j.customer) || hit(j.rego) || hit(j.vehicle)) {
+      out.push({ key: 'jobs', label: j.id, sub: [j.customer, j.rego || j.vehicle].filter(Boolean).join(' · '), kind: 'Job' });
+    }
+  }
+  for (const c of customers || []) {
+    if (hit(c.name) || hit(c.phone) || hit(c.email) || hit(c.vehicle)) {
+      out.push({ key: 'customers', label: c.name, sub: [c.phone, c.vehicle].filter(Boolean).join(' · '), kind: 'Customer' });
+    }
+  }
+  for (const v of vehicles || []) {
+    if (hit(v.rego) || hit(v.model) || hit(v.owner)) {
+      out.push({ key: 'vehicles', label: v.rego || v.model, sub: [v.model, v.owner].filter(Boolean).join(' · '), kind: 'Vehicle' });
+    }
+  }
+  return out.slice(0, 8);
+}
+
 export function Layout({ title, sections, activeKey, onNavigate, user, org, onSignOut, children }) {
   const { startJobCard } = useStore();
+  const [search, setSearch] = useState('');
+  const results = useGlobalSearch(search);
   const name = user?.user_metadata?.full_name || user?.email || 'Signed in';
   const roleLabel = org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Member';
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -147,7 +187,23 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-mute)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)' }}>
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
             </svg>
-            <input type="text" placeholder="Search…" style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search invoices, jobs, customers, rego…"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+            {search.trim().length >= 2 && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--card-bg)', borderRadius: 14, boxShadow: '0 12px 34px rgba(32,30,29,.22)', overflow: 'hidden', zIndex: 200 }}>
+                {results.length === 0 ? (
+                  <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', padding: '12px 14px' }}>Nothing matches &ldquo;{search.trim()}&rdquo;</div>
+                ) : results.map((r, n) => (
+                  <div key={n} onClick={() => { onNavigate(r.key); setSearch(''); }}
+                    style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border-c)' }}>
+                    <span className="fg" style={{ fontSize: 9.5, letterSpacing: '.05em', color: 'var(--text-mute2)', fontWeight: 700, minWidth: 58 }}>{r.kind.toUpperCase()}</span>
+                    <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{r.label}</span>
+                    <span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)', flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.sub}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.15 }}>

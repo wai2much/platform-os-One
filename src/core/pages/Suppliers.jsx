@@ -55,7 +55,9 @@ export function Suppliers() {
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{sp.suburb}</span>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{sp.phone}</span>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{sp.website}</span>
-            <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer', justifySelf: 'end' }}>Call</span>
+            {sp.phone
+              ? <a href={`tel:${String(sp.phone).replace(/\s/g, '')}`} className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer', justifySelf: 'end', textDecoration: 'none' }}>Call</a>
+              : <span className="fg" title="No phone number on this supplier" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mute2)', justifySelf: 'end', cursor: 'not-allowed', opacity: .55 }}>Call</span>}
           </div>
         ))}
       </div>

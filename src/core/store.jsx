@@ -43,6 +43,8 @@ export const blankJobCard = () => ({
   workTypes: {}, workRequested: '',
   // Authorisation
   flags: {}, estimate: '', signedBy: '',
+  // Sign-off, when the car goes back out
+  signOffTech: '', signOffLicence: '', signOffCompleted: '', collectedBy: '',
   // Parts and labour
   parts: Array.from({ length: 8 }, () => ({ qty: '', desc: '', partNo: '', unit: '', productId: null })),
   labour: '', sundries: '',

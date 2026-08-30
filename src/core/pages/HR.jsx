@@ -146,7 +146,7 @@ export function HR() {
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>${p.rate}/h</span>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>${gross[i].toLocaleString()}</span>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)' }}>${(gross[i] * 0.115).toFixed(0)}</span>
-            <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Payslip</span>
+            <span className="fg" title="Payslips need a payroll provider connected — not set up yet" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mute2)', cursor: 'not-allowed', opacity: .55 }}>Payslip</span>
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12, marginTop: 4, borderTop: '1px solid var(--border-c)' }}><span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 700 }}>Total gross this run</span><span className="cap" style={{ fontSize: 17, color: 'var(--text)' }}>${totalGross.toLocaleString()}</span></div>

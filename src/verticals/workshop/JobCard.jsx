@@ -228,17 +228,22 @@ function BackPage() {
       {/* Sign-off footer */}
       <Card>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-          {[['TECHNICIAN / FITTER'], ['LICENCE / TESTER NO.'], ['WORK COMPLETED — DATE / TIME']].map(([lbl]) => (
-            <div key={lbl}>
+          {/* These were unbound — three boxes that looked like a record of who
+              signed the car off and held nothing. On a safety inspection that
+              is the part that actually matters. */}
+          {[['TECHNICIAN / FITTER', 'signOffTech'], ['LICENCE / TESTER NO.', 'signOffLicence'], ['WORK COMPLETED — DATE / TIME', 'signOffCompleted']].map(([lbl, key]) => (
+            <div key={key}>
               <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 6 }}>{lbl}</div>
-              <input style={inp} />
+              <input value={jobCard[key] ?? ''} onChange={(e) => updateJobCard({ [key]: e.target.value })} style={inp} />
             </div>
           ))}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginTop: 16, alignItems: 'end' }}>
           <div>
-            <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 6 }}>CUSTOMER SIGNATURE ON COLLECTION</div>
-            <div style={{ height: 44, borderRadius: 12, border: `1px solid ${LINE}`, background: '#fffdf8' }} />
+            <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 6 }}>COLLECTED BY (NAME)</div>
+            {/* Was an empty box that captured nothing while looking like a
+                signature had been taken. A typed name is a real record. */}
+            <input value={jobCard.collectedBy ?? ''} onChange={(e) => updateJobCard({ collectedBy: e.target.value })} placeholder="Who picked the vehicle up" style={{ ...inp, height: 44 }} />
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 12 }}><CheckSquare on={flags.keys} onClick={() => flag('keys')} /><span className="fg" style={{ fontSize: 12.5, color: INK }}>Keys returned / vehicle out</span></label>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useStore } from '@/core/store';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/core/auth';
 
@@ -63,6 +64,7 @@ const BLANK_PROFILE = { business_name: '', trading_as: '', abn: '', address: '',
 const BLANK_BANK = { bank_name: '', bank_bsb: '', bank_account: '' };
 
 export function Settings() {
+  const { setActive } = useStore();
   const { org, user, refreshOrg, signOut } = useAuth();
 
   const [profile, setProfile] = useState(BLANK_PROFILE);
@@ -241,7 +243,7 @@ export function Settings() {
       </Card>
 
       <Card title="Account">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{user?.email || 'Signed in'} · {org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Owner'}</span><span className="fg" style={{ fontSize: 12, fontWeight: 600, color: '#c67139', cursor: 'pointer' }}>Manage team</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{user?.email || 'Signed in'} · {org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Owner'}</span><span onClick={() => setActive('team')} className="fg" style={{ fontSize: 12, fontWeight: 600, color: '#c67139', cursor: 'pointer' }}>Manage team</span></div>
         <span onClick={signOut} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Sign out</span>
       </Card>
     </div>

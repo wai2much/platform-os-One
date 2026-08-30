@@ -49,7 +49,7 @@ export function Reports() {
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}><span className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Export report →</span></div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}><span onClick={() => globalThis.print()} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Print / Save as PDF →</span></div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
         {kpi.map((k) => (

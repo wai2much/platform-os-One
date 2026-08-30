@@ -37,7 +37,7 @@ export function Statements() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{rows.length} accounts with a balance</span>
         <span style={{ flex: 1 }} />
-        <span className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>Send all statements</span>
+        <span className="fg" title="Emailing statements needs a mail provider connected — not set up yet. Use View, then Print / Save as PDF." style={{ fontSize: 12, fontWeight: 700, background: 'var(--panel-bg)', color: 'var(--text-mute2)', borderRadius: 999, padding: '8px 18px', cursor: 'not-allowed', opacity: .7 }}>Send all statements</span>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
@@ -50,7 +50,7 @@ export function Statements() {
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>{fmt(r.balance)}</span>
             <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{r.terms}</span>
             <span onClick={() => setViewing(r)} className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#3c3936', cursor: 'pointer', justifySelf: 'end' }}>View</span>
-            <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#c67139', cursor: 'pointer', justifySelf: 'end' }}>Send</span>
+            <span className="fg" title="Emailing needs a mail provider connected — not set up yet. Use View, then Print / Save as PDF." style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mute2)', cursor: 'not-allowed', justifySelf: 'end', opacity: .55 }}>Send</span>
           </div>
         ))}
         {!rows.length && <div className="fg" style={{ padding: 20, fontSize: 12.5, color: 'var(--text-mute)', textAlign: 'center' }}>No outstanding balances</div>}
