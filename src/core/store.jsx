@@ -295,7 +295,29 @@ export function StoreProvider({ orgId, children }) {
       if (tyreErr) console.error('Supabase: failed to load tyre stock', tyreErr);
       if (stErr) console.error('Supabase: failed to load stock take items', stErr);
 
-      if (!jobsErr && jobRows) setJobs(jobRows.map(jobFromRow));
+      if (!jobsErr && jobRows) {
+        const loaded = jobRows.map(jobFromRow);
+        setJobs(loaded);
+        // Reopen the job card that was being worked on. Without this the card
+        // saved correctly but came back blank after a refresh, which reads as
+        // "it didn't save" — and typing into that blank card then created
+        // *another* job, which is how the Jobs list fills up with empties.
+        // Rows come back newest first, so the first unfinished job is the one
+        // someone was most recently on.
+        const resume = loaded.find((j) => j.status !== 'Completed');
+        if (resume) {
+          setActiveJob(resume.id);
+          setJobCard({
+            ...blankJobCard(),
+            ...(resume.card || {}),
+            customer: resume.card?.customer || resume.customer || '',
+            vehicle: resume.card?.vehicle || resume.vehicle || '',
+            rego: resume.card?.rego || resume.rego || '',
+            odo: resume.card?.odo || resume.odometer || '',
+            jobNo: resume.card?.jobNo || resume.id,
+          });
+        }
+      }
       if (!invErr && invRows) setInvoices(invRows.map(invoiceFromRow));
       if (!bookErr && bookRows) setBookings(bookRows.map(bookingFromRow));
       if (!custErr && custRows) setCustomers(custRows.map(customerFromRow));
@@ -324,6 +346,12 @@ export function StoreProvider({ orgId, children }) {
   // one, so a card can never be typed into a void.
   const jobCardSave = useRef({ timer: null, card: null, jobId: null });
 
+  // activeJobId, readable synchronously. Reading the state variable inside
+  // updateJobCard meant two keystrokes in the same tick both saw null and both
+  // created a job — which is how an empty Jobs list fills up with blanks.
+  const activeJobIdRef = useRef(null);
+  const setActiveJob = (id) => { activeJobIdRef.current = id; setActiveJobId(id); };
+
   // Read the current jobs without depending on them, so the debounced flush
   // always sees the latest list. Persisting inside a setJobs updater would run
   // the write twice under StrictMode; this keeps the side effect outside.
@@ -334,8 +362,11 @@ export function StoreProvider({ orgId, children }) {
     const { card, jobId } = jobCardSave.current;
     jobCardSave.current.timer = null;
     if (!card || !jobId) return;
-    const existing = jobsRef.current.find((j) => j.id === jobId);
-    if (!existing) return;
+    // Fall back to a bare row rather than returning: the job may not be in the
+    // list yet on the very first keystroke, and dropping the write there is
+    // exactly the silent data loss this whole change exists to remove.
+    const existing = jobsRef.current.find((j) => j.id === jobId)
+      || { id: jobId, customer: '', vehicle: '', tech: '', status: 'In progress', total: 0, lines: [] };
     const saved = {
       ...existing,
       customer: card.customer || existing.customer,
@@ -350,12 +381,12 @@ export function StoreProvider({ orgId, children }) {
   };
 
   const updateJobCard = (patch) => {
-    let jobId = activeJobId;
+    let jobId = activeJobIdRef.current;
     if (!jobId) {
       jobId = nextNum(jobs, 'J-', 424);
       const job = { id: jobId, customer: '', vehicle: '', tech: '', status: 'In progress', total: 0, lines: [], rego: '', odometer: '', notes: '', card: null };
       setJobs((list) => [job, ...list]);
-      setActiveJobId(jobId);
+      setActiveJob(jobId);
     }
     setJobCard((jc) => {
       const next = { ...jc, ...patch };
@@ -367,12 +398,33 @@ export function StoreProvider({ orgId, children }) {
     });
   };
 
+  // Remove a job outright. Until now the only way to get rid of one was SQL,
+  // so a mis-started job card stayed on the list forever. Clears the active
+  // card too if that is the job being deleted, otherwise the next keystroke
+  // would resurrect it.
+  const deleteJob = async (id) => {
+    setJobs((list) => list.filter((j) => j.id !== id));
+    if (activeJobIdRef.current === id) {
+      if (jobCardSave.current.timer) clearTimeout(jobCardSave.current.timer);
+      jobCardSave.current = { timer: null, card: null, jobId: null };
+      setActiveJob(null);
+      setJobCard(blankJobCard());
+    }
+    if (!isSupabaseConfigured || !orgId) return { ok: true };
+    const { error } = await supabase.from('jobs').delete().eq('id', id).eq('org_id', orgId);
+    if (error) {
+      console.error('Supabase: failed to delete job', id, error);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  };
+
   // Open an existing job's card. Hydrates from what was saved rather than
   // handing back a blank form, which is what made the card feel disposable.
   const openJobCard = (id) => {
     const job = jobs.find((j) => j.id === id);
     if (!job) return;
-    setActiveJobId(id);
+    setActiveJob(id);
     setJobCard({
       ...blankJobCard(),
       ...(job.card || {}),
@@ -404,7 +456,7 @@ export function StoreProvider({ orgId, children }) {
     const job = { id, customer: prefill.customer || '', vehicle: prefill.vehicle || '', tech: '', status: 'In progress', total: 0, lines: [], rego: prefill.rego || '', odometer: '', notes: '', card };
     setJobs((list) => [job, ...list]);
     persistJob(job, orgId);
-    setActiveJobId(id);
+    setActiveJob(id);
     setJobCard(card);
     setActive('inspections');
   };
@@ -455,7 +507,7 @@ export function StoreProvider({ orgId, children }) {
     syncInvoiceToXero(inv, 'created');
     setFlash(inv.id);
     setJobCard(blankJobCard());
-    setActiveJobId(null);
+    setActiveJob(null);
     setActive('invoices');
     return inv;
   };
@@ -808,7 +860,7 @@ export function StoreProvider({ orgId, children }) {
       tyreStock, setTyreQty, addTyreLine,
       stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized,
       jobCard, updateJobCard,
-      startJobCard, openJobCard, updateJob, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, recordRefund, removePayment, updateInvoiceLines, updateInvoiceDetails,
+      startJobCard, openJobCard, updateJob, deleteJob, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, recordRefund, removePayment, updateInvoiceLines, updateInvoiceDetails,
       flash, setFlash,
     }}>
       {children}

@@ -24,13 +24,26 @@ function StatusPill({ status, style }) {
   return <span className="fg" style={{ fontSize: 11, color: s.color, background: s.bg, borderRadius: 999, padding: '3px 11px', fontWeight: 700, ...style }}>{status}</span>;
 }
 
+// A job nobody ever filled in: no customer, no car, no lines, no money. These
+// are what a mis-started job card leaves behind, and there was no way to get
+// rid of one without SQL.
+const isBlank = (j) =>
+  !String(j.customer || '').trim() &&
+  !String(j.vehicle || '').trim() &&
+  !String(j.rego || '').trim() &&
+  !(j.lines || []).length &&
+  !Number(j.total);
+
 export function Jobs() {
-  const { jobs, team, saveJobLines, startJobCard, openJobCard, updateJob } = useStore();
+  const { jobs, team, saveJobLines, startJobCard, openJobCard, updateJob, deleteJob } = useStore();
   const [openId, setOpenId] = useState(null);
   const [lines, setLines] = useState([]); // editable draft: [desc, qty, price]
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const open = jobs.find((j) => j.id === openId) || null;
   const total = lines.reduce((s, [, qty, price]) => s + (parseFloat(qty) || 0) * (parseFloat(price) || 0), 0);
+  const blanks = jobs.filter(isBlank);
+  const clearBlanks = () => blanks.forEach((j) => deleteJob(j.id));
 
   const openJob = (j) => { setOpenId(j.id); setLines(j.lines.length ? j.lines.map(([d, q, amt]) => [d, q, q ? amt / q : amt]) : []); };
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, j) => (j === i ? (k === 0 ? [v, l[1], l[2]] : k === 1 ? [l[0], v, l[2]] : [l[0], l[1], v]) : l)));
@@ -48,6 +61,11 @@ export function Jobs() {
     <div style={{ padding: '6px 30px 26px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{jobs.length} total</span>
+        {blanks.length > 0 && (
+          <span onClick={clearBlanks} className="fg" style={{ fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>
+            Clear {blanks.length} empty {blanks.length === 1 ? 'job' : 'jobs'}
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         <span onClick={() => startJobCard({})} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New job</span>
       </div>
@@ -121,7 +139,19 @@ export function Jobs() {
               <span className="cap" style={{ fontSize: 19, color: 'var(--text)' }}>{fmt(total)}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 22 }}>
+              {/* Deleting a job is not undoable, so it asks once rather than
+                  sitting one stray click away from the Save button. */}
+              {confirmDelete === open.id ? (
+                <>
+                  <span className="fg" style={{ fontSize: 12, color: '#c67139', fontWeight: 600 }}>Delete this job?</span>
+                  <span onClick={() => { deleteJob(open.id); setConfirmDelete(null); setOpenId(null); }} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '7px 14px', cursor: 'pointer' }}>Yes, delete</span>
+                  <span onClick={() => setConfirmDelete(null)} className="fg" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-soft)', cursor: 'pointer' }}>No</span>
+                </>
+              ) : (
+                <span onClick={() => setConfirmDelete(open.id)} className="fg" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-mute2)', cursor: 'pointer' }}>Delete job</span>
+              )}
+              <span style={{ flex: 1 }} />
               <span className="fg" onClick={() => setOpenId(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
               {/* The full card — inspection, parts, sign-off — is the real
                   workspace; this modal is just the quick view. */}
