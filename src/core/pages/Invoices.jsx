@@ -3,7 +3,7 @@ import { useStore } from '@/core/store';
 import { useAuth } from '@/core/auth';
 import { useTerminal } from '@/lib/zeller';
 import { generateInvoicePdf } from '@/lib/invoicePdf';
-import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals, PAYMENT_METHODS } from '@/lib/invoiceMoney';
+import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals, lineTotal, PAYMENT_METHODS } from '@/lib/invoiceMoney';
 
 /**
  * Invoices — core screen. Faithful to the prototype: table with credit-hold /
@@ -135,19 +135,205 @@ function NewInvoiceModal({ onClose, onCreate }) {
   );
 }
 
+
+
+/**
+ * Vehicle & job panel — the context Workshop Software puts above every invoice.
+ *
+ * Theirs is split across a vehicle card (rego, VIN, make/model) and the invoice
+ * header (Odometer, Next Service Kilometers, Job Status, Job Status Comment,
+ * Order Number). Collapsed into one block here because Slim's invoice is a
+ * single modal, not a full page — but the fields a workshop actually fills are
+ * the same ones, in the same order they'd fill them.
+ *
+ * Everything is free text. Rego formats vary by state, odometers get written as
+ * "150,000 km" or "150000", and next service is "6 months or 10,000km" as often
+ * as it's a number. A picker would fight the person using it.
+ */
+const JOB_STATUSES = ['Booked in', 'In progress', 'Awaiting parts', 'Awaiting approval', 'Ready for pickup', 'Completed'];
+
+function VehicleJobPanel({ invoice, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({});
+
+  const start = () => {
+    setForm({
+      vehicle: invoice.vehicle || '', rego: invoice.rego || '', odometer: invoice.odometer || '',
+      nextServiceKm: invoice.nextServiceKm || '', jobStatus: invoice.jobStatus || '',
+      jobStatusComment: invoice.jobStatusComment || '', orderNumber: invoice.orderNumber || '',
+      notes: invoice.notes || '',
+    });
+    setEditing(true);
+  };
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const shown = [
+    ['Vehicle', invoice.vehicle], ['Rego', invoice.rego], ['Odometer', invoice.odometer],
+    ['Next service', invoice.nextServiceKm], ['Job status', invoice.jobStatus],
+    ['Customer PO', invoice.orderNumber],
+  ].filter(([, v]) => v);
+
+  const cell = { ...inp, padding: '8px 10px', fontSize: 12, borderRadius: 8 };
+
+  if (!editing) {
+    return (
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: shown.length ? 8 : 0 }}>
+          <span className="fg" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700 }}>VEHICLE &amp; JOB</span>
+          <span style={{ flex: 1 }} />
+          <span onClick={start} className="fg" style={{ fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>
+            {shown.length ? 'Edit' : '+ Add vehicle details'}
+          </span>
+        </div>
+        {shown.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 16px' }}>
+            {shown.map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{k}</span>
+                <span className="fg" style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, textAlign: 'right' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {invoice.jobStatusComment && (
+          <div className="fg" style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 8, fontStyle: 'italic' }}>{invoice.jobStatusComment}</div>
+        )}
+        {invoice.notes && (
+          <div style={{ background: 'var(--panel-bg)', borderRadius: 12, padding: '10px 12px', marginTop: 10 }}>
+            <span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)', whiteSpace: 'pre-wrap' }}>{invoice.notes}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div className="fg" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 8 }}>VEHICLE &amp; JOB</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+        <input value={form.vehicle} onChange={set('vehicle')} placeholder="Make / model" style={cell} />
+        <input value={form.rego} onChange={set('rego')} placeholder="Rego" style={cell} />
+        <input value={form.odometer} onChange={set('odometer')} placeholder="Odometer" style={cell} />
+        <input value={form.nextServiceKm} onChange={set('nextServiceKm')} placeholder="Next service" style={cell} />
+        <select value={form.jobStatus} onChange={set('jobStatus')} style={cell}>
+          <option value="">Job status</option>
+          {JOB_STATUSES.map((j) => <option key={j} value={j}>{j}</option>)}
+        </select>
+        <input value={form.orderNumber} onChange={set('orderNumber')} placeholder="Customer PO" style={cell} />
+      </div>
+      <input value={form.jobStatusComment} onChange={set('jobStatusComment')} placeholder="Status comment — what the customer needs to hear" style={{ ...cell, marginTop: 7 }} />
+      <textarea value={form.notes} onChange={set('notes')} rows={3} placeholder="Invoice notes — printed on the invoice" style={{ ...cell, marginTop: 7, resize: 'vertical', fontFamily: 'Figtree, sans-serif' }} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+        <span onClick={() => setEditing(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '8px 16px', cursor: 'pointer' }}>Cancel</span>
+        <span onClick={() => { onSave(form); setEditing(false); }} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>Save details</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Line editor — the working half of Workshop Software's invoice screen.
+ *
+ * Their grid is Product · Description · Hours · Unit Price · Qty · Unit Cost ·
+ * GST · Line Total. This keeps the columns a workshop actually prices with and
+ * drops the ones only their back office uses. Unit price is entered INC GST,
+ * because that is the number quoted over the counter; GST per line is shown,
+ * not typed, so it can never be entered wrong.
+ *
+ * Nothing is written until Save, so a half-finished edit can be walked away
+ * from without touching the invoice.
+ */
+const GRID = '1fr 46px 84px 58px 52px 62px 26px';
+
+function LineEditor({ invoice, onSave, onCancel }) {
+  const [rows, setRows] = useState(() => {
+    const start = invoiceTotals(invoice).items.map((l) => ({
+      code: l.code, desc: l.desc, qty: l.qty || 1, price: l.price, discount: l.discount || 0, taxFree: l.taxFree,
+    }));
+    return start.length ? start : [{ code: '', desc: '', qty: 1, price: 0, discount: 0, taxFree: false }];
+  });
+  const [error, setError] = useState('');
+
+  const set = (n, k) => (e) => {
+    const v = k === 'taxFree' ? !rows[n].taxFree : e.target.value;
+    setRows((r) => r.map((row, i) => (i === n ? { ...row, [k]: v } : row)));
+    setError('');
+  };
+  const addRow = () => setRows((r) => [...r, { code: '', desc: '', qty: 1, price: 0, discount: 0, taxFree: false }]);
+  const dropRow = (n) => setRows((r) => (r.length > 1 ? r.filter((_, i) => i !== n) : r));
+
+  const totals = rows.map((r) => lineTotal(r));
+  const newAmount = totals.reduce((a, t) => a + t, 0);
+  const received = paidTotal(invoice);
+
+  const save = () => {
+    const result = onSave(rows);
+    if (result && result.ok === false) setError(result.error);
+  };
+
+  const cell = { ...inp, padding: '7px 9px', fontSize: 12, borderRadius: 8 };
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 6, paddingBottom: 6 }}>
+        {['ITEM', 'QTY', 'UNIT INC', 'DISC %', 'GST', 'TOTAL', ''].map((h, i) => (
+          <span key={h + i} className="fg" style={{ fontSize: 9, letterSpacing: '.05em', color: 'var(--text-mute2)', fontWeight: 700, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>
+        ))}
+      </div>
+      {rows.map((r, n) => {
+        const t = totals[n];
+        return (
+          <div key={n} style={{ display: 'grid', gridTemplateColumns: GRID, gap: 6, marginBottom: 6, alignItems: 'center' }}>
+            <input value={r.desc} onChange={set(n, 'desc')} placeholder="Description" style={cell} />
+            <input value={r.qty} onChange={set(n, 'qty')} inputMode="decimal" style={{ ...cell, textAlign: 'right' }} />
+            <input value={r.price} onChange={set(n, 'price')} inputMode="decimal" style={{ ...cell, textAlign: 'right' }} />
+            <input value={r.discount} onChange={set(n, 'discount')} inputMode="decimal" style={{ ...cell, textAlign: 'right' }} />
+            {/* Tap the GST cell to make the line tax free — a rego transfer or
+                a government charge carries no GST and must not be taxed. */}
+            <span onClick={set(n, 'taxFree')} className="fg" title="Tap to toggle tax free"
+              style={{ fontSize: 11, fontWeight: 700, textAlign: 'right', cursor: 'pointer', color: r.taxFree ? 'var(--text-mute2)' : 'var(--text-soft)' }}>
+              {r.taxFree ? 'FREE' : fmt(t - t / 1.1).replace('$', '')}
+            </span>
+            <span className="fg" style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: 'var(--text)' }}>{fmt(t)}</span>
+            <span onClick={() => dropRow(n)} className="fg" style={{ fontSize: 15, color: 'var(--text-mute2)', cursor: 'pointer', textAlign: 'center' }}>&times;</span>
+          </div>
+        );
+      })}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+        <span onClick={addRow} className="fg" style={{ fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>+ Add line</span>
+        <span style={{ flex: 1 }} />
+        <span className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>New total</span>
+        <span className="cap" style={{ fontSize: 20, color: 'var(--text)' }}>{fmt(newAmount)}</span>
+      </div>
+      {received > 0 && (
+        <div className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', marginTop: 6, textAlign: 'right' }}>
+          {fmt(received)} already received &middot; balance would be {fmt(Math.max(0, newAmount - received))}
+        </div>
+      )}
+      {error && <div className="fg" style={{ fontSize: 11.5, color: '#c67139', marginTop: 8 }}>{error}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+        <span onClick={onCancel} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '8px 16px', cursor: 'pointer' }}>Cancel</span>
+        <span onClick={save} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>Save lines</span>
+      </div>
+    </div>
+  );
+}
+
 export function Invoices() {
-  const { invoices, flash, recordPayment, addInvoice } = useStore();
+  const { invoices, flash, recordPayment, updateInvoiceLines, updateInvoiceDetails, addInvoice } = useStore();
   const { org } = useAuth();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
   const [creating, setCreating] = useState(false);
   const [notifyNote, setNotifyNote] = useState('');
   const [payAmount, setPayAmount] = useState('');
+  const [editingLines, setEditingLines] = useState(false);
 
   const open = invoices.find((i) => i.id === openId) || null;
   const due = open ? balanceDue(open) : 0;
   const received = open ? paidTotal(open) : 0;
   const money = open ? invoiceTotals(open) : { items: [], exact: true, exGst: 0, gst: 0, total: 0 };
+  const isSettledInvoice = !!open && due <= 0.005;
   // Receivables, not a count of unpaid invoices: an invoice with a deposit
   // against it is only outstanding for what's still owed on it.
   const outstanding = invoices.reduce((s, i) => s + balanceDue(i), 0);
@@ -157,6 +343,7 @@ export function Invoices() {
     setMethod('Card');
     setNotifyNote('');
     setPayAmount('');
+    setEditingLines(false);
     setOpenId(inv.id);
   };
 
@@ -233,10 +420,24 @@ export function Invoices() {
             </div>
 
             <div style={{ padding: '22px 30px 28px' }}>
+              {!editingLines && <VehicleJobPanel invoice={open} onSave={(patch) => updateInvoiceDetails(openId, patch)} />}
+
               {/* What the money was actually for. Invoices raised from a job
                   card carry the parts and labour; imported ones carry whatever
                   line detail came across with them. Older invoices have none,
                   so this section simply doesn't render for them. */}
+              {editingLines ? (
+                <LineEditor
+                  invoice={open}
+                  onCancel={() => setEditingLines(false)}
+                  onSave={(rows) => {
+                    const result = updateInvoiceLines(openId, rows);
+                    if (result.ok) setEditingLines(false);
+                    return result;
+                  }}
+                />
+              ) : (
+                <>
               {money.items.length > 0 && (
                 <div style={{ marginBottom: 18 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 42px 74px 66px 78px', gap: 8, paddingBottom: 6, borderBottom: '1px solid var(--border-c)' }}>
@@ -261,6 +462,18 @@ export function Invoices() {
                     </div>
                   )}
                 </div>
+              )}
+              {/* Work the invoice, don't just look at it. Settled invoices stay
+                  locked — changing what a customer has already paid for is a
+                  credit note, not an edit. */}
+              {!isSettledInvoice && (
+                <div style={{ marginBottom: 18 }}>
+                  <span onClick={() => setEditingLines(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>
+                    {money.items.length > 0 ? 'Edit lines' : '+ Add line items'}
+                  </span>
+                </div>
+              )}
+                </>
               )}
 
               {/* GST breakdown */}

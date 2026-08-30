@@ -169,8 +169,22 @@ export function generateInvoicePdf(invoice, org) {
   doc.setTextColor(...SUMI);
   doc.text(String(invoice.customer || ''), left, y);
 
+  // The vehicle, printed directly under the customer. A workshop invoice
+  // without the car on it is a receipt — this is the line the customer scans
+  // for first, and the line a fleet manager files by.
+  const vehicleLine = [invoice.vehicle, invoice.rego].filter(Boolean).join('  ·  ');
+  if (vehicleLine) {
+    doc.setFont('Figtree', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    doc.text(vehicleLine, left, y + 16);
+  }
+
   const meta = [
     invoice.job ? ['Job', invoice.job] : null,
+    invoice.orderNumber ? ['Your order', invoice.orderNumber] : null,
+    invoice.odometer ? ['Odometer', invoice.odometer] : null,
+    invoice.nextServiceKm ? ['Next service', invoice.nextServiceKm] : null,
     ['Terms', invoice.terms || 'Due on receipt'],
     invoice.dueBy ? ['Due', invoice.dueBy] : null,
   ].filter(Boolean);
@@ -195,11 +209,12 @@ export function generateInvoicePdf(invoice, org) {
   doc.setFontSize(8);
   const pillW = doc.getTextWidth(status.toUpperCase()) + 8 * 2 + 6;
   doc.setFillColor(...s.bg);
-  doc.roundedRect(left, y + 10, pillW, 16, 8, 8, 'F');
+  const pillY = vehicleLine ? y + 26 : y + 10;
+  doc.roundedRect(left, pillY, pillW, 16, 8, 8, 'F');
   doc.setTextColor(...s.fg);
-  tracked(doc, status.toUpperCase(), left + 11, y + 21, 1);
+  tracked(doc, status.toUpperCase(), left + 11, pillY + 11, 1);
 
-  y = Math.max(my, y + 34) + 30;
+  y = Math.max(my, pillY + 24) + 30;
 
   doc.setDrawColor(...RULE);
   doc.setLineWidth(0.8);
@@ -375,6 +390,29 @@ export function generateInvoicePdf(invoice, org) {
     ].filter(Boolean);
     doc.text(details.join('   ·   '), left, y);
     y += 20;
+  }
+
+  // --- Invoice notes --------------------------------------------------------
+  // What the workshop wants the customer to read: what was found, what's due
+  // next, what wasn't done and why. Wrapped and clipped to the space left above
+  // the footer rather than allowed to run off the page.
+  if (invoice.notes) {
+    const noteLines = doc.splitTextToSize(String(invoice.notes), right - left);
+    const room = Math.floor((pageH - 96 - y) / 12);
+    if (room >= 2) {
+      doc.setFont('Figtree', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...MUTED);
+      tracked(doc, 'NOTES', left, y, 1.2);
+      y += 15;
+      doc.setFont('Figtree', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...SUMI);
+      for (const line of noteLines.slice(0, room - 1)) {
+        doc.text(line, left, y);
+        y += 12;
+      }
+    }
   }
 
   // --- Footer ---------------------------------------------------------------

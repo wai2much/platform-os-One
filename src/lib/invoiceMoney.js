@@ -93,18 +93,25 @@ export function makePayment({ amount, method, ref, note, date }) {
  * about what a line says, which they quietly did before.
  * ------------------------------------------------------------------------- */
 
+/** Qty x unit price, less any percentage discount. Rounded once, at the end. */
+export function lineTotal({ qty, price, discount }) {
+  const gross = (Number(qty) || 0) * (Number(price) || 0);
+  return round2(gross * (1 - (Number(discount) || 0) / 100));
+}
+
 export function normalizeLines(invoice) {
   const raw = Array.isArray(invoice?.lines) ? invoice.lines : [];
   return raw
     .map((l) => {
       const o = Array.isArray(l)
-        ? { code: '', desc: String(l[0] ?? ''), qty: Number(l[1]) || 0, price: null, total: Number(l[2]) || 0, taxFree: false }
+        ? { code: '', desc: String(l[0] ?? ''), qty: Number(l[1]) || 0, price: null, discount: 0, total: Number(l[2]) || 0, taxFree: false }
         : {
             code: String(l.code || ''),
             desc: String(l.desc || l.code || ''),
             qty: Number(l.qty) || 0,
             price: l.price == null ? null : Number(l.price) || 0,
-            total: Number(l.total ?? (Number(l.qty || 0) * Number(l.price || 0))) || 0,
+            discount: Number(l.discount) || 0,
+            total: Number(l.total ?? lineTotal(l)) || 0,
             taxFree: !!l.taxFree,
           };
       // Unit price is derived where it wasn't sent, so the grid never shows a
@@ -132,15 +139,20 @@ export function invoiceTotals(invoice) {
   // Lines that sum to the total are inc-GST; lines that sum to total/1.1 are
   // ex-GST. Anything else and the lines simply don't reconcile.
   const incGst = items.length > 0 && Math.abs(lineSum - total) < 0.02;
-  const exGstLines = items.length > 0 && Math.abs(round2(lineSum * 1.1) - total) < 0.02;
-
-  const exGst = exGstLines ? lineSum : round2(total / 1.1);
-  const gst = round2(total - exGst);
+  const linesAreExGst = items.length > 0 && Math.abs(round2(lineSum * 1.1) - total) < 0.02;
+  const exact = incGst || linesAreExGst;
 
   const withGst = items.map((i) => {
-    const lineIncGst = incGst ? i.total : round2(i.total * 1.1);
-    return { ...i, gst: i.taxFree ? 0 : round2(lineIncGst - lineIncGst / 1.1), incGstTotal: lineIncGst };
+    const incGstTotal = incGst ? i.total : round2(i.total * 1.1);
+    return { ...i, incGstTotal, gst: i.taxFree ? 0 : round2(incGstTotal - incGstTotal / 1.1) };
   });
 
-  return { items: withGst, total, exGst, gst, exact: incGst || exGstLines, linesAreExGst: exGstLines };
+  // Where the lines reconcile, GST is the sum of the lines — which is the only
+  // way a tax-free line (a government charge, a rego fee) can be honest. Where
+  // they don't, fall back to 1/11 of the total, right only if everything is
+  // taxable. `exact` tells the caller which of the two it got.
+  const gst = exact ? round2(withGst.reduce((a, i) => a + i.gst, 0)) : round2(total - total / 1.1);
+  const exGst = round2(total - gst);
+
+  return { items: withGst, total, exGst, gst, exact, linesAreExGst, hasTaxFree: withGst.some((i) => i.taxFree) };
 }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { makePayment, balanceDue, isSettled, round2 } from '@/lib/invoiceMoney';
+import { makePayment, balanceDue, isSettled, round2, paidTotal, lineTotal } from '@/lib/invoiceMoney';
 
 /**
  * App store — shared data layer for the app. Runs on in-memory sample data by
@@ -51,13 +51,17 @@ const nextNum = (list, prefix, floor) => {
 // is just so the row shape matches on the way in.
 const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
 const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
-const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount, lines: i.lines || [], payments: i.payments || [], order_number: i.orderNumber || '' });
+const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount, lines: i.lines || [], payments: i.payments || [], order_number: i.orderNumber || '',
+  vehicle: i.vehicle || '', rego: i.rego || '', odometer: i.odometer || '', next_service_km: i.nextServiceKm || '',
+  job_status: i.jobStatus || '', job_status_comment: i.jobStatusComment || '', notes: i.notes || '' });
 // `migrated` marks rows imported from MechanicDesk on 2026-07-30 (see schema
 // Phase 8). Their payment state reflects the old system's bookkeeping, which
 // is known to be unreliable, so live financial figures must exclude them —
 // use the isLive/isHistorical helpers below rather than testing the flag
 // ad hoc, so every screen agrees on what counts.
-const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at, migrated: !!r.migrated, lines: r.lines || [], payments: r.payments || [], orderNumber: r.order_number || '' });
+const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at, migrated: !!r.migrated, lines: r.lines || [], payments: r.payments || [], orderNumber: r.order_number || '',
+  vehicle: r.vehicle || '', rego: r.rego || '', odometer: r.odometer || '', nextServiceKm: r.next_service_km || '',
+  jobStatus: r.job_status || '', jobStatusComment: r.job_status_comment || '', notes: r.notes || '' });
 
 /** Invoices raised in Platform OS — the only ones safe to report money from. */
 export const liveInvoices = (invoices) => invoices.filter((i) => !i.migrated);
@@ -340,7 +344,7 @@ export function StoreProvider({ orgId, children }) {
     // Carry the job's parts and labour onto the invoice. Without this the
     // invoice stored only a total, so the PDF and the Invoices screen both
     // showed an amount with no explanation of what it was for.
-    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true, lines, payments: [] };
+    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true, lines, payments: [], vehicle: jobCard.vehicle || '', jobStatus: 'Completed' };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
@@ -371,6 +375,68 @@ export function StoreProvider({ orgId, children }) {
     const saved = { ...existing, lines, total };
     setJobs((list) => list.map((j) => (j.id === id ? saved : j)));
     persistJob(saved, orgId);
+  };
+
+  // The job context Workshop Software carries on every invoice: which car it
+  // was, what the odometer read, where the job got to. A workshop invoice
+  // without a rego and an odometer reading isn't a workshop invoice — it's a
+  // receipt. Free text on purpose: rego formats, "150,000 km", "2 years or
+  // 20,000km" — a workshop types what it means and shouldn't fight a picker.
+  const INVOICE_DETAIL_FIELDS = ['vehicle', 'rego', 'odometer', 'nextServiceKm', 'jobStatus', 'jobStatusComment', 'notes', 'orderNumber'];
+
+  const updateInvoiceDetails = (id, patch) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+    const clean = {};
+    for (const k of INVOICE_DETAIL_FIELDS) {
+      if (patch[k] !== undefined) clean[k] = String(patch[k] ?? '').trim();
+    }
+    const saved = { ...existing, ...clean };
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    return { ok: true, invoice: saved };
+  };
+
+  // Editing what's on an invoice. Workshop Software lets you work the line
+  // grid on the invoice itself, which is how a workshop actually operates — a
+  // part gets added, an hour comes off, the total moves. Slim could only ever
+  // display lines, so this is the missing half.
+  //
+  // The invoice total is recomputed from the lines rather than typed, so the
+  // two can never disagree. Returns { ok } or { ok: false, error } — the one
+  // thing it refuses is pulling the total below money already received, which
+  // is a refund, not an edit, and needs its own paperwork.
+  const updateInvoiceLines = (id, lines) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+
+    const clean = (Array.isArray(lines) ? lines : [])
+      .map((l) => ({
+        code: String(l.code || ''),
+        desc: String(l.desc || '').trim(),
+        qty: Number(l.qty) || 0,
+        price: round2(l.price),
+        discount: Number(l.discount) || 0,
+        taxFree: !!l.taxFree,
+        total: lineTotal(l),
+      }))
+      .filter((l) => l.desc || l.total);
+
+    const amount = round2(clean.reduce((a, l) => a + l.total, 0));
+    const received = paidTotal(existing);
+    if (amount + 0.005 < received) {
+      return { ok: false, error: `Already received ${received.toFixed(2)} on this invoice — refund it before invoicing less.` };
+    }
+
+    const saved = { ...existing, lines: clean, amount };
+    // Status follows the ledger, the same rule as everywhere else: raising the
+    // total on a settled invoice reopens it, lowering it can close it.
+    saved.status = received > 0
+      ? (isSettled(saved) ? 'Paid' : (existing.status === 'Paid' ? 'Sent' : existing.status))
+      : existing.status;
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    return { ok: true, invoice: saved };
   };
 
   // Pure: append a payment row and let the ledger decide the status. Kept
@@ -615,7 +681,7 @@ export function StoreProvider({ orgId, children }) {
       tyreStock, setTyreQty, addTyreLine,
       stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized,
       jobCard, updateJobCard,
-      startJobCard, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, removePayment,
+      startJobCard, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, removePayment, updateInvoiceLines, updateInvoiceDetails,
       flash, setFlash,
     }}>
       {children}
