@@ -38,10 +38,17 @@ function CheckSquare({ on, onClick, color = OLIVE }) {
 
 function BackPage() {
   const { jobCard, updateJobCard, generateInvoice, parts: inventory, addPart } = useStore();
-  const [status, setStatus] = useState({});
-  const [notes, setNotes] = useState({});
-  const [align, setAlign] = useState({ camber: '', toeF: '', toeR: '', caster: '' });
-  const [flags, setFlags] = useState({});
+  // Everything here used to be useState, which meant the whole safety
+  // inspection vanished the moment you left the screen. It lives on the job
+  // card now, and the card autosaves.
+  const status = jobCard.inspection;
+  const setStatus = (fn) => updateJobCard({ inspection: typeof fn === 'function' ? fn(jobCard.inspection) : fn });
+  const notes = jobCard.inspectionNotes;
+  const setNotes = (fn) => updateJobCard({ inspectionNotes: typeof fn === 'function' ? fn(jobCard.inspectionNotes) : fn });
+  const align = jobCard.align;
+  const setAlign = (fn) => updateJobCard({ align: typeof fn === 'function' ? fn(jobCard.align) : fn });
+  const flags = jobCard.flags;
+  const setFlags = (fn) => updateJobCard({ flags: typeof fn === 'function' ? fn(jobCard.flags) : fn });
   const parts = jobCard.parts;
   const setParts = (fn) => updateJobCard({ parts: typeof fn === 'function' ? fn(jobCard.parts) : fn });
   const labour = jobCard.labour;
@@ -102,9 +109,9 @@ function BackPage() {
         <div className="cap" style={{ color: TERRA, fontSize: 30 }}>Inspection, Parts &amp; Sign-off</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span className="fg" style={{ fontSize: 10.5, letterSpacing: '.08em', color: 'var(--text-mute)', fontWeight: 700 }}>JOB NO.</span>
-          <input placeholder="TPT-" style={{ ...inp, width: 130 }} />
+          <input value={jobCard.jobNo} onChange={(e) => updateJobCard({ jobNo: e.target.value })} placeholder="J-" style={{ ...inp, width: 130 }} />
           <span className="fg" style={{ fontSize: 10.5, letterSpacing: '.08em', color: 'var(--text-mute)', fontWeight: 700 }}>REGO</span>
-          <input style={{ ...inp, width: 130 }} />
+          <input value={jobCard.rego} onChange={(e) => updateJobCard({ rego: e.target.value })} style={{ ...inp, width: 130 }} />
         </div>
       </div>
 
@@ -182,7 +189,8 @@ function BackPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16 }}>
         <Card>
           <SectionTitle>Tech Notes &amp; Recommendations</SectionTitle>
-          <textarea rows={6} style={{ ...inp, borderRadius: 14, resize: 'vertical', width: '100%' }} />
+          <textarea rows={6} value={jobCard.techNotes} onChange={(e) => updateJobCard({ techNotes: e.target.value })}
+            placeholder="What was found, what was done, what to watch next visit…" style={{ ...inp, borderRadius: 14, resize: 'vertical', width: '100%' }} />
           <div style={{ display: 'flex', gap: 20, marginTop: 12, flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}><CheckSquare on={flags.advised} onClick={() => flag('advised')} /><span className="fg" style={{ fontSize: 12.5, color: INK }}>Customer advised of ACTION items</span></label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}><CheckSquare on={flags.quoted} onClick={() => flag('quoted')} /><span className="fg" style={{ fontSize: 12.5, color: INK }}>Quote for follow-up work given</span></label>
@@ -257,13 +265,15 @@ function Field({ label, w, value, onChange }) {
 
 function FrontPage() {
   const { jobCard, updateJobCard } = useStore();
-  const [f, setF] = useState({});
-  const [flags, setFlags] = useState({});
-  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
   const work = jobCard.workTypes;
+  const flags = jobCard.flags;
+  const setFlags = (fn) => updateJobCard({ flags: typeof fn === 'function' ? fn(jobCard.flags) : fn });
   const setWork = (fn) => updateJobCard({ workTypes: typeof fn === 'function' ? fn(jobCard.workTypes) : fn });
-  const storeField = (k) => ({ value: jobCard[k], onChange: (e) => updateJobCard({ [k]: e.target.value }) });
-  const localField = (k) => ({ value: f[k], onChange: set(k) });
+  // One binding for every field. There used to be a second, `localField`, that
+  // wrote to component state — which is why a rego, an odometer reading and a
+  // promised-out time never survived leaving the screen. It's gone.
+  const storeField = (k) => ({ value: jobCard[k] ?? '', onChange: (e) => updateJobCard({ [k]: e.target.value }) });
+  const set = (k) => (e) => updateJobCard({ [k]: e.target.value });
 
   return (
     <div style={{ padding: '6px 30px 30px', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1180, margin: '0 auto' }}>
@@ -271,9 +281,9 @@ function FrontPage() {
         <div className="cap" style={{ color: TERRA, fontSize: 30 }}>Job Card — Customer &amp; Vehicle</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span className="fg" style={{ fontSize: 10.5, letterSpacing: '.08em', color: 'var(--text-mute)', fontWeight: 700 }}>JOB NO.</span>
-          <input placeholder="TPT-" style={{ ...inp, width: 130 }} />
+          <input value={jobCard.jobNo} onChange={(e) => updateJobCard({ jobNo: e.target.value })} placeholder="J-" style={{ ...inp, width: 130 }} />
           <span className="fg" style={{ fontSize: 10.5, letterSpacing: '.08em', color: 'var(--text-mute)', fontWeight: 700 }}>DATE</span>
-          <input style={{ ...inp, width: 130 }} />
+          <input value={jobCard.date} onChange={(e) => updateJobCard({ date: e.target.value })} placeholder="dd/mm/yyyy" style={{ ...inp, width: 130 }} />
         </div>
       </div>
 
@@ -282,16 +292,16 @@ function FrontPage() {
           <SectionTitle>Customer</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Field label="NAME" {...storeField("customer")} />
-            <div style={{ display: 'flex', gap: 12 }}><Field label="PHONE" {...localField("phone")} /><Field label="EMAIL" {...localField("email")} /></div>
-            <Field label="ADDRESS" {...localField("address")} />
+            <div style={{ display: 'flex', gap: 12 }}><Field label="PHONE" {...storeField("phone")} /><Field label="EMAIL" {...storeField("email")} /></div>
+            <Field label="ADDRESS" {...storeField("address")} />
           </div>
         </Card>
         <Card>
           <SectionTitle>Vehicle</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 12 }}><Field label="MAKE / MODEL" {...storeField("vehicle")} /><Field label="YEAR" w={90} {...localField("year")} /></div>
-            <div style={{ display: 'flex', gap: 12 }}><Field label="REGO" w={120} {...localField("rego")} /><Field label="ODOMETER (KM)" {...localField("odo")} /><Field label="COLOUR" w={120} {...localField("colour")} /></div>
-            <Field label="VIN" {...localField("vin")} />
+            <div style={{ display: 'flex', gap: 12 }}><Field label="MAKE / MODEL" {...storeField("vehicle")} /><Field label="YEAR" w={90} {...storeField("year")} /></div>
+            <div style={{ display: 'flex', gap: 12 }}><Field label="REGO" w={120} {...storeField("rego")} /><Field label="ODOMETER (KM)" {...storeField("odo")} /><Field label="COLOUR" w={120} {...storeField("colour")} /></div>
+            <Field label="VIN" {...storeField("vin")} />
           </div>
         </Card>
       </div>
@@ -299,10 +309,10 @@ function FrontPage() {
       <Card>
         <SectionTitle>Booking</SectionTitle>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Field label="DATE / TIME IN" {...localField("dateIn")} />
-          <Field label="PROMISED OUT" {...localField("promised")} />
-          <Field label="SERVICE ADVISOR" {...localField("advisor")} />
-          <Field label="BOOKING SOURCE" {...localField("source")} />
+          <Field label="DATE / TIME IN" {...storeField("dateIn")} />
+          <Field label="PROMISED OUT" {...storeField("promised")} />
+          <Field label="SERVICE ADVISOR" {...storeField("advisor")} />
+          <Field label="BOOKING SOURCE" {...storeField("source")} />
         </div>
       </Card>
 
@@ -316,7 +326,8 @@ function FrontPage() {
             </label>
           ))}
         </div>
-        <textarea rows={4} placeholder="Customer description / notes…" style={{ ...inp, borderRadius: 14, resize: 'vertical', width: '100%' }} />
+        <textarea rows={4} value={jobCard.workRequested} onChange={(e) => updateJobCard({ workRequested: e.target.value })}
+          placeholder="What the customer says is wrong, in their words…" style={{ ...inp, borderRadius: 14, resize: 'vertical', width: '100%' }} />
       </Card>
 
       <Card>
@@ -332,11 +343,14 @@ function FrontPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, alignItems: 'end' }}>
           <div>
             <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>ESTIMATE $</div>
-            <input value={f.estimate || ''} onChange={set('estimate')} inputMode="decimal" style={inp} />
+            <input value={jobCard.estimate} onChange={set('estimate')} inputMode="decimal" style={inp} />
           </div>
           <div>
-            <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>CUSTOMER SIGNATURE ON DROP-OFF</div>
-            <div style={{ height: 44, borderRadius: 12, border: `1px solid ${LINE}`, background: '#fffdf8' }} />
+            <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>AUTHORISED BY (NAME ON DROP-OFF)</div>
+            {/* An empty box was worse than nothing: it looked like a signature
+                had been captured when none had. A typed name is a real record
+                of who authorised the work; a drawn signature can come later. */}
+            <input value={jobCard.signedBy} onChange={set('signedBy')} placeholder="Name of the person authorising the work" style={{ ...inp, height: 44 }} />
           </div>
         </div>
       </Card>

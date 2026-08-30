@@ -15,7 +15,9 @@ const STATUS = {
   Booked: { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
 };
 
-const COLS = '80px 1.3fr 1.1fr .8fr .9fr .7fr';
+const sel = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 11px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+
+const COLS = '80px 1.3fr 1.1fr 80px .8fr .9fr .7fr';
 
 function StatusPill({ status, style }) {
   const s = STATUS[status] ?? STATUS.Booked;
@@ -23,7 +25,7 @@ function StatusPill({ status, style }) {
 }
 
 export function Jobs() {
-  const { jobs, saveJobLines, startJobCard } = useStore();
+  const { jobs, team, saveJobLines, startJobCard, openJobCard, updateJob } = useStore();
   const [openId, setOpenId] = useState(null);
   const [lines, setLines] = useState([]); // editable draft: [desc, qty, price]
 
@@ -52,8 +54,8 @@ export function Jobs() {
 
       <div style={{ background: 'var(--card-bg)', borderRadius: 20, overflowX: 'auto', boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '13px 20px', background: 'var(--panel-bg)', minWidth: 640 }}>
-          {['JOB', 'CUSTOMER', 'VEHICLE', 'TECH', 'STATUS', 'TOTAL'].map((h, i) => (
-            <span key={h} className="fg" style={{ fontSize: 10.5, letterSpacing: '.06em', color: 'var(--text-mute)', fontWeight: 700, textAlign: i === 5 ? 'right' : 'left' }}>{h}</span>
+          {['JOB', 'CUSTOMER', 'VEHICLE', 'REGO', 'TECH', 'STATUS', 'TOTAL'].map((h, i) => (
+            <span key={h} className="fg" style={{ fontSize: 10.5, letterSpacing: '.06em', color: 'var(--text-mute)', fontWeight: 700, textAlign: i === 6 ? 'right' : 'left' }}>{h}</span>
           ))}
         </div>
         {jobs.map((j) => (
@@ -61,6 +63,7 @@ export function Jobs() {
             <span className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600 }}>{j.id}</span>
             <span className="fg" style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 600 }}>{j.customer}</span>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text-soft)' }}>{j.vehicle}</span>
+            <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', fontWeight: 600 }}>{j.rego || '—'}</span>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text-soft)' }}>{j.tech || '—'}</span>
             <StatusPill status={j.status} style={{ justifySelf: 'start' }} />
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700, textAlign: 'right' }}>{j.total ? fmt(j.total) : '—'}</span>
@@ -78,9 +81,23 @@ export function Jobs() {
               </div>
               <StatusPill status={open.status} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Technician</span>
-              <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>{open.tech || '—'}</span>
+            {/* Both of these were display-only, so a job could never be
+                assigned to anyone and never moved along by hand. */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div>
+                <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>TECHNICIAN</div>
+                <select value={open.tech || ''} onChange={(e) => updateJob(open.id, { tech: e.target.value })} style={sel}>
+                  <option value="">Unassigned</option>
+                  {(team || []).map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                  {open.tech && !(team || []).some((m) => m.name === open.tech) && <option value={open.tech}>{open.tech}</option>}
+                </select>
+              </div>
+              <div>
+                <div className="fg" style={{ fontSize: 9.5, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 5 }}>STATUS</div>
+                <select value={open.status} onChange={(e) => updateJob(open.id, { status: e.target.value })} style={sel}>
+                  {Object.keys(STATUS).map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
@@ -106,6 +123,9 @@ export function Jobs() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
               <span className="fg" onClick={() => setOpenId(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Close</span>
+              {/* The full card — inspection, parts, sign-off — is the real
+                  workspace; this modal is just the quick view. */}
+              <span className="fg" onClick={() => { setOpenId(null); openJobCard(open.id); }} style={{ fontSize: 13, fontWeight: 700, color: '#c67139', border: '1.5px solid #c67139', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Open job card</span>
               <span className="fg" onClick={save} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Save &amp; open job</span>
             </div>
           </div>
