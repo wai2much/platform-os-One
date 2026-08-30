@@ -610,6 +610,13 @@ update invoices
    set migrated = true,
        migrated_source = 'mechanicdesk-2026-07-30'
  where migrated = false
+   -- Guard added 29 Aug 2026. The Workshop Software bridge writes invoices with
+   -- their REAL invoice date, so July 2026 rows sit below this cutover
+   -- timestamp. Without this, re-running schema.sql would silently reclassify
+   -- deliberately-live July revenue as historical and drop it out of every
+   -- total on the dashboard. A row that already carries a source tag has had
+   -- its status decided on purpose.
+   and migrated_source = ''
    and created_at <= '2026-07-31T00:00:00Z';
 
 -- ============================================================================

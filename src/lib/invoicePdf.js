@@ -1,83 +1,89 @@
 import { jsPDF } from 'jspdf';
-import { CaprasimoRegular, FigtreeRegular, FigtreeBold, FigtreeExtraBold } from './fonts/invoiceFonts';
-import { HOS_MARK_PNG } from './assets/hosMark';
+import { FigtreeRegular, FigtreeBold } from './fonts/invoiceFonts';
+import { ShipporiMinchoRegular, ShipporiMinchoBold } from './fonts/shipporiFonts';
+import { POS_ONE_MARK_PNG } from './assets/posOneMark';
 
 /**
- * Real invoice PDF generation — client-side, no backend call, no fake
- * "Download PDF" button. Pulls the actual org business profile (name,
- * address, bank details) from `organizations`, same data Settings.jsx
- * edits — never hardcoded, per the 2026-08-08 fix for business details
- * leaking across orgs (see git history: 72da085).
+ * Invoice PDF generation — client-side, no backend call.
  *
- * Deliberately minimal on data: this app's invoice model doesn't carry
- * line items (only jobs do — see Jobs.jsx), so the PDF shows exactly what
- * the Invoices screen itself shows (the GST breakdown), not fabricated
- * line items that don't exist.
+ * Look ported 2026-08-29 from the "Origami paper Japanese style" design:
+ * washi-paper ground, sumi ink, a single vermillion accent, and Shippori
+ * Mincho (a Japanese serif) for display type against Figtree for body.
+ * Restrained, lots of air, hairline rules instead of boxes.
  *
- * Deliberately NOT minimal on look: this mirrors the actual Invoices
- * payment-modal design — same palette (src/index.css light-theme tokens),
- * same two fonts the app uses (Figtree + Caprasimo, embedded from Google
- * Fonts as base64 in ./fonts/invoiceFonts.js), same dark "ink" header
- * band + status pill + tan GST panel — so it reads as the same product,
- * not a generic PDF-library default. First version of this (helvetica,
- * grey-on-white) looked nothing like the app — this is the fix for that.
+ * TWO DELIBERATE DEPARTURES FROM THAT DESIGN:
+ *
+ *  - It is the WORKSHOP's invoice, not Platform OS's. The original was
+ *    Platform OS invoicing its own customers, so it led with the Platform OS
+ *    One lockup and Platform OS's ABN. Here the masthead is the org's own
+ *    business name and ABN, pulled from `organizations` (the same data
+ *    Settings.jsx edits). Platform OS appears only as the faint watermark.
+ *    Shipping the original as-is would have put the wrong entity's ABN on a
+ *    customer's tax invoice.
+ *  - A4, not US Letter. The original was letter-sized, which is wrong for
+ *    every business this product is sold to.
+ *
+ * Data is still deliberately minimal: this app's invoice model carries no
+ * line items (only jobs do), so the PDF shows exactly what the Invoices
+ * screen shows rather than inventing detail that does not exist.
  */
 const fmt = (n) => '$' + Number(n || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// Same hex values as src/index.css's :root (light theme) tokens — kept in
-// sync by hand since a PDF can't read CSS custom properties.
-const INK = [32, 30, 29]; // --ink / --text
-const INK_TEXT = [245, 234, 216]; // --ink-text (cream text on the dark band)
-const CARD_BG = [255, 250, 240]; // --card-bg
-const PANEL_BG = [239, 224, 200]; // --panel-bg
-const TEXT_SOFT = [60, 57, 54]; // --text-soft
-const TEXT_MUTE = [111, 106, 99]; // --text-mute
-const BORDER = [224, 220, 207]; // --border-c
-const VERMILLION = [198, 113, 57]; // #c67139 — accent throughout the app
-const SAGE = [122, 138, 94]; // #7a8a5e — "paid"/success across the app
-const SAGE_TINT = [234, 232, 217]; // sage at ~16% over card-bg, same math as the modal's rgba(122,138,94,.16)
+// Palette lifted from the origami design.
+const WASHI = [243, 236, 221];        // #F3ECDD — paper
+const SUMI = [32, 28, 22];            // #201C16 — ink
+const VERMILLION = [191, 51, 36];     // #BF3324 — the one accent
+const MUTED = [138, 127, 110];        // #8a7f6e
+const GOLD = [138, 107, 63];          // #8a6b3f
+const RULE = [196, 184, 163];         // hairline, ink at ~25% over washi
 const WHITE = [255, 255, 255];
+const JADE_TINT = [214, 231, 216];    // paid pill ground
 
-// STATUS pill colors — copied 1:1 from Invoices.jsx's STATUS map so the PDF
-// badge matches the on-screen one exactly rather than approximating it.
 const STATUS_STYLE = {
+  Paid: { fg: [22, 90, 61], bg: JADE_TINT },
+  Sent: { fg: GOLD, bg: [235, 226, 208] },
   Overdue: { fg: WHITE, bg: VERMILLION },
-  Sent: { fg: SAGE, bg: SAGE_TINT },
-  Paid: { fg: WHITE, bg: SAGE },
-  'On account': { fg: TEXT_SOFT, bg: PANEL_BG },
+  'On account': { fg: MUTED, bg: [235, 226, 208] },
 };
 
-// Real pixel size of public/hos-mark-black.png — used to keep the watermark's
-// aspect ratio correct when scaling it up.
-const HOS_MARK_W = 106;
-const HOS_MARK_H = 120;
-
-// Faint background watermark of the Haus of Technik mark, large and sat
-// right-of-center on the page. Drawn first, before the header band and body
-// content, so those opaque fills naturally sit on top of it — the same way
-// any print watermark works — rather than fighting with the text for
-// attention. Low opacity keeps it from competing with the actual invoice
-// numbers even where it falls across blank canvas.
-function drawWatermark(doc, pageW, pageH) {
-  const w = 320;
-  const h = (w / HOS_MARK_W) * HOS_MARK_H;
-  const cx = pageW / 2 + 90; // right of center
-  const cy = pageH / 2;
-  doc.saveGraphicsState();
-  doc.setGState(new doc.GState({ opacity: 0.07 }));
-  doc.addImage(HOS_MARK_PNG, 'PNG', cx - w / 2, cy - h / 2, w, h);
-  doc.restoreGraphicsState();
-}
+const MARK_W = 195;
+const MARK_H = 151;
 
 function registerFonts(doc) {
   doc.addFileToVFS('Figtree-Regular.ttf', FigtreeRegular);
   doc.addFont('Figtree-Regular.ttf', 'Figtree', 'normal');
   doc.addFileToVFS('Figtree-Bold.ttf', FigtreeBold);
   doc.addFont('Figtree-Bold.ttf', 'Figtree', 'bold');
-  doc.addFileToVFS('Figtree-ExtraBold.ttf', FigtreeExtraBold);
-  doc.addFont('Figtree-ExtraBold.ttf', 'Figtree', 'extrabold');
-  doc.addFileToVFS('Caprasimo-Regular.ttf', CaprasimoRegular);
-  doc.addFont('Caprasimo-Regular.ttf', 'Caprasimo', 'normal');
+  doc.addFileToVFS('ShipporiMincho-Regular.ttf', ShipporiMinchoRegular);
+  doc.addFont('ShipporiMincho-Regular.ttf', 'Shippori', 'normal');
+  doc.addFileToVFS('ShipporiMincho-Bold.ttf', ShipporiMinchoBold);
+  doc.addFont('ShipporiMincho-Bold.ttf', 'Shippori', 'bold');
+}
+
+// Faint Platform OS mark, right of centre. Drawn before everything else so
+// body content sits over it, the way a print watermark should.
+function drawWatermark(doc, pageW, pageH) {
+  const w = 74;
+  const h = (w / MARK_W) * MARK_H;
+  doc.saveGraphicsState();
+  doc.setGState(new doc.GState({ opacity: 0.10 }));
+  doc.addImage(POS_ONE_MARK_PNG, 'PNG', pageW - 56 - w, pageH - 150, w, h);
+  doc.restoreGraphicsState();
+}
+
+// Letterspacing by hand — jsPDF has no tracking control, and the small
+// uppercase labels in this design lean on it heavily.
+function tracked(doc, text, x, y, spacing, opts = {}) {
+  const chars = String(text).split('');
+  let cx = x;
+  if (opts.align === 'right') {
+    const total = chars.reduce((w, c) => w + doc.getTextWidth(c) + spacing, 0) - spacing;
+    cx = x - total;
+  }
+  for (const c of chars) {
+    doc.text(c, cx, y);
+    cx += doc.getTextWidth(c) + spacing;
+  }
 }
 
 export function generateInvoicePdf(invoice, org) {
@@ -86,149 +92,222 @@ export function generateInvoicePdf(invoice, org) {
 
   const pageW = 595.28;
   const pageH = 841.89;
-  const left = 48;
-  const right = 547;
-  const businessName = org?.trading_as || org?.business_name || 'Business name not set (see Settings)';
+  const left = 56;
+  const right = 539;
 
+  doc.setFillColor(...WASHI);
+  doc.rect(0, 0, pageW, pageH, 'F');
   drawWatermark(doc, pageW, pageH);
 
-  // --- Dark "ink" header band, same as the modal's header ---
-  const headerH = 118;
-  doc.setFillColor(...INK);
-  doc.rect(0, 0, pageW, headerH, 'F');
+  const businessName = org?.trading_as || org?.business_name || 'Business name not set (see Settings)';
 
-  // Vermillion circular badge with a $ mark, same accent circle as the modal
-  doc.setFillColor(...VERMILLION);
-  doc.circle(left + 20, 46, 20, 'F');
-  doc.setFont('Figtree', 'extrabold');
-  doc.setFontSize(16);
-  doc.setTextColor(...WHITE);
-  doc.text('$', left + 20, 51.5, { align: 'center' });
+  // Only a GST-registered business may issue a "tax invoice" or charge GST.
+  // Default true because that is the common case, but a sole trader or a
+  // young company under the threshold gets a plain invoice with no GST line,
+  // which is what the law requires rather than a cosmetic preference.
+  const gstRegistered = org?.gst_registered !== false;
 
-  doc.setFont('Caprasimo', 'normal');
-  doc.setFontSize(20);
-  doc.setTextColor(...INK_TEXT);
-  doc.text(businessName, left + 54, 42);
+  // --- Masthead -------------------------------------------------------------
+  doc.setFont('Shippori', 'bold');
+  doc.setTextColor(...SUMI);
+  // Fit the name to the room left of the title rather than letting a long
+  // legal entity name run through "Tax Invoice".
+  let nameSize = 19;
+  doc.setFontSize(nameSize);
+  while (nameSize > 10.5 && doc.getTextWidth(businessName) > 250) {
+    nameSize -= 0.5;
+    doc.setFontSize(nameSize);
+  }
+  doc.text(businessName, left, 74);
 
   doc.setFont('Figtree', 'normal');
-  doc.setFontSize(9.5);
-  doc.setTextColor(164, 154, 140); // --ink-soft
-  const contactLine = [org?.address, org?.phone, org?.email].filter(Boolean).join('  ·  ');
-  if (contactLine) doc.text(contactLine, left + 54, 58);
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  let cy = 90;
+  for (const line of [org?.address, [org?.phone, org?.email].filter(Boolean).join('   ·   ')].filter(Boolean)) {
+    doc.text(String(line), left, cy);
+    cy += 12;
+  }
 
-  doc.setFont('Caprasimo', 'normal');
-  doc.setFontSize(15);
-  doc.setTextColor(...INK_TEXT);
-  doc.text(invoice.id, right, 42, { align: 'right' });
+  doc.setFont('Shippori', 'bold');
+  doc.setFontSize(34);
+  doc.setTextColor(...SUMI);
+  doc.text(gstRegistered ? 'Tax Invoice' : 'Invoice', right, 76, { align: 'right' });
 
-  // Status pill, top right of the header
+  doc.setFont('Figtree', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...GOLD);
+  tracked(doc, `NO. ${invoice.id}`, right, 94, 1.4, { align: 'right' });
+
+  doc.setDrawColor(...SUMI);
+  doc.setLineWidth(1.5);
+  doc.line(left, 116, right, 116);
+
+  // --- Meta: who it is for, and the terms ----------------------------------
+  let y = 150;
+  const colR = left + 250;
+
+  doc.setFont('Figtree', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  tracked(doc, 'BILL TO', left, y, 1.2);
+  tracked(doc, 'DETAILS', colR, y, 1.2);
+  y += 18;
+
+  doc.setFont('Shippori', 'normal');
+  doc.setFontSize(13);
+  doc.setTextColor(...SUMI);
+  doc.text(String(invoice.customer || ''), left, y);
+
+  const meta = [
+    invoice.job ? ['Job', invoice.job] : null,
+    ['Terms', invoice.terms || 'Due on receipt'],
+    invoice.dueBy ? ['Due', invoice.dueBy] : null,
+  ].filter(Boolean);
+  let my = y;
+  for (const [label, value] of meta) {
+    doc.setFont('Figtree', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...MUTED);
+    doc.text(label, colR, my);
+    doc.setFont('Figtree', 'bold');
+    doc.setTextColor(...SUMI);
+    doc.text(String(value), right, my, { align: 'right' });
+    my += 15;
+  }
+
+  // Status, as a small pill under the customer name.
   const status = invoice.status || 'Sent';
   const s = STATUS_STYLE[status] || STATUS_STYLE.Sent;
   doc.setFont('Figtree', 'bold');
-  doc.setFontSize(9);
-  const pillW = doc.getTextWidth(status.toUpperCase()) + 20;
+  doc.setFontSize(8);
+  const pillW = doc.getTextWidth(status.toUpperCase()) + 8 * 2 + 6;
   doc.setFillColor(...s.bg);
-  doc.roundedRect(right - pillW, 52, pillW, 18, 9, 9, 'F');
+  doc.roundedRect(left, y + 10, pillW, 16, 8, 8, 'F');
   doc.setTextColor(...s.fg);
-  doc.text(status.toUpperCase(), right - pillW / 2, 64, { align: 'center' });
+  tracked(doc, status.toUpperCase(), left + 11, y + 21, 1);
 
-  let y = headerH + 34;
+  y = Math.max(my, y + 34) + 30;
 
-  // --- Customer / job meta rows ---
-  doc.setFont('Figtree', 'bold');
-  doc.setFontSize(11.5);
-  doc.setTextColor(...INK);
-  doc.text(invoice.customer, left, y);
-  y += 22;
+  doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.8);
+  doc.line(left, y, right, y);
+  y += 34;
 
-  doc.setFontSize(10);
-  const rows = [
-    invoice.job ? ['Job', invoice.job] : null,
-    ['Terms', invoice.terms],
-    ['Due by', invoice.dueBy],
-  ].filter(Boolean);
-  rows.forEach(([label, value]) => {
+  // --- Amounts --------------------------------------------------------------
+  // The GST split is derived as 1/11 of the total, because the invoice model
+  // stores one tax-inclusive figure and nothing else. That is exact only when
+  // every line is taxable. It becomes a real figure once invoices carry line
+  // items (scripts/bridge-workshop-software/add-invoice-lines.sql). The
+  // "Total price includes GST" line below is the ATO-permitted wording and
+  // stays true either way.
+  const exGst = Number(invoice.amount || 0) / 1.1;
+  const gst = Number(invoice.amount || 0) - exGst;
+
+  const amountRow = (label, value, opts = {}) => {
+    doc.setFont('Figtree', opts.strong ? 'bold' : 'normal');
+    doc.setFontSize(opts.strong ? 10.5 : 10);
+    doc.setTextColor(...(opts.strong ? SUMI : MUTED));
+    doc.text(label, colR, y);
     doc.setFont('Figtree', 'bold');
-    doc.setTextColor(...TEXT_MUTE);
-    doc.text(label.toUpperCase(), left, y);
-    doc.setFont('Figtree', 'normal');
-    doc.setTextColor(...TEXT_SOFT);
-    doc.text(String(value), left + 90, y);
-    y += 16;
-  });
+    doc.setTextColor(...SUMI);
+    doc.text(fmt(value), right, y, { align: 'right' });
+    y += 19;
+  };
 
-  y += 20;
+  if (gstRegistered) {
+    amountRow('Subtotal (ex GST)', exGst);
+    amountRow('GST (10%)', gst);
+  } else {
+    amountRow('Subtotal', Number(invoice.amount || 0));
+  }
 
-  // --- Tan GST breakdown panel, same panel-bg + rounded corners as the modal ---
-  const panelH = 108;
-  doc.setFillColor(...PANEL_BG);
-  doc.roundedRect(left, y, right - left, panelH, 10, 10, 'F');
-  let py = y + 28;
-  const col2 = right - 18;
+  y += 4;
+  doc.setDrawColor(...SUMI);
+  doc.setLineWidth(1.5);
+  doc.line(colR, y, right, y);
+  y += 26;
+
+  doc.setFont('Shippori', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(...SUMI);
+  doc.text('Total', colR, y);
+  doc.setFontSize(25);
+  doc.setTextColor(...VERMILLION);
+  doc.text(fmt(invoice.amount), right, y + 2, { align: 'right' });
+  y += 18;
 
   doc.setFont('Figtree', 'normal');
-  doc.setFontSize(10.5);
-  doc.setTextColor(...TEXT_MUTE);
-  doc.text('Subtotal (ex GST)', left + 18, py);
-  doc.setFont('Figtree', 'bold');
-  doc.setTextColor(...TEXT_SOFT);
-  doc.text(fmt(invoice.amount / 1.1), col2, py, { align: 'right' });
-  py += 20;
+  doc.setFontSize(8.5);
+  doc.setTextColor(...MUTED);
+  doc.text(gstRegistered ? 'Total price includes GST' : 'No GST has been charged', right, y, { align: 'right' });
 
-  doc.setFont('Figtree', 'normal');
-  doc.setTextColor(...TEXT_MUTE);
-  doc.text('GST (10%)', left + 18, py);
-  doc.setFont('Figtree', 'bold');
-  doc.setTextColor(...TEXT_SOFT);
-  doc.text(fmt(invoice.amount - invoice.amount / 1.1), col2, py, { align: 'right' });
-  py += 18;
+  // Paid stamp, angled across the amount block.
+  if (status === 'Paid') {
+    doc.saveGraphicsState();
+    doc.setGState(new doc.GState({ opacity: 0.16 }));
+    doc.setFont('Shippori', 'bold');
+    doc.setFontSize(52);
+    doc.setTextColor(...VERMILLION);
+    doc.text('PAID', colR - 26, y - 6, { angle: 12 });
+    doc.restoreGraphicsState();
+  }
 
-  doc.setDrawColor(...BORDER);
-  doc.setLineWidth(1);
-  doc.line(left + 18, py, col2, py);
-  py += 26;
+  y += 46;
 
-  doc.setFont('Figtree', 'bold');
-  doc.setFontSize(11.5);
-  doc.setTextColor(...INK);
-  doc.text('Total due (inc GST)', left + 18, py);
-  doc.setFont('Caprasimo', 'normal');
-  doc.setFontSize(21);
-  doc.setTextColor(...INK);
-  doc.text(fmt(invoice.amount), col2, py + 2, { align: 'right' });
-
-  y += panelH + 34;
-
-  // --- Footer: how it was/can be paid ---
+  // --- How it was, or can be, paid -----------------------------------------
   if (invoice.paidVia === 'zeller') {
-    doc.setFillColor(...SAGE_TINT);
-    doc.roundedRect(left, y, right - left, 34, 8, 8, 'F');
     doc.setFont('Figtree', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(...SAGE);
-    doc.text('PAID VIA ZELLER TERMINAL', left + 16, y + 21);
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    tracked(doc, 'PAID VIA ZELLER TERMINAL', left, y, 1.2);
     if (invoice.zellerTransactionUuid) {
       doc.setFont('Figtree', 'normal');
-      doc.setTextColor(...TEXT_MUTE);
-      doc.text(invoice.zellerTransactionUuid, right - 16, y + 21, { align: 'right' });
+      doc.setFontSize(9);
+      doc.text(invoice.zellerTransactionUuid, right, y, { align: 'right' });
     }
+    y += 22;
   } else if (org?.bank_name || org?.bank_bsb || org?.bank_account) {
     doc.setFont('Figtree', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(...INK);
-    doc.text('BANK TRANSFER DETAILS', left, y);
-    y += 18;
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    tracked(doc, 'BANK TRANSFER', left, y, 1.2);
+    y += 16;
     doc.setFont('Figtree', 'normal');
     doc.setFontSize(9.5);
-    doc.setTextColor(...TEXT_MUTE);
+    doc.setTextColor(...SUMI);
     const details = [
-      org?.bank_name && `Bank: ${org.bank_name}`,
-      org?.bank_bsb && `BSB: ${org.bank_bsb}`,
-      org?.bank_account && `Account: ${org.bank_account}`,
-      `Reference: ${invoice.id}`,
+      org?.bank_name && `Bank ${org.bank_name}`,
+      org?.bank_bsb && `BSB ${org.bank_bsb}`,
+      org?.bank_account && `Account ${org.bank_account}`,
+      `Reference ${invoice.id}`,
     ].filter(Boolean);
     doc.text(details.join('   ·   '), left, y);
+    y += 20;
   }
+
+  // --- Footer ---------------------------------------------------------------
+  const footY = pageH - 58;
+  doc.setDrawColor(...SUMI);
+  doc.setLineWidth(1.5);
+  doc.line(left, footY - 18, right, footY - 18);
+
+  doc.setFont('Figtree', 'normal');
+  doc.setFontSize(8.5);
+  // An Australian tax invoice over $82.50 must carry the supplier's ABN. If it
+  // is not set we say so loudly on the document rather than printing nothing
+  // and letting an invalid invoice go out looking finished.
+  if (org?.abn) {
+    doc.setTextColor(...MUTED);
+    doc.text(`${org?.business_name || businessName}  ·  ABN ${org.abn}`, left, footY);
+  } else {
+    doc.setTextColor(...VERMILLION);
+    doc.text(`${org?.business_name || businessName}  ·  ABN NOT SET — add it in Settings`, left, footY);
+  }
+
+  doc.setFont('Figtree', 'normal');
+  doc.setTextColor(...MUTED);
+  doc.text('Generated by Platform OS One', right, footY, { align: 'right' });
 
   doc.save(`${invoice.id}.pdf`);
 }

@@ -59,7 +59,7 @@ const XERO_BANNER = {
   error: { color: '#c67139', text: 'Something went wrong connecting Xero.' },
 };
 
-const BLANK_PROFILE = { business_name: '', trading_as: '', address: '', phone: '', email: '' };
+const BLANK_PROFILE = { business_name: '', trading_as: '', abn: '', address: '', phone: '', email: '' };
 const BLANK_BANK = { bank_name: '', bank_bsb: '', bank_account: '' };
 
 export function Settings() {
@@ -77,6 +77,7 @@ export function Settings() {
     setProfile({
       business_name: org.business_name || '',
       trading_as: org.trading_as || '',
+      abn: org.abn || '',
       address: org.address || '',
       phone: org.phone || '',
       email: org.email || '',
@@ -166,6 +167,7 @@ export function Settings() {
       <Card title="Business profile" action={<SaveButton onClick={saveProfile} status={profileStatus} />}>
         <Field l="BUSINESS NAME" placeholder="Your business name" value={profile.business_name} onChange={(e) => setProfile((p) => ({ ...p, business_name: e.target.value }))} />
         <Field l="TRADING AS" placeholder="Trading name (if different)" value={profile.trading_as} onChange={(e) => setProfile((p) => ({ ...p, trading_as: e.target.value }))} />
+        <Field l="ABN" placeholder="e.g. 12 345 678 901" value={profile.abn} onChange={(e) => setProfile((p) => ({ ...p, abn: e.target.value }))} />
         <Field l="ADDRESS" placeholder="Business address" value={profile.address} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} />
         <Field l="PHONE" placeholder="Phone number" value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} />
         <Field l="EMAIL" placeholder="Contact email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />

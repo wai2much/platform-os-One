@@ -1,0 +1,12 @@
+node_modules/
+data/
+go*.sh
+.env
+.env.local
+
+# Generated from a real export. These hold live customer names and invoice
+# amounts, so they must never reach the repo.
+*.csv
+*.tsv
+*.b64
+import.sql
