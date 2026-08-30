@@ -4,6 +4,7 @@ import { buildMercedesSystem, toAnthropicMessages } from './persona.ts';
 import { TOOLS, runTool } from './tools.ts';
 import { runAgent } from './agent.ts';
 import { identityBlock, orgContextOf } from './identity.ts';
+import { WEB_SEARCH_TOOL } from '../_shared/webSearch.ts';
 
 // ============================================================================
 // Mercedes — the Hyper Agent's brain. Claude, with eyes and hands scoped to
@@ -65,7 +66,9 @@ Deno.serve(async (req) => {
       apiKey,
       model: MODEL,
       system: `${identityBlock(user, ctx)}\n\n${buildMercedesSystem({ name: ctx.orgName, vertical: ctx.vertical })}`,
-      tools: TOOLS,
+      // Search goes FIRST so the ephemeral cache marker stays on the last of
+      // our own tools and keeps caching the whole preamble.
+      tools: [WEB_SEARCH_TOOL, ...TOOLS],
       messages,
       maxHops: MAX_HOPS,
       maxTokens: MAX_TOKENS,

@@ -1,0 +1,11 @@
+{
+  "name": "platform-os-workshop-software-bridge",
+  "version": "1.0.0",
+  "description": "Workshop Software -> Platform OS Slim invoice bridge (repeatable delta import)",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
+    "csv-parse": "^7.0.1"
+  }
+}

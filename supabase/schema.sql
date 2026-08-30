@@ -606,10 +606,18 @@ alter table invoices add column if not exists migrated_source text not null defa
 -- Backfill: everything that existed before this migration ran came from the
 -- import. Safe to re-run; only ever marks rows created on or before the
 -- cutover, never anything entered in Platform OS afterwards.
+-- The `migrated_source = ''` guard matters. Later imports (the Workshop
+-- Software bridge in scripts/bridge-workshop-software) write invoices with
+-- their REAL invoice date as created_at, so July 2026 rows sit below this
+-- cutover timestamp. Without the guard, re-running this file would silently
+-- reclassify deliberately-live July invoices as historical and drop them out
+-- of every revenue total on the dashboard. Any row that already carries a
+-- source tag has had its status decided on purpose - leave it alone.
 update invoices
    set migrated = true,
        migrated_source = 'mechanicdesk-2026-07-30'
  where migrated = false
+   and migrated_source = ''
    and created_at <= '2026-07-31T00:00:00Z';
 
 -- ============================================================================

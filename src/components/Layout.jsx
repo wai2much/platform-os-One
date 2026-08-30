@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/core/store';
 import { getThemePreference, setThemePreference, getResolvedTheme, watchSystemTheme } from '@/core/theme';
+import { BrandLockup } from '@/components/BrandMark';
 
 function NavIcon({ icon, color }) {
   return (
@@ -81,9 +82,8 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--page-bg)' }}>
       {/* Sidebar */}
       <aside style={{ width: 224, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '0 14px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 6px 12px' }}>
-          <img src="/hos-mark-black.png" alt="Haus" style={{ width: 26, height: 26, objectFit: 'contain' }} />
-          <span className="cap" style={{ fontSize: 19, color: 'var(--text)' }}>Platform OS</span>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '18px 6px 12px' }}>
+          <BrandLockup height={30} />
         </div>
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>

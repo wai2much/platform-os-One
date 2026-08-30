@@ -150,3 +150,63 @@
 
 /* Mercedes — Poll Now spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Login monogram field — the Platform OS One mark tiled across the sign-in
+   page, colours interchanging cell to cell. Lives here rather than inline
+   because it needs a media query (the tile has to shrink on a phone or the
+   marks read enormous) and a data-theme swap. Sits behind the card at
+   z-index 0 and is inert to the pointer. */
+.monogram-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('/pos-one-monogram.svg');
+  background-size: 220px 220px;
+  background-repeat: repeat;
+  opacity: .26;
+}
+
+/* Dark ground: obsidian plates disappear into it, so the dark tile trades
+   them for jade and bone, and the whole field drops back — the same marks
+   carry much further against a dark page. */
+[data-theme="dark"] .monogram-field {
+  background-image: url('/pos-one-monogram-dark.svg');
+  opacity: .15;
+}
+
+@media (max-width: 640px) {
+  .monogram-field { background-size: 150px 150px; }
+}
+
+/* Login page ground. Was three hardcoded cream stops inline on the page
+   div, which meant the sign-in screen stayed light even with the rest of
+   the app in dark — and the dark monogram tile would then be painting
+   jade-and-bone marks onto cream. Moved here so both themes are real.
+   The dark stops are warm rather than neutral, same as the palette above:
+   the page deepens toward espresso, not toward grey. */
+.login-page {
+  background:
+    radial-gradient(52rem 42rem at 8% -8%, rgba(255, 255, 255, .65), transparent 55%),
+    radial-gradient(48rem 44rem at 106% 112%, rgba(191, 51, 36, .16), transparent 60%),
+    linear-gradient(160deg, #f8efdf 0%, #f2dfc4 55%, #e9c9a1 100%);
+}
+
+[data-theme="dark"] .login-page {
+  background:
+    radial-gradient(52rem 42rem at 8% -8%, rgba(245, 234, 216, .07), transparent 55%),
+    radial-gradient(48rem 44rem at 106% 112%, rgba(191, 51, 36, .20), transparent 60%),
+    linear-gradient(160deg, #1c1815 0%, #14120f 55%, #0c0a08 100%);
+}
+
+/* The dot grid over that ground — ink dots on cream, cream dots on ink. */
+.login-dots {
+  background-image: radial-gradient(rgba(60, 57, 54, .08) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%);
+  mask-image: radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%);
+}
+
+[data-theme="dark"] .login-dots {
+  background-image: radial-gradient(rgba(245, 234, 216, .07) 1px, transparent 1px);
+}

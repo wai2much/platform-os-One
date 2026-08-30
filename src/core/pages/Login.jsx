@@ -1,5 +1,6 @@
 import { Wrench, CalendarCheck, Receipt, Sparkles, Lock } from 'lucide-react';
 import { useAuth } from '@/core/auth';
+import { BrandLockup } from '@/components/BrandMark';
 
 const FEATURE_TERRACOTTA = '#c67139';
 const FEATURE_SAGE = '#7a8a5e';
@@ -22,52 +23,12 @@ const GoogleG = () => (
   </svg>
 );
 
-// Folded-paper accents: each is a triangle split into a lit half and a
-// shadowed half, like a crease catching the light. Positioned around the
-// card and left to drift slowly so the screen doesn't feel static.
-// Washi/kraft rather than near-white — against the lighter page background
-// below, pure cream would read as invisible instead of "paper."
-const CREAM = { light: '#f3ecdd', dark: '#d9c9a8' };
-const BLUSH = { light: '#e8b4ac', dark: '#c17b71' };
-const SAGE = { light: '#a8bb8b', dark: '#63744a' };
-const INK = { light: '#3c3936', dark: '#201e1d' };
-// Vermillion — the accent from the Origami Paper design system, used here
-// as one bold fold rather than the whole page like the earlier terracotta fill.
-const VERMILLION = { light: '#d9432e', dark: '#8a2417' };
-
-const ORIGAMI_SHAPES = [
-  { size: 160, top: '2%', left: '3%', rot: -12, duration: '7s', delay: '-2s', ...VERMILLION },
-  { size: 56, top: '11%', right: '9%', rot: 20, duration: '6s', delay: '-5s', ...SAGE },
-  { size: 96, bottom: '8%', left: '7%', rot: 8, duration: '6.5s', delay: '-1s', ...CREAM },
-  { size: 174, bottom: '-6%', right: '-4%', rot: -18, duration: '8s', delay: '-4s', ...BLUSH },
-  { size: 40, top: '42%', right: '18%', rot: 32, duration: '5s', delay: '-3s', ...INK },
-  { size: 62, top: '3%', left: '42%', rot: -6, duration: '6.5s', delay: '-1.5s', ...BLUSH },
-  { size: 34, top: '58%', left: '4%', rot: 16, duration: '5.5s', delay: '-2.5s', ...BLUSH },
-  { size: 112, top: '64%', right: '6%', rot: -24, duration: '9s', delay: '-6s', ...CREAM },
-];
-
-const OrigamiShape = ({ size, top, left, right, bottom, rot, duration, delay, light, dark }) => (
-  <div
-    aria-hidden="true"
-    className="origami-shape"
-    style={{
-      width: size, height: size, top, left, right, bottom,
-      '--rot': `${rot}deg`,
-      transform: `rotate(${rot}deg)`,
-      animationDuration: duration,
-      animationDelay: delay,
-    }}
-  >
-    <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)', background: light }} />
-    <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(50% 0%, 100% 100%, 50% 100%)', background: dark }} />
-  </div>
-);
-
 export function Login() {
   const { signInWithGoogle } = useAuth();
 
   return (
     <div
+      className="login-page"
       style={{
         minHeight: '100vh',
         display: 'flex',
@@ -76,30 +37,18 @@ export function Login() {
         position: 'relative',
         overflow: 'hidden',
         perspective: 900,
-        background: `
-          radial-gradient(52rem 42rem at 8% -8%, rgba(255,255,255,.65), transparent 55%),
-          radial-gradient(48rem 44rem at 106% 112%, rgba(191,51,36,.16), transparent 60%),
-          linear-gradient(160deg, #f8efdf 0%, #f2dfc4 55%, #e9c9a1 100%)
-        `,
       }}
     >
       <div
         aria-hidden="true"
-        style={{
-          position: 'absolute', inset: 0, opacity: .6, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(rgba(60,57,54,.08) 1px, transparent 1px)',
-          backgroundSize: '22px 22px',
-          maskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
-          WebkitMaskImage: 'radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%)',
-        }}
+        className="login-dots"
+        style={{ position: 'absolute', inset: 0, opacity: .6, pointerEvents: 'none' }}
       />
-      {ORIGAMI_SHAPES.map((s, i) => (
-        <OrigamiShape key={i} {...s} />
-      ))}
-      <div className="origami-card-in" style={{ width: '100%', maxWidth: 400, position: 'relative', background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '38px 36px 32px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)', overflow: 'hidden' }}>
+      <div aria-hidden="true" className="monogram-field" />
+      <div className="origami-card-in" style={{ width: '100%', maxWidth: 400, position: 'relative', zIndex: 1, background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '38px 36px 32px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)', overflow: 'hidden' }}>
         <div aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${FEATURE_TERRACOTTA}, ${FEATURE_BLUSH}, ${FEATURE_SAGE})` }} />
 
-        <img src="/hos-mark-black.png" alt="Haus" style={{ width: 36, height: 36, objectFit: 'contain', margin: '0 auto 14px' }} />
+        <BrandLockup height={34} style={{ display: 'block', margin: '0 auto 16px' }} />
         <div className="fg" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: FEATURE_TERRACOTTA, marginBottom: 10 }}>
           BUSINESS OPERATING SYSTEM
         </div>
