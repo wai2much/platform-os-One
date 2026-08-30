@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { makePayment, makeRefund, balanceDue, isSettled, round2, paidTotal, refundableTotal, lineTotal } from '@/lib/invoiceMoney';
 
@@ -22,10 +22,34 @@ const fmt = (n) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, m
 // out via Supabase's Table Editor — removing this code doesn't retroactively
 // delete anything that already got written.
 
+/**
+ * The job card, in full.
+ *
+ * Every field the printed form has, in one place. Previously most of these
+ * lived in useState inside the form component, which meant a rego or an
+ * odometer reading survived exactly as long as you stayed on the screen —
+ * type it, click another tab, come back, gone. Nothing on a job card is
+ * scratch: the safety inspection is the reason the customer trusts the quote,
+ * and the odometer is the reason the next service reminder fires.
+ */
 export const blankJobCard = () => ({
-  customer: '', vehicle: '', workTypes: {},
+  // Customer
+  customer: '', phone: '', email: '', address: '',
+  // Vehicle
+  vehicle: '', year: '', rego: '', odo: '', colour: '', vin: '',
+  // Booking
+  jobNo: '', date: '', dateIn: '', promised: '', advisor: '', source: '',
+  // Work requested
+  workTypes: {}, workRequested: '',
+  // Authorisation
+  flags: {}, estimate: '', signedBy: '',
+  // Parts and labour
   parts: Array.from({ length: 8 }, () => ({ qty: '', desc: '', partNo: '', unit: '', productId: null })),
   labour: '', sundries: '',
+  // Safety inspection: { [item]: 'ok' | 'monitor' | 'action' } and free notes
+  inspection: {}, inspectionNotes: {},
+  align: { camber: '', toeF: '', toeR: '', caster: '' },
+  techNotes: '', recommendations: '',
 });
 
 export const jobCardNet = (jc) => {
@@ -49,8 +73,8 @@ const nextNum = (list, prefix, floor) => {
 // Every row is scoped to the current tenant's org_id (see supabase/schema.sql
 // Phase 1: Auth + Multi-Tenancy) — RLS rejects writes for any other org, this
 // is just so the row shape matches on the way in.
-const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines });
-const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [] });
+const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines, rego: j.rego || '', odometer: j.odometer || '', notes: j.notes || '', card: j.card || null });
+const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [], rego: r.rego || '', odometer: r.odometer || '', notes: r.notes || '', card: r.card || null });
 const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount, lines: i.lines || [], payments: i.payments || [], order_number: i.orderNumber || '',
   vehicle: i.vehicle || '', rego: i.rego || '', odometer: i.odometer || '', next_service_km: i.nextServiceKm || '',
   job_status: i.jobStatus || '', job_status_comment: i.jobStatusComment || '', notes: i.notes || '' });
@@ -290,17 +314,98 @@ export function StoreProvider({ orgId, children }) {
     })();
   }, [orgId]);
 
-  const updateJobCard = (patch) => setJobCard((jc) => ({ ...jc, ...patch }));
+  // Job card autosave.
+  //
+  // Every edit lands on the job it belongs to and is written to Supabase. The
+  // write is debounced because this fires on every keystroke, but the debounce
+  // is the only thing between typing and durable — nothing is left in local
+  // component state to be lost on navigation. If there is no job open yet
+  // (someone walked straight onto the Job Card screen), the first edit creates
+  // one, so a card can never be typed into a void.
+  const jobCardSave = useRef({ timer: null, card: null, jobId: null });
+
+  // Read the current jobs without depending on them, so the debounced flush
+  // always sees the latest list. Persisting inside a setJobs updater would run
+  // the write twice under StrictMode; this keeps the side effect outside.
+  const jobsRef = useRef(jobs);
+  useEffect(() => { jobsRef.current = jobs; }, [jobs]);
+
+  const flushJobCard = () => {
+    const { card, jobId } = jobCardSave.current;
+    jobCardSave.current.timer = null;
+    if (!card || !jobId) return;
+    const existing = jobsRef.current.find((j) => j.id === jobId);
+    if (!existing) return;
+    const saved = {
+      ...existing,
+      customer: card.customer || existing.customer,
+      vehicle: card.vehicle || existing.vehicle,
+      rego: card.rego || '',
+      odometer: card.odo || '',
+      notes: card.techNotes || '',
+      card,
+    };
+    setJobs((list) => list.map((j) => (j.id === jobId ? saved : j)));
+    persistJob(saved, orgId);
+  };
+
+  const updateJobCard = (patch) => {
+    let jobId = activeJobId;
+    if (!jobId) {
+      jobId = nextNum(jobs, 'J-', 424);
+      const job = { id: jobId, customer: '', vehicle: '', tech: '', status: 'In progress', total: 0, lines: [], rego: '', odometer: '', notes: '', card: null };
+      setJobs((list) => [job, ...list]);
+      setActiveJobId(jobId);
+    }
+    setJobCard((jc) => {
+      const next = { ...jc, ...patch };
+      jobCardSave.current.card = next;
+      jobCardSave.current.jobId = jobId;
+      if (jobCardSave.current.timer) clearTimeout(jobCardSave.current.timer);
+      jobCardSave.current.timer = setTimeout(flushJobCard, 700);
+      return next;
+    });
+  };
+
+  // Open an existing job's card. Hydrates from what was saved rather than
+  // handing back a blank form, which is what made the card feel disposable.
+  const openJobCard = (id) => {
+    const job = jobs.find((j) => j.id === id);
+    if (!job) return;
+    setActiveJobId(id);
+    setJobCard({
+      ...blankJobCard(),
+      ...(job.card || {}),
+      customer: job.card?.customer || job.customer || '',
+      vehicle: job.card?.vehicle || job.vehicle || '',
+      rego: job.card?.rego || job.rego || '',
+      odo: job.card?.odo || job.odometer || '',
+      jobNo: job.card?.jobNo || job.id,
+    });
+    setActive('inspections');
+  };
+
+  // Assign a tech or move a job along. Both were display-only before, so the
+  // TECH column could never show anything and a job could not be marked Ready.
+  const updateJob = (id, patch) => {
+    const existing = jobs.find((j) => j.id === id);
+    if (!existing) return;
+    const saved = { ...existing, ...patch };
+    setJobs((list) => list.map((j) => (j.id === id ? saved : j)));
+    persistJob(saved, orgId);
+  };
+
 
   // Booking/customer → job card: creates the linked job (status In progress),
   // pre-fills the front page, and jumps to Inspections.
   const startJobCard = (prefill) => {
     const id = nextNum(jobs, 'J-', 424);
-    const job = { id, customer: prefill.customer || '', vehicle: prefill.vehicle || '', tech: '', status: 'In progress', total: 0, lines: [] };
+    const card = { ...blankJobCard(), ...prefill, jobNo: id };
+    const job = { id, customer: prefill.customer || '', vehicle: prefill.vehicle || '', tech: '', status: 'In progress', total: 0, lines: [], rego: prefill.rego || '', odometer: '', notes: '', card };
     setJobs((list) => [job, ...list]);
     persistJob(job, orgId);
     setActiveJobId(id);
-    setJobCard({ ...blankJobCard(), ...prefill });
+    setJobCard(card);
     setActive('inspections');
   };
 
@@ -335,7 +440,7 @@ export function StoreProvider({ orgId, children }) {
     const jobId = activeJobId || nextNum(jobs, 'J-', 424);
     const existingJob = activeJobId ? jobs.find((j) => j.id === activeJobId) : null;
     const savedJob = existingJob
-      ? { ...existingJob, status: 'Completed', total: amount, lines }
+      ? { ...existingJob, status: 'Completed', total: amount, lines, rego: jobCard.rego || existingJob.rego || '', odometer: jobCard.odo || existingJob.odometer || '' }
       : { id: jobId, customer: jobCard.customer || 'Walk-in', vehicle: jobCard.vehicle || '', tech: '', status: 'Completed', total: amount, lines };
     setJobs((list) => (existingJob ? list.map((j) => (j.id === jobId ? savedJob : j)) : [savedJob, ...list]));
     persistJob(savedJob, orgId);
@@ -344,7 +449,7 @@ export function StoreProvider({ orgId, children }) {
     // Carry the job's parts and labour onto the invoice. Without this the
     // invoice stored only a total, so the PDF and the Invoices screen both
     // showed an amount with no explanation of what it was for.
-    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true, lines, payments: [], vehicle: jobCard.vehicle || '', jobStatus: 'Completed' };
+    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true, lines, payments: [], vehicle: jobCard.vehicle || '', rego: jobCard.rego || '', odometer: jobCard.odo || '', jobStatus: 'Completed' };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
@@ -703,7 +808,7 @@ export function StoreProvider({ orgId, children }) {
       tyreStock, setTyreQty, addTyreLine,
       stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized,
       jobCard, updateJobCard,
-      startJobCard, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, recordRefund, removePayment, updateInvoiceLines, updateInvoiceDetails,
+      startJobCard, openJobCard, updateJob, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, recordRefund, removePayment, updateInvoiceLines, updateInvoiceDetails,
       flash, setFlash,
     }}>
       {children}
