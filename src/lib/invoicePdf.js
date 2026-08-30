@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { FigtreeRegular, FigtreeBold } from './fonts/invoiceFonts';
 import { ShipporiMinchoRegular, ShipporiMinchoBold } from './fonts/shipporiFonts';
 import { POS_ONE_MARK_PNG } from './assets/posOneMark';
+import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals } from './invoiceMoney';
 
 /**
  * Invoice PDF generation — client-side, no backend call.
@@ -139,6 +140,15 @@ export function generateInvoicePdf(invoice, org) {
   doc.setTextColor(...GOLD);
   tracked(doc, `NO. ${invoice.id}`, right, 94, 1.4, { align: 'right' });
 
+  // The customer's own order number, quoted back at them. Fleet and trade
+  // accounts match on this, not on our invoice number.
+  if (invoice.orderNumber) {
+    doc.setFont('Figtree', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text(`Your order ${invoice.orderNumber}`, right, 106, { align: 'right' });
+  }
+
   doc.setDrawColor(...SUMI);
   doc.setLineWidth(1.5);
   doc.line(left, 116, right, 116);
@@ -177,7 +187,9 @@ export function generateInvoicePdf(invoice, org) {
   }
 
   // Status, as a small pill under the customer name.
-  const status = invoice.status || 'Sent';
+  const status = displayStatus(invoice);
+  const received = paidTotal(invoice);
+  const owing = balanceDue(invoice);
   const s = STATUS_STYLE[status] || STATUS_STYLE.Sent;
   doc.setFont('Figtree', 'bold');
   doc.setFontSize(8);
@@ -194,15 +206,65 @@ export function generateInvoicePdf(invoice, org) {
   doc.line(left, y, right, y);
   y += 34;
 
+  // --- Items ----------------------------------------------------------------
+  // Accepts both shapes: the [desc, qty, total] tuples the job card produces,
+  // and the {code, desc, qty, price, total} objects the Workshop Software
+  // import carries. Invoices with no line detail simply skip this block.
+  const money = invoiceTotals(invoice);
+  const items = money.items;
+
+  if (items.length) {
+    doc.setFont('Figtree', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    tracked(doc, 'ITEMS', left, y, 1.2);
+    y += 16;
+
+    // Keep it to one page. Better to say plainly that lines were omitted than
+    // to silently spill off the bottom of the sheet.
+    const maxY = pageH - 300;
+    let shown = 0;
+    for (const it of items) {
+      if (y > maxY) break;
+      doc.setFont('Figtree', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...SUMI);
+      doc.text(doc.splitTextToSize(it.desc, 300)[0], left, y);
+      // Qty x unit price, the way a workshop reads a line: what it was and
+      // what one of them cost. Only where it adds information — a single item
+      // priced at its line total needs no arithmetic spelled out.
+      if (it.qty > 1) {
+        doc.setFontSize(8.5);
+        doc.setTextColor(...MUTED);
+        doc.text(`${it.qty} × ${fmt(it.price)}`, right - 90, y, { align: 'right' });
+        doc.setFontSize(9.5);
+        doc.setTextColor(...SUMI);
+      }
+      doc.setFont('Figtree', 'bold');
+      doc.text(fmt(it.total), right, y, { align: 'right' });
+      y += 14;
+      shown++;
+      doc.setDrawColor(...RULE);
+      doc.setLineWidth(0.4);
+      doc.line(left, y - 9, right, y - 9);
+    }
+    if (shown < items.length) {
+      doc.setFont('Figtree', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...MUTED);
+      doc.text(`+ ${items.length - shown} more items not shown`, left, y);
+      y += 14;
+    }
+    y += 18;
+  }
+
   // --- Amounts --------------------------------------------------------------
-  // The GST split is derived as 1/11 of the total, because the invoice model
-  // stores one tax-inclusive figure and nothing else. That is exact only when
-  // every line is taxable. It becomes a real figure once invoices carry line
-  // items (scripts/bridge-workshop-software/add-invoice-lines.sql). The
-  // "Total price includes GST" line below is the ATO-permitted wording and
-  // stays true either way.
-  const exGst = Number(invoice.amount || 0) / 1.1;
-  const gst = Number(invoice.amount || 0) - exGst;
+  // Where line items exist and reconcile with the invoice total, the GST split
+  // is exact. Where they don't, it falls back to 1/11 of the total, which is
+  // all the data supports and is only right when every line is taxable. The
+  // "Total price includes GST" line is the ATO-permitted wording and stays
+  // true either way.
+  const { total, exGst, gst } = money;
 
   const amountRow = (label, value, opts = {}) => {
     doc.setFont('Figtree', opts.strong ? 'bold' : 'normal');
@@ -241,6 +303,35 @@ export function generateInvoicePdf(invoice, org) {
   doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
   doc.text(gstRegistered ? 'Total price includes GST' : 'No GST has been charged', right, y, { align: 'right' });
+
+  // Payments taken, then what's actually still owed. A customer holding a
+  // part-paid invoice needs to see their deposit acknowledged and the balance
+  // stated plainly — a total alone reads as though nothing was ever paid.
+  if (received > 0) {
+    y += 22;
+    paymentsOf(invoice).forEach((pmt) => {
+      doc.setFont('Figtree', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...MUTED);
+      doc.text(`${fmtDate(pmt.date)} · ${pmt.method === 'Credit' ? 'Account credit' : pmt.method}`, colR, y);
+      doc.setFont('Figtree', 'bold');
+      doc.setTextColor(...SUMI);
+      doc.text('-' + fmt(pmt.amount), right, y, { align: 'right' });
+      y += 15;
+    });
+    y += 6;
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.6);
+    doc.line(colR, y, right, y);
+    y += 20;
+    doc.setFont('Shippori', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...SUMI);
+    doc.text(owing > 0.005 ? 'Balance due' : 'Balance', colR, y);
+    doc.setFontSize(20);
+    doc.setTextColor(...(owing > 0.005 ? VERMILLION : SUMI));
+    doc.text(fmt(owing), right, y + 1, { align: 'right' });
+  }
 
   // Paid stamp, angled across the amount block.
   if (status === 'Paid') {

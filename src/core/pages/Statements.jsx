@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore, fmt } from '@/core/store';
+import { balanceDue, displayStatus } from '@/lib/invoiceMoney';
 
 /**
  * Statements — core screen. KPIs and the per-account balance table are REAL —
@@ -11,11 +12,13 @@ export function Statements() {
   const { invoices } = useStore();
   const [viewing, setViewing] = useState(null);
 
-  const outstanding = invoices.filter((i) => i.status !== 'Paid');
+  // An account's balance is the sum of what's still owed on each invoice,
+  // so part payments and deposits show up here the moment they're taken.
+  const outstanding = invoices.filter((i) => balanceDue(i) > 0.005);
   const byCustomer = {};
   for (const inv of outstanding) {
     if (!byCustomer[inv.customer]) byCustomer[inv.customer] = { customer: inv.customer, terms: inv.terms, balance: 0, lines: [], overdue: false };
-    byCustomer[inv.customer].balance += inv.amount;
+    byCustomer[inv.customer].balance += balanceDue(inv);
     byCustomer[inv.customer].lines.push(inv);
     if (inv.status === 'Overdue') byCustomer[inv.customer].overdue = true;
   }
@@ -67,7 +70,7 @@ export function Statements() {
             <div style={{ borderTop: '1px solid #e0dccf', borderBottom: '1px solid #e0dccf' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '10px 0', fontWeight: 700, fontSize: 11, letterSpacing: '.06em', color: '#8a857c' }}><span>INVOICE</span><span>STATUS</span><span style={{ textAlign: 'right' }}>AMOUNT</span></div>
               {viewing.lines.map((ln) => (
-                <div key={ln.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '9px 0', borderTop: '1px solid #f0ece0', fontSize: 13 }}><span>{ln.id}</span><span>{ln.status}</span><span style={{ textAlign: 'right' }}>{fmt(ln.amount)}</span></div>
+                <div key={ln.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '9px 0', borderTop: '1px solid #f0ece0', fontSize: 13 }}><span>{ln.id}</span><span>{displayStatus(ln)}</span><span style={{ textAlign: 'right' }}>{fmt(balanceDue(ln))}</span></div>
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
