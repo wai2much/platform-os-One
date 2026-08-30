@@ -31,9 +31,11 @@ export const paidTotal = (inv) => round2(paymentsOf(inv).reduce((s, p) => s + (N
  */
 export function balanceDue(inv) {
   const amount = Number(inv?.amount) || 0;
-  const paid = paidTotal(inv);
-  if (paid <= 0) return inv?.status === 'Paid' ? 0 : round2(amount);
-  return round2(amount - paid);
+  // An invoice with no ledger at all predates this: a legacy 'Paid' owes
+  // nothing, anything else owes the lot. Once there is even one row — including
+  // a payment fully refunded back out — the ledger is the truth.
+  if (paymentsOf(inv).length === 0) return inv?.status === 'Paid' ? 0 : round2(amount);
+  return round2(amount - paidTotal(inv));
 }
 
 /** True once the balance is settled (or overpaid — a refund is a later problem). */
@@ -45,8 +47,13 @@ export const isSettled = (inv) => balanceDue(inv) <= 0.005;
  * ordering matters: it means recording a payment never has to rewrite history.
  */
 export function displayStatus(inv) {
-  if (paidTotal(inv) <= 0) return inv?.status || 'Sent';
-  return isSettled(inv) ? 'Paid' : 'Part paid';
+  const rows = paymentsOf(inv);
+  if (rows.length === 0) return inv?.status || 'Sent';
+  if (isSettled(inv)) return 'Paid';
+  // Refunded right back to nothing: the invoice is open again, and must not
+  // keep wearing a 'Paid' label it no longer earns.
+  if (paidTotal(inv) <= 0) return inv?.status === 'Paid' ? 'Sent' : (inv?.status || 'Sent');
+  return 'Part paid';
 }
 
 /** GST split for an inc-GST total, AU 10%. Kept here so nothing re-derives it. */
@@ -70,6 +77,21 @@ export const fmtDate = (iso) => {
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 };
+
+/**
+ * A refund is a negative row in the same ledger, not a separate concept. That
+ * keeps one arithmetic — balance = total - sum(ledger) — true in every case,
+ * and means a refunded invoice reopens on its own without anyone remembering
+ * to flip a status.
+ */
+export function makeRefund({ amount, method, ref, note, date }) {
+  return makePayment({ amount: -Math.abs(round2(amount)), method, ref, note: note || 'Refund', date });
+}
+
+/** What could still be handed back — never more than what came in. */
+export const refundableTotal = (inv) => Math.max(0, paidTotal(inv));
+
+export const isRefund = (pmt) => (Number(pmt?.amount) || 0) < 0;
 
 export function makePayment({ amount, method, ref, note, date }) {
   return {

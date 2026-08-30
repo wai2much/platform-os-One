@@ -3,7 +3,7 @@ import { useStore } from '@/core/store';
 import { useAuth } from '@/core/auth';
 import { useTerminal } from '@/lib/zeller';
 import { generateInvoicePdf } from '@/lib/invoicePdf';
-import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals, lineTotal, PAYMENT_METHODS } from '@/lib/invoiceMoney';
+import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals, lineTotal, isRefund, refundableTotal, PAYMENT_METHODS } from '@/lib/invoiceMoney';
 
 /**
  * Invoices — core screen. Faithful to the prototype: table with credit-hold /
@@ -320,7 +320,7 @@ function LineEditor({ invoice, onSave, onCancel }) {
 }
 
 export function Invoices() {
-  const { invoices, flash, recordPayment, updateInvoiceLines, updateInvoiceDetails, addInvoice } = useStore();
+  const { invoices, flash, recordPayment, recordRefund, updateInvoiceLines, updateInvoiceDetails, addInvoice } = useStore();
   const { org } = useAuth();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
@@ -328,6 +328,9 @@ export function Invoices() {
   const [notifyNote, setNotifyNote] = useState('');
   const [payAmount, setPayAmount] = useState('');
   const [editingLines, setEditingLines] = useState(false);
+  const [refunding, setRefunding] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundNote, setRefundNote] = useState('');
 
   const open = invoices.find((i) => i.id === openId) || null;
   const due = open ? balanceDue(open) : 0;
@@ -344,6 +347,9 @@ export function Invoices() {
     setNotifyNote('');
     setPayAmount('');
     setEditingLines(false);
+    setRefunding(false);
+    setRefundAmount('');
+    setRefundNote('');
     setOpenId(inv.id);
   };
 
@@ -360,6 +366,22 @@ export function Invoices() {
 
   // One write, not two: the Zeller charge lands as a ledger row carrying its
   // own transaction id, and the receipt link rides along on the invoice.
+  // Blank means hand back everything received; anything less is a partial
+  // refund and the rest stays on the ledger.
+  const takeRefund = () => {
+    const available = refundableTotal(open);
+    const typed = parseFloat(refundAmount);
+    const amount = Number.isFinite(typed) && typed > 0 ? Math.min(typed, available) : available;
+    const result = recordRefund(openId, { amount, method, note: refundNote });
+    if (result.ok) {
+      setRefunding(false);
+      setRefundAmount('');
+      setRefundNote('');
+    } else {
+      setNotifyNote(result.error);
+    }
+  };
+
   const onZellerPaid = (meta) => {
     recordPayment(openId, { amount: meta.amount ?? due, method: 'Card', ref: meta.transactionUuid, note: 'Zeller Terminal' }, meta);
     setOpenId(null);
@@ -501,10 +523,36 @@ export function Invoices() {
                   <div className="fg" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--text-mute2)', fontWeight: 700, marginBottom: 8 }}>PAYMENTS</div>
                   {paymentsOf(open).map((pmt) => (
                     <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderBottom: '1px solid var(--border-c)' }}>
-                      <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', flex: 1 }}>{fmtDate(pmt.date)} &middot; {pmt.method}{pmt.note ? ` · ${pmt.note}` : ''}</span>
-                      <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, minWidth: 76, textAlign: 'right' }}>{fmt(pmt.amount)}</span>
+                      <span className="fg" style={{ fontSize: 12.5, color: 'var(--text-soft)', flex: 1 }}>
+                        {fmtDate(pmt.date)} &middot; {isRefund(pmt) ? 'Refund' : pmt.method}{pmt.note && pmt.note !== 'Refund' ? ` · ${pmt.note}` : ''}
+                      </span>
+                      <span className="fg" style={{ fontSize: 12.5, fontWeight: 600, minWidth: 76, textAlign: 'right', color: isRefund(pmt) ? '#c67139' : 'var(--text)' }}>{fmt(pmt.amount)}</span>
                     </div>
                   ))}
+
+                  {/* Money handed back. Recorded, never erased — a refund is a
+                      movement that has to stay on the invoice. */}
+                  {refundableTotal(open) > 0.005 && !refunding && (
+                    <span onClick={() => { setRefunding(true); setNotifyNote(''); }} className="fg" style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, color: '#c67139', cursor: 'pointer', marginTop: 10 }}>
+                      Refund&hellip;
+                    </span>
+                  )}
+                  {refunding && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                        {PAYMENT_METHODS.map((m) => <MethodTab key={m} label={m === 'Credit' ? 'Account credit' : m} active={method === m} onClick={() => setMethod(m)} />)}
+                      </div>
+                      <input value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} inputMode="decimal"
+                        placeholder={`Amount — blank refunds all ${fmt(refundableTotal(open))}`} style={{ ...inp, marginBottom: 8 }} />
+                      <input value={refundNote} onChange={(e) => setRefundNote(e.target.value)} placeholder="Reason (optional)" style={inp} />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                        <span onClick={() => setRefunding(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '8px 16px', cursor: 'pointer' }}>Cancel</span>
+                        <span onClick={takeRefund} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>
+                          Refund {fmt(Math.min(parseFloat(refundAmount) || refundableTotal(open), refundableTotal(open)))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { makePayment, balanceDue, isSettled, round2, paidTotal, lineTotal } from '@/lib/invoiceMoney';
+import { makePayment, makeRefund, balanceDue, isSettled, round2, paidTotal, refundableTotal, lineTotal } from '@/lib/invoiceMoney';
 
 /**
  * App store — shared data layer for the app. Runs on in-memory sample data by
@@ -493,6 +493,28 @@ export function StoreProvider({ orgId, children }) {
     return saved;
   };
 
+  // Money handed back. A refund is a negative row in the same ledger, so the
+  // balance and the status follow on their own — an invoice refunded in full
+  // simply becomes open again. Capped at what was actually received, because
+  // you cannot refund money you never took.
+  //
+  // Deliberately not the same as removePayment: that erases a keying mistake,
+  // this records a real movement of money that has to stay on the record.
+  const recordRefund = (id, { amount, method, ref, note, date } = {}) => {
+    const existing = invoices.find((i) => i.id === id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+    const available = refundableTotal(existing);
+    const amt = round2(Math.min(Math.abs(Number(amount) || 0), available));
+    if (amt <= 0) return { ok: false, error: 'Nothing has been received on this invoice to refund.' };
+
+    const payments = [...(existing.payments || []), makeRefund({ amount: amt, method, ref, note, date })];
+    const saved = { ...existing, payments };
+    saved.status = isSettled(saved) ? 'Paid' : (existing.status === 'Paid' ? 'Sent' : existing.status);
+    setInvoices((list) => list.map((i) => (i.id === id ? saved : i)));
+    persistInvoice(saved, orgId);
+    return { ok: true, invoice: saved };
+  };
+
   // Undo a mis-keyed payment. The row leaves the ledger, the balance comes
   // back, and the status follows it — no separate "unpay" concept needed.
   const removePayment = (id, paymentId) => {
@@ -681,7 +703,7 @@ export function StoreProvider({ orgId, children }) {
       tyreStock, setTyreQty, addTyreLine,
       stockTakeItems, setStockCount, stockTakeFinalized, setStockTakeFinalized,
       jobCard, updateJobCard,
-      startJobCard, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, removePayment, updateInvoiceLines, updateInvoiceDetails,
+      startJobCard, generateInvoice, saveJobLines, markInvoicePaid, recordPayment, recordRefund, removePayment, updateInvoiceLines, updateInvoiceDetails,
       flash, setFlash,
     }}>
       {children}
