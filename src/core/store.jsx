@@ -132,10 +132,20 @@ async function persistInvoice(inv, orgId) {
   const { error } = await supabase.from('invoices').upsert(invoiceToRow(inv, orgId));
   if (error) console.error('Supabase: failed to save invoice', inv.id, error);
 }
+// Returns whether the write actually happened, rather than only logging on
+// failure — the Customer Booking Portal used to call this fire-and-forget and
+// show "Booking Confirmed" regardless, so a missing VITE_DEFAULT_ORG_ID or a
+// real Supabase error meant the booking silently never reached the database
+// while the customer walked away thinking it had (see confirmBooking in
+// CustomerPortal.jsx, which now checks this).
 async function persistBooking(b, orgId) {
-  if (!isSupabaseConfigured || !orgId) return;
+  if (!isSupabaseConfigured || !orgId) return { ok: false, reason: 'not_configured' };
   const { error } = await supabase.from('bookings').upsert(bookingToRow(b, orgId));
-  if (error) console.error('Supabase: failed to save booking', b.id, error);
+  if (error) {
+    console.error('Supabase: failed to save booking', b.id, error);
+    return { ok: false, reason: 'error', error };
+  }
+  return { ok: true };
 }
 async function persistCustomer(c, orgId) {
   if (!isSupabaseConfigured || !orgId) return;
@@ -693,11 +703,17 @@ export function StoreProvider({ orgId, children }) {
   // Customer Booking Portal → a real booking, persisted the same way staff
   // bookings are. Replaces the prototype's localStorage bridge now that
   // there's an actual shared backend.
-  const addPortalBooking = ({ customer, phone, vehicle, service, day, time, notes }) => {
+  //
+  // Awaited and reports {ok} back to the caller — CustomerPortal.jsx only
+  // shows "Booking Confirmed" once this resolves true. The optimistic local
+  // add is rolled back on failure so this tab doesn't keep showing a booking
+  // that never actually reached Supabase (and that staff will never see).
+  const addPortalBooking = async ({ customer, phone, vehicle, service, day, time, notes }) => {
     const booking = { id: 'portal-' + Date.now().toString(36), customer, phone, vehicle, service, day, time, notes, source: 'portal', bay: 'TBC' };
     setBookings((list) => [booking, ...list]);
-    persistBooking(booking, orgId);
-    return booking;
+    const result = await persistBooking(booking, orgId);
+    if (!result.ok) setBookings((list) => list.filter((b) => b.id !== booking.id));
+    return { booking, ...result };
   };
 
   // Bookings screen: "+ New booking" (staff-created, as opposed to a portal one).
