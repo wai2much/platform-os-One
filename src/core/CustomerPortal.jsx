@@ -34,14 +34,23 @@ export function CustomerPortal() {
   const [timeId, setTimeId] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '', vehicle: '', notes: '' });
   const [confirmedName, setConfirmedName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const service = SERVICES.find((s) => s.id === serviceId);
   const day = DAYS.find((d) => d.id === dayId);
   const time = timeId;
 
-  const confirmBooking = () => {
+  // Only advances to "You're booked in" once the booking has actually been
+  // saved. This used to fire the confirmation screen unconditionally — a
+  // booking that failed to save (no org configured for the portal, or a real
+  // Supabase error) still told the customer they were booked; staff would
+  // never see it, and the customer would show up to nothing.
+  const confirmBooking = async () => {
     const name = form.name.trim() || 'you';
-    addPortalBooking({
+    setSubmitting(true);
+    setSubmitError('');
+    const result = await addPortalBooking({
       customer: name,
       phone: form.phone.trim(),
       vehicle: form.vehicle.trim() || 'Vehicle TBC',
@@ -50,6 +59,11 @@ export function CustomerPortal() {
       time,
       notes: form.notes.trim(),
     });
+    setSubmitting(false);
+    if (!result.ok) {
+      setSubmitError("That didn't go through — please call us on 03 9462 4400 to book instead, or try again.");
+      return;
+    }
     setConfirmedName(name);
     setStep(4);
   };
@@ -122,9 +136,12 @@ export function CustomerPortal() {
                 <div><div className="fg" style={{ fontSize: 11, color: '#8a857c', fontWeight: 700, letterSpacing: '.06em', marginBottom: 6 }}>VEHICLE</div><input value={form.vehicle} onChange={(e) => setForm((f) => ({ ...f, vehicle: e.target.value }))} placeholder="e.g. Toyota Hilux · rego" style={inp} /></div>
                 <div><div className="fg" style={{ fontSize: 11, color: '#8a857c', fontWeight: 700, letterSpacing: '.06em', marginBottom: 6 }}>NOTES (OPTIONAL)</div><textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Anything we should know?" style={{ ...inp, resize: 'vertical' }} /></div>
               </div>
+              {submitError && (
+                <div className="fg" style={{ fontSize: 12.5, color: '#8a3a1f', background: 'rgba(198,113,57,.1)', border: '1px solid rgba(198,113,57,.3)', borderRadius: 12, padding: '10px 14px', marginTop: 18 }}>{submitError}</div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 26 }}>
                 <span onClick={() => setStep(2)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: '#3c3936', cursor: 'pointer' }}>Back</span>
-                <span onClick={confirmBooking} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#c67139', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}>Confirm booking</span>
+                <span onClick={submitting ? undefined : confirmBooking} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: submitting ? 'rgba(198,113,57,.6)' : '#c67139', borderRadius: 999, padding: '10px 22px', cursor: submitting ? 'default' : 'pointer' }}>{submitting ? 'Booking…' : 'Confirm booking'}</span>
               </div>
             </>
           )}
