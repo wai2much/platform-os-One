@@ -32,9 +32,24 @@ bad()  { printf '  ✗ %s\n' "$*"; FAILED=1; }
 die()  { bad "$*"; exit 1; }
 has()  { [ -n "${!1:-}" ]; }
 
-# Hide a value from the rest of the Actions log.
+# Drop spaces and line breaks around a pasted value.
+trim() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+# Hide a value from the rest of the Actions log. The runner decodes %25, %0D
+# and %0A in a command's value, so encode those first or a password with a %
+# in it would register the wrong mask.
 mask() {
-  if [ -n "${1:-}" ] && [ -n "${GITHUB_ACTIONS:-}" ]; then printf '::add-mask::%s\n' "$1"; fi
+  if [ -n "${1:-}" ] && [ -n "${GITHUB_ACTIONS:-}" ]; then
+    local v="${1//'%'/%25}"
+    v="${v//$'\r'/%0D}"
+    v="${v//$'\n'/%0A}"
+    printf '::add-mask::%s\n' "$v"
+  fi
 }
 
 workdir() {
@@ -88,12 +103,30 @@ check_inputs() {
   ok "Moving $OLD_PROJECT_REF (Tokyo) to $NEW_PROJECT_REF (Sydney)"
 }
 
+# The connection string can be pasted exactly as Supabase shows it, with
+# [YOUR-PASSWORD] still in it, and the password added as its own secret
+# (OLD_DB_PASSWORD, NEW_DB_PASSWORD). This puts the password in, encoded so
+# any character in it is safe. Spaces or line breaks pasted around either
+# value are dropped. Call it directly, never inside $(...).
+resolve_db_url() { # resolve_db_url <URL variable name>
+  local name="$1" pw_name="${1%_URL}_PASSWORD" url pw enc
+  url="$(trim "${!name:-}")"
+  pw="$(trim "${!pw_name:-}")"
+  if [ -n "$url" ] && [ -n "$pw" ] && [[ "$url" == *"[YOUR-PASSWORD]"* ]]; then
+    enc="$(python3 -c 'import sys, urllib.parse as u; print(u.quote(sys.argv[1], safe=""))' "$pw")"
+    mask "$pw"
+    mask "$enc"
+    url="$(python3 -c 'import sys; print(sys.argv[1].replace("[YOUR-PASSWORD]", sys.argv[2]))' "$url" "$enc")"
+  fi
+  printf -v "$name" '%s' "$url"
+}
+
 # check_db_url <secret name> <expected project ref> <label>
 check_db_url() {
   local name="$1" ref="$2" label="$3" url host user pw
   url="${!name}"
   if [[ "$url" == *"[YOUR-PASSWORD]"* ]]; then
-    bad "$label: $name still needs the database password where it says [YOUR-PASSWORD]."
+    bad "$label: $name still says [YOUR-PASSWORD]. Add the database password as the ${name%_URL}_PASSWORD secret."
     return 1
   fi
   host="$(url_part "$url" hostname)"
@@ -298,6 +331,11 @@ step_check() {
   for s in OLD_DB_URL NEW_DB_URL SUPABASE_ACCESS_TOKEN; do
     if has "$s"; then ok "Secret $s is set"; else bad "Secret $s is missing"; fi
   done
+  for s in OLD_DB_PASSWORD NEW_DB_PASSWORD; do
+    if has "$s"; then ok "Secret $s is set"; fi
+  done
+  resolve_db_url OLD_DB_URL
+  resolve_db_url NEW_DB_URL
   if has SUPABASE_ACCESS_TOKEN; then token_checks || true; fi
   if has OLD_DB_URL && has NEW_DB_URL; then db_ready || true; fi
   finish "All clear. Ready for copy-database." \
@@ -309,6 +347,8 @@ step_copy_database() {
   check_inputs
   has OLD_DB_URL || die "Secret OLD_DB_URL is missing"
   has NEW_DB_URL || die "Secret NEW_DB_URL is missing"
+  resolve_db_url OLD_DB_URL
+  resolve_db_url NEW_DB_URL
   db_ready || die "Not copying. Fix the line above and run check again. Nothing was changed."
   workdir
   dump_old "$WORK" || die "Couldn't read the Tokyo database. Nothing was changed."

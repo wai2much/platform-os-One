@@ -29,11 +29,15 @@ The app doesn't use Supabase file storage or realtime, so there is nothing else 
 
 1. **Create the Sydney project.** In Vercel: Storage, then Create Database, then Supabase. Region: **Oceania (Sydney), ap-southeast-2**. Name it `platform-os-one-sydney`. Don't connect it to the `platform-os-one` project yet. This keeps it in the same Supabase organisation and bill as Tokyo.
 2. **Make an access token.** Go to supabase.com/dashboard/account/tokens, click Generate new token, name it `region move`, and copy it.
-3. **Copy the two connection strings.** In each project, click **Connect** at the top, choose **Session pooler**, and copy the URI. Put the database password where it says `[YOUR-PASSWORD]`. If you don't have a password, reset it under Project Settings, then Database, then Reset database password. Nothing in the app uses this password, so resetting Tokyo's is safe.
-4. **Paste three secrets into GitHub.** On github.com/wai2much/platform-os-One go to Settings, then Secrets and variables, then Actions, and click New repository secret for each:
+3. **Copy the two connection strings and passwords.** In each project, click **Connect** at the top, choose **Session pooler**, and copy the URI exactly as shown, with `[YOUR-PASSWORD]` still in it. No editing needed. Then reset that project's database password (Database, then Settings, then Reset database password), let Supabase generate one, and copy it. Nothing in the app uses this password, so resetting Tokyo's is safe.
+4. **Paste five secrets into GitHub.** On github.com/wai2much/platform-os-One go to Settings, then Secrets and variables, then Actions, and click New repository secret for each:
    - `OLD_DB_URL`: Tokyo's Session pooler string
+   - `OLD_DB_PASSWORD`: Tokyo's database password
    - `NEW_DB_URL`: Sydney's Session pooler string
+   - `NEW_DB_PASSWORD`: Sydney's database password
    - `SUPABASE_ACCESS_TOKEN`: the token from step 2
+
+   If you'd rather type the password into the string yourself, that works too, and the two password secrets can be left out.
 5. **Run `check`.** Tell Claude the Sydney project's ref (the 20 letters in its dashboard address). Claude runs the `check` step. It changes nothing. It confirms the new project really is in Sydney, that both databases are reachable, that Sydney is empty, that every Edge Function can be copied, and which secrets Sydney will need.
 
 ## Part 2: the move (about an hour, with nobody using the app)
