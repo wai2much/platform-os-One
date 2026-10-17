@@ -242,13 +242,18 @@ db_ready() {
 }
 
 # Writes roles.sql, schema.sql and data.sql for Tokyo into the given folder,
-# exactly as Supabase's backup and restore guide does it.
+# exactly as Supabase's backup and restore guide does it. Each dump is a new
+# connection (the first may wait on a Docker image pull), so a temporary
+# login is refreshed before each one. Stops at the first dump that fails.
 dump_old() {
   local dir="$1"
-  supabase db dump --db-url "$OLD_DB_URL" -f "$dir/roles.sql" --role-only >/dev/null
-  supabase db dump --db-url "$OLD_DB_URL" -f "$dir/schema.sql" >/dev/null
+  refresh_old || return 1
+  supabase db dump --db-url "$OLD_DB_URL" -f "$dir/roles.sql" --role-only >/dev/null || return 1
+  refresh_old || return 1
+  supabase db dump --db-url "$OLD_DB_URL" -f "$dir/schema.sql" >/dev/null || return 1
+  refresh_old || return 1
   supabase db dump --db-url "$OLD_DB_URL" -f "$dir/data.sql" --use-copy --data-only \
-    -x "storage.buckets_vectors" -x "storage.vector_indexes" >/dev/null
+    -x "storage.buckets_vectors" -x "storage.vector_indexes" >/dev/null || return 1
 }
 
 # Loads the three files into Sydney in a single transaction: either all of it
@@ -336,11 +341,12 @@ lift_own_ban() { # lift_own_ban <project ref>
 
 # Asks Supabase for a temporary login to one project's database, the way the
 # Supabase CLI does when it has no database password, and points the URL
-# variable at it through the project's Session pooler. drop_temp_logins
-# removes it again. Call it directly, never inside $(...): the mask lines
-# have to reach the log.
-temp_login() { # temp_login <URL variable name> <project ref> <label>
-  local name="$1" ref="$2" label="$3" s cfg host db user role pw enc url err i delay=1 tries=8
+# variable at it through the project's Session pooler. Asking again gives a
+# fresh one. drop_temp_logins removes it at the end; only that API call can,
+# because supabase_admin owns these roles. Call it directly, never inside
+# $(...): the mask lines have to reach the log.
+temp_login() { # temp_login <URL variable name> <project ref> <label> [quiet]
+  local name="$1" ref="$2" label="$3" quiet="${4:-}" s cfg host db user role pw enc url err ttl i delay=1 tries=8
   if [ -z "$WORK" ] || [ ! -f "$WORK/auth.hdr" ]; then prepare_api; fi
 
   cfg="$WORK/pooler-$ref.json"
@@ -356,8 +362,9 @@ temp_login() { # temp_login <URL variable name> <project ref> <label>
   if [[ ! "$db" =~ ^[A-Za-z0-9_]+$ ]]; then bad "$label: Supabase gave an unexpected database name"; return 1; fi
 
   # Noted before asking, so a login that was made but never answered for
-  # still gets removed at the end.
-  TEMP_LOGIN_REFS+=("$ref")
+  # still gets removed at the end. Once per project, however often it's
+  # refreshed.
+  if [[ " ${TEMP_LOGIN_REFS[*]-} " != *" $ref "* ]]; then TEMP_LOGIN_REFS+=("$ref"); fi
   printf '{"read_only":false}' > "$WORK/login-body.json"
   s="$(api POST "/projects/$ref/cli/login-role" "$WORK/login.json" "$WORK/login-body.json")"
   if [ "$s" != "201" ]; then
@@ -366,6 +373,7 @@ temp_login() { # temp_login <URL variable name> <project ref> <label>
   fi
   role="$(jq -r '.role // empty' "$WORK/login.json" 2>/dev/null)" || role=""
   pw="$(jq -r '.password // empty' "$WORK/login.json" 2>/dev/null)" || pw=""
+  ttl="$(jq -r '.ttl_seconds // empty' "$WORK/login.json" 2>/dev/null)" || ttl=""
   rm -f "$WORK/login.json"
   if [[ ! "$role" =~ ^cli_login_[A-Za-z0-9_]+$ ]] || [ -z "$pw" ]; then
     bad "$label: the temporary login from Supabase didn't look right"; return 1
@@ -382,7 +390,9 @@ temp_login() { # temp_login <URL variable name> <project ref> <label>
   for ((i = 1; i <= tries; i++)); do
     if PGCONNECT_TIMEOUT=10 psql "$url" -X -A -t -q -c 'select 1' >/dev/null 2>"$err"; then
       printf -v "$name" '%s' "$url"
-      ok "$label: temporary login ready"
+      printf -v "TEMP_$name" '1'
+      printf -v "TTL_$name" '%s' "$ttl"
+      if [ -z "$quiet" ]; then ok "$label: temporary login ready"; fi
       return 0
     fi
     if [ "$i" -eq 3 ]; then lift_own_ban "$ref"; fi
@@ -394,6 +404,30 @@ temp_login() { # temp_login <URL variable name> <project ref> <label>
   bad "$label: the temporary login didn't start working"
   { grep -oE '(ERROR|FATAL): +[^"(:]*|failed: [A-Za-z .]+' "$err" || true; } | head -2 | sed 's/^/    /'
   return 1
+}
+
+# A temporary login only lasts a few minutes, and copy-database opens new
+# connections for longer than that. These get a fresh one right before each
+# part that connects, quietly. A database on a connection string secret is
+# left alone. Call them directly, never inside $(...).
+refresh_login() { # refresh_login <URL variable name> <project ref> <label>
+  local flag="TEMP_$1"
+  if [ "${!flag:-}" != "1" ]; then return 0; fi
+  temp_login "$1" "$2" "$3" quiet
+}
+refresh_old() { refresh_login OLD_DB_URL "$OLD_PROJECT_REF" "Tokyo"; }
+refresh_new() { refresh_login NEW_DB_URL "$NEW_PROJECT_REF" "Sydney"; }
+
+ttl_words() { # ttl_words <seconds>
+  local n unit
+  if [ "$1" -lt 60 ]; then n="$1"; unit=second; else n=$((($1 + 30) / 60)); unit=minute; fi
+  if [ "$n" -ne 1 ]; then unit="${unit}s"; fi
+  printf 'about %s %s' "$n" "$unit"
+}
+
+ttl_note() { # ttl_note <URL variable name> <label>
+  local v="TTL_$1"
+  if [[ "${!v:-}" =~ ^[0-9]+$ ]]; then note "$2: temporary logins last $(ttl_words "${!v}")"; fi
 }
 
 # Removes every temporary login this run asked for. Runs before the summary
@@ -492,7 +526,11 @@ step_check() {
     if has "$s"; then ok "Secret $s is set"; fi
   done
   if has SUPABASE_ACCESS_TOKEN; then token_checks || true; fi
-  if prepare_dbs; then db_ready || true; fi
+  local ready=0
+  prepare_dbs && ready=1
+  ttl_note OLD_DB_URL "Tokyo"
+  ttl_note NEW_DB_URL "Sydney"
+  if [ "$ready" -eq 1 ]; then db_ready || true; fi
   finish "All clear. Ready for copy-database." \
          "Fix the ✗ lines above, then run check again. Nothing was changed."
 }
@@ -505,13 +543,25 @@ step_copy_database() {
   workdir
   dump_old "$WORK" || die "Couldn't read the Tokyo database. Nothing was changed."
   ok "Read Tokyo's tables, data and logins"
+  refresh_new || die "Couldn't log in to Sydney again to write the copy. Nothing was changed."
   restore_new "$WORK" || die "Sydney didn't accept the copy. Nothing was saved there, so it's safe to fix and run again."
   ok "Wrote everything into Sydney in one go"
+  # The copy is committed from here on. If logging in again fails now, the
+  # data is safe in Sydney; it just can't be finished off and checked yet.
+  refresh_new || copied_but_unchecked "the sign-up trigger isn't in place yet and it couldn't be compared with Tokyo"
   if psql_quiet "$NEW_DB_URL" -f "$HERE/post-restore.sql" >/dev/null; then ok "Sign-up trigger is in place"
   else bad "Couldn't put the sign-up trigger in place"; fi
+  refresh_old || copied_but_unchecked "it couldn't be compared with Tokyo"
   verify_copy || true
   finish "Database copied. Next step: copy-functions." \
          "The data is in Sydney, but something above needs a look before going further."
+}
+
+copied_but_unchecked() { # copied_but_unchecked <what's still to do>
+  drop_temp_logins
+  say ""
+  say "The copy is in Sydney, but $1, because logging in again didn't work. Tell Claude before going any further."
+  exit 1
 }
 
 step_copy_functions() {
