@@ -1,3 +1,4 @@
+import type { User } from 'jsr:@supabase/supabase-js@2';
 import { type OrgContext, type Role, orgContextOf, nameOf } from '../_shared/identity.ts';
 
 // Who is Mercedes actually talking to, and which tenant's data can she see.
@@ -12,7 +13,7 @@ export { orgContextOf, nameOf };
 
 // Prepended to her system prompt so identity is part of her context, not
 // something she has to be told by whoever is typing.
-export function identityBlock(user: any, ctx: OrgContext): string {
+export function identityBlock(user: User, ctx: OrgContext): string {
   const name = nameOf(user);
   const email = String(user?.email || 'unknown');
 

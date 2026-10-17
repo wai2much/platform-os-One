@@ -1,4 +1,4 @@
-import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import type { SupabaseClient, User } from 'jsr:@supabase/supabase-js@2';
 
 // Shared org-scoping identity helpers, used by every Edge Function that
 // needs to know "who is this caller, and which org's data can they touch."
@@ -21,12 +21,18 @@ export type OrgContext = {
   role: Role;
 };
 
+// The organizations row embedded in the memberships select below.
+// memberships.org_id is a many-to-one foreign key, so PostgREST returns a
+// single object here. The client is untyped (no generated schema) and infers
+// an array instead, which is why the read below casts through unknown.
+type OrgRow = { id: string; name: string | null; vertical: string | null };
+
 // Every Slim org is auto-provisioned with its creator as 'owner' (see
 // handle_new_user() in supabase/schema.sql) — there's no staff-invite flow
 // yet, so in practice every caller today is an owner of their own org. This
 // still reads the real column rather than assuming, so the day a staff invite
 // flow ships, every function using this is already correct with no changes.
-export async function orgContextOf(user: any, svc: SupabaseClient): Promise<OrgContext | null> {
+export async function orgContextOf(user: User, svc: SupabaseClient): Promise<OrgContext | null> {
   const { data, error } = await svc
     .from('memberships')
     .select('role, organizations(id, name, vertical)')
@@ -36,7 +42,7 @@ export async function orgContextOf(user: any, svc: SupabaseClient): Promise<OrgC
 
   if (error || !data?.organizations) return null;
 
-  const org = data.organizations as any;
+  const org = data.organizations as unknown as OrgRow;
   const role: Role = String(data.role || '').toLowerCase() === 'owner' ? 'owner' : 'staff';
 
   return { orgId: org.id, orgName: org.name || '', vertical: org.vertical || 'workshop', role };
@@ -44,8 +50,8 @@ export async function orgContextOf(user: any, svc: SupabaseClient): Promise<OrgC
 
 // A name to greet with. Falls back to the local part of the email so a
 // caller never gets addressed as "user".
-export function nameOf(user: any): string {
-  const meta = user?.user_metadata || {};
+export function nameOf(user: User): string {
+  const meta: Record<string, unknown> = user?.user_metadata || {};
   const full = String(meta.full_name || meta.name || '').trim();
   if (full) return full.split(/\s+/)[0];
   const email = String(user?.email || '').trim();

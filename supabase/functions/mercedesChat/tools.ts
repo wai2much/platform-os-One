@@ -15,6 +15,10 @@ import type { Role } from './identity.ts';
 
 export const JOB_STATUSES = ['Booked', 'In progress', 'Awaiting approval', 'Ready', 'Completed'] as const;
 
+// A row as PostgREST returns it. The client is untyped (no generated schema),
+// so columns are read by name and coerced where they are used.
+type Row = Record<string, unknown>;
+
 export const TOOLS = [
   {
     name: 'get_floor',
@@ -151,7 +155,7 @@ const ACTIVE_EXCLUDED = ['Completed'];
 
 export async function runTool(
   name: string,
-  input: Record<string, any>,
+  input: Record<string, unknown>,
   svc: SupabaseClient,
   orgId: string,
   role: Role = 'owner',
@@ -196,7 +200,7 @@ export async function runTool(
 
     const { data, error } = await q;
     if (error) return { error: error.message };
-    const total = (data || []).reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0);
+    const total = (data || []).reduce((s: number, i: Row) => s + (Number(i.amount) || 0), 0);
     return { count: data?.length || 0, total, invoices: data || [] };
   }
 
@@ -205,28 +209,28 @@ export async function runTool(
     const safe = term.replace(/[%,()]/g, ' ');
     const rowLimit = Math.min(Number(input?.limit) || 20, 50);
 
-    let tyres: any[] = [];
+    let tyres: Row[] = [];
     {
       let q = svc.from('tyre_stock').select('brand, model, size, rating, qty, cost, sell, reorder')
         .eq('org_id', orgId).limit(rowLimit);
       if (safe) q = q.or(`brand.ilike.%${safe}%,model.ilike.%${safe}%,size.ilike.%${safe}%`);
       const { data, error } = await q;
       if (error) return { error: error.message };
-      tyres = (data || []).map((r: any) => ({ ...r, is_tyre: true, name: `${r.brand} ${r.model}`.trim() }));
+      tyres = (data || []).map((r: Row) => ({ ...r, is_tyre: true, name: `${r.brand} ${r.model}`.trim() }));
     }
 
-    let parts: any[] = [];
+    let parts: Row[] = [];
     if (!input?.tyres_only) {
       let q = svc.from('parts').select('name, size, stock, price, status')
         .eq('org_id', orgId).limit(rowLimit);
       if (safe) q = q.ilike('name', `%${safe}%`);
       const { data, error } = await q;
       if (error) return { error: error.message };
-      parts = (data || []).map((r: any) => ({ ...r, is_tyre: false }));
+      parts = (data || []).map((r: Row) => ({ ...r, is_tyre: false }));
     }
 
     // Staff get the asking price, not the cost — same split as the accounts gate.
-    const rows = [...parts, ...tyres].map((r: any) => {
+    const rows = [...parts, ...tyres].map((r) => {
       if (role === 'owner') return r;
       const { cost: _c, ...rest } = r;
       return rest;
@@ -280,7 +284,7 @@ export async function runTool(
 
     return {
       customer: c,
-      other_matches: customers.slice(1).map((x: any) => x.name),
+      other_matches: customers.slice(1).map((x: Row) => x.name),
       vehicles: vehicles || [],
     };
   }
@@ -316,7 +320,7 @@ export async function runTool(
     const changed: string[] = [];
 
     if (input?.status) {
-      if (!JOB_STATUSES.includes(input.status)) {
+      if (!(JOB_STATUSES as readonly unknown[]).includes(input.status)) {
         return { error: `'${input.status}' is not a real status. Valid: ${JOB_STATUSES.join(', ')}. Nothing changed.` };
       }
       patch.status = input.status;

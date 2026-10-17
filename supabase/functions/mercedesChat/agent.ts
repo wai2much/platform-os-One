@@ -3,8 +3,10 @@
 
 import { hasWebSearch, looksLikeWebSearchRejection, withoutWebSearch } from '../_shared/webSearch.ts';
 
-export type Block = { type: string; id?: string; name?: string; input?: any; text?: string };
-export type ToolRunner = (name: string, input: Record<string, any>) => Promise<unknown>;
+// Tool input is the model's JSON as sent, not validated here. Each tool
+// coerces what it reads (String(), Number(), === true) before using it.
+export type Block = { type: string; id?: string; name?: string; input?: Record<string, unknown>; text?: string };
+export type ToolRunner = (name: string, input: Record<string, unknown>) => Promise<unknown>;
 
 export type AgentResult = {
   content: string;
@@ -49,8 +51,9 @@ export async function runAgent(opts: {
           : [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }],
         tools: opts.cache === false
           ? tools
-          : tools.map((t: any, i) =>
-            i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
+          : tools.map((t, i) =>
+            // Every tool definition is a plain object, so spreading one is safe.
+            i === tools.length - 1 ? { ...(t as Record<string, unknown>), cache_control: { type: 'ephemeral' } } : t
           ),
         messages: convo,
         // No temperature: recent Claude models reject it on some endpoints —

@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     // Slim's Mercedes.jsx stores { from: 'user'|'bot', text } — normalise to
     // the { role, content } shape the Anthropic API and toAnthropicMessages expect.
     const rawMessages = Array.isArray(body.messages)
-      ? body.messages.map((m: any) => ({
+      ? body.messages.map((m: Record<string, unknown> | null) => ({
         role: m?.from === 'user' ? 'user' : m?.from === 'bot' ? 'assistant' : m?.role,
         content: m?.text ?? m?.content,
         // Whatever was clipped to this turn with the paperclip. Normalised
@@ -71,8 +71,8 @@ Deno.serve(async (req) => {
     // worker that gets read-only tools, no spawn of its own, and inherits this
     // caller's org_id and role — so delegation can never recurse, cross a
     // tenant boundary, or hand a staff login owner-level data.
-    const dispatch = async (name: string, input: Record<string, any>): Promise<unknown> => {
-      if (name !== 'spawn_agent') return runTool(name, input, svc, ctx.orgId, ctx.role);
+    const dispatch = async (name: string, input: Record<string, unknown>): Promise<unknown> => {
+      if (name !== 'spawn_agent') return await runTool(name, input, svc, ctx.orgId, ctx.role);
 
       if (workersSpawned >= MAX_WORKERS_PER_MESSAGE) {
         return {
@@ -81,11 +81,13 @@ Deno.serve(async (req) => {
       }
       workersSpawned++;
 
-      return runWorker({
+      return await runWorker({
         apiKey,
         bizName: ctx.orgName,
-        task: input?.task,
-        label: input?.label,
+        // Model-supplied JSON. runWorker coerces task with String() and rejects
+        // an empty one, so these casts only name the shape it was asked for.
+        task: input?.task as string,
+        label: input?.label as string | undefined,
         tools: workerTools,
         runTool: (n, i) => runTool(n, i, svc, ctx.orgId, ctx.role),
       });
