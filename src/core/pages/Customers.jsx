@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore, fmt } from '@/core/store';
+import { TERMS, DEFAULT_TERMS, termsLabel } from '@/lib/terms';
 
 /**
  * Customers — core screen (generic to any business). Searchable table +
@@ -26,7 +27,7 @@ function StatusPill({ status, extra }) {
 }
 
 function NewCustomerModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', vehicle: '', status: 'Regular' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', vehicle: '', status: 'Regular', accountType: 'cash', defaultTerms: DEFAULT_TERMS, creditLimit: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
@@ -41,6 +42,22 @@ function NewCustomerModal({ onClose, onCreate }) {
           <select value={form.status} onChange={set('status')} style={inp}>
             {Object.keys(STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+          {/* Billing. An account customer's invoices inherit these terms and
+              go out "on account" rather than due on the spot. */}
+          <select value={form.accountType}
+            onChange={(e) => setForm((f) => ({ ...f, accountType: e.target.value, defaultTerms: e.target.value === 'account' && f.defaultTerms === 'DUE_ON_RECEIPT' ? 'NET_30' : f.defaultTerms }))}
+            style={inp}>
+            <option value="cash">Cash customer</option>
+            <option value="account">Account customer</option>
+          </select>
+          {form.accountType === 'account' && (
+            <>
+              <select value={form.defaultTerms} onChange={set('defaultTerms')} style={inp}>
+                {TERMS.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+              </select>
+              <input value={form.creditLimit} onChange={set('creditLimit')} inputMode="decimal" placeholder="Credit limit ($, optional)" style={inp} />
+            </>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <span className="fg" onClick={() => form.name.trim() && onCreate(form)}
@@ -120,6 +137,12 @@ export function Customers() {
               <div style={{ background: 'var(--panel-bg)', borderRadius: 14, padding: 13 }}><div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)', fontWeight: 700 }}>LIFETIME SPEND</div><div className="cap" style={{ fontSize: 16, color: 'var(--text)', marginTop: 4 }}>{fmt(open.spend)}</div></div>
               <div style={{ background: 'var(--panel-bg)', borderRadius: 14, padding: 13 }}><div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)', fontWeight: 700 }}>LAST VISIT</div><div className="cap" style={{ fontSize: 16, color: 'var(--text)', marginTop: 4 }}>{open.lastVisit || '—'}</div></div>
             </div>
+            {open.accountType === 'account' && (
+              <div style={{ background: 'var(--panel-bg)', borderRadius: 14, padding: '11px 13px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 700 }}>ACCOUNT</span>
+                <span className="fg" style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600 }}>On account · {termsLabel(open.defaultTerms)}{open.creditLimit ? ` · limit ${fmt(Number(open.creditLimit))}` : ''}</span>
+              </div>
+            )}
             <div className="cap" style={{ fontSize: 14, color: 'var(--text)', marginBottom: 10 }}>Job history</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {open.jobHistory.length ? open.jobHistory.map((jh, i) => (

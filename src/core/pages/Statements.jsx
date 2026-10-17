@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore, fmt } from '@/core/store';
-import { balanceDue, displayStatus } from '@/lib/invoiceMoney';
+import { balanceDue, displayStatus, isOverdue } from '@/lib/invoiceMoney';
 
 /**
  * Statements — core screen. KPIs and the per-account balance table are REAL —
@@ -20,7 +20,7 @@ export function Statements() {
     if (!byCustomer[inv.customer]) byCustomer[inv.customer] = { customer: inv.customer, terms: inv.terms, balance: 0, lines: [], overdue: false };
     byCustomer[inv.customer].balance += balanceDue(inv);
     byCustomer[inv.customer].lines.push(inv);
-    if (inv.status === 'Overdue') byCustomer[inv.customer].overdue = true;
+    if (isOverdue(inv)) byCustomer[inv.customer].overdue = true;
   }
   const rows = Object.values(byCustomer);
   const totalBalance = rows.reduce((s, r) => s + r.balance, 0);

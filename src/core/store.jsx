@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { makePayment, makeRefund, balanceDue, isSettled, round2, paidTotal, refundableTotal, lineTotal } from '@/lib/invoiceMoney';
+import { makePayment, makeRefund, balanceDue, isSettled, round2, paidTotal, refundableTotal, lineTotal, todayIso, fmtDate } from '@/lib/invoiceMoney';
+import { dueDateFrom, normalizeTerms, termsLabel, isAccountTerm, DEFAULT_TERMS, DEFAULT_ACCOUNT_TERMS } from '@/lib/terms';
 
 /**
  * App store — shared data layer for the app. Runs on in-memory sample data by
@@ -77,7 +78,7 @@ const nextNum = (list, prefix, floor) => {
 // is just so the row shape matches on the way in.
 const jobToRow = (j, orgId) => ({ id: j.id, org_id: orgId, customer: j.customer, vehicle: j.vehicle, tech: j.tech, status: j.status, total: j.total, lines: j.lines, rego: j.rego || '', odometer: j.odometer || '', notes: j.notes || '', card: j.card || null });
 const jobFromRow = (r) => ({ id: r.id, customer: r.customer, vehicle: r.vehicle, tech: r.tech, status: r.status, total: Number(r.total), lines: r.lines || [], rego: r.rego || '', odometer: r.odometer || '', notes: r.notes || '', card: r.card || null });
-const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount, lines: i.lines || [], payments: i.payments || [], order_number: i.orderNumber || '',
+const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.customer, job: i.job, terms: i.terms, due_by: i.dueBy, due_date: i.dueDate || null, status: i.status, amount: i.amount, credit_hold: !!i.creditHold, from_job: !!i.fromJob, on_account: !!i.onAccount, lines: i.lines || [], payments: i.payments || [], order_number: i.orderNumber || '',
   vehicle: i.vehicle || '', rego: i.rego || '', odometer: i.odometer || '', next_service_km: i.nextServiceKm || '',
   job_status: i.jobStatus || '', job_status_comment: i.jobStatusComment || '', notes: i.notes || '' });
 // `migrated` marks rows imported from MechanicDesk on 2026-07-30 (see schema
@@ -85,7 +86,7 @@ const invoiceToRow = (i, orgId) => ({ id: i.id, org_id: orgId, customer: i.custo
 // is known to be unreliable, so live financial figures must exclude them —
 // use the isLive/isHistorical helpers below rather than testing the flag
 // ad hoc, so every screen agrees on what counts.
-const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at, migrated: !!r.migrated, lines: r.lines || [], payments: r.payments || [], orderNumber: r.order_number || '',
+const invoiceFromRow = (r) => ({ id: r.id, customer: r.customer, job: r.job, terms: r.terms, dueBy: r.due_by, dueDate: r.due_date || '', status: r.status, amount: Number(r.amount), creditHold: r.credit_hold, fromJob: r.from_job, onAccount: r.on_account, createdAt: r.created_at, migrated: !!r.migrated, lines: r.lines || [], payments: r.payments || [], orderNumber: r.order_number || '',
   vehicle: r.vehicle || '', rego: r.rego || '', odometer: r.odometer || '', nextServiceKm: r.next_service_km || '',
   jobStatus: r.job_status || '', jobStatusComment: r.job_status_comment || '', notes: r.notes || '' });
 
@@ -95,8 +96,8 @@ export const liveInvoices = (invoices) => invoices.filter((i) => !i.migrated);
 export const historicalInvoices = (invoices) => invoices.filter((i) => i.migrated);
 const bookingToRow = (b, orgId) => ({ id: b.id, org_id: orgId, customer: b.customer, phone: b.phone || '', vehicle: b.vehicle, service: b.service, day: b.day || '', time: b.time, notes: b.notes || '', source: b.source, bay: b.bay || '' });
 const bookingFromRow = (r) => ({ id: r.id, customer: r.customer, phone: r.phone, vehicle: r.vehicle, service: r.service, day: r.day, time: r.time, notes: r.notes, source: r.source, bay: r.bay || (r.source === 'portal' ? 'TBC' : ''), createdAt: r.created_at });
-const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, phone: c.phone || '', email: c.email || '', vehicle: c.vehicle || '', last_visit: c.lastVisit || '', status: c.status, spend: c.spend, job_history: c.jobHistory || [] });
-const customerFromRow = (r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email || '', vehicle: r.vehicle, lastVisit: r.last_visit, status: r.status, spend: Number(r.spend), jobHistory: r.job_history || [] });
+const customerToRow = (c, orgId) => ({ id: c.id, org_id: orgId, name: c.name, phone: c.phone || '', email: c.email || '', vehicle: c.vehicle || '', last_visit: c.lastVisit || '', status: c.status, spend: c.spend, job_history: c.jobHistory || [], account_type: c.accountType === 'account' ? 'account' : 'cash', default_terms: c.defaultTerms || DEFAULT_TERMS, credit_limit: (c.creditLimit === '' || c.creditLimit == null) ? null : Number(c.creditLimit) });
+const customerFromRow = (r) => ({ id: r.id, name: r.name, phone: r.phone, email: r.email || '', vehicle: r.vehicle, lastVisit: r.last_visit, status: r.status, spend: Number(r.spend), jobHistory: r.job_history || [], accountType: r.account_type || 'cash', defaultTerms: r.default_terms || DEFAULT_TERMS, creditLimit: r.credit_limit == null ? '' : Number(r.credit_limit) });
 const vehicleToRow = (v, orgId) => ({ id: v.id, org_id: orgId, model: v.model, rego: v.rego || '', owner: v.owner || '', odo: v.odo || '', last_service: v.lastService || '', next_due: v.nextDue || '', status: v.status, history: v.history || [] });
 const vehicleFromRow = (r) => ({ id: r.id, model: r.model, rego: r.rego, owner: r.owner, odo: r.odo, lastService: r.last_service, nextDue: r.next_due, status: r.status, history: r.history || [] });
 const teamToRow = (t, orgId) => ({ id: t.id, org_id: orgId, name: t.name, role: t.role || '', email: t.email || '', status: t.status || 'On shift', avg_time: t.avgTime || '', certs: t.certs || '' });
@@ -490,6 +491,18 @@ export function StoreProvider({ orgId, children }) {
     });
   };
 
+  // What terms and account status a new invoice for this customer inherits.
+  // Customers are referenced by name on invoices here, so match on name. An
+  // unknown name — a walk-in — is cash, due on receipt.
+  const billingFor = (name) => {
+    const c = customers.find((x) => (x.name || '').trim().toLowerCase() === (name || '').trim().toLowerCase());
+    const accountType = c?.accountType === 'account' ? 'account' : 'cash';
+    const terms = c?.defaultTerms
+      ? normalizeTerms(c.defaultTerms)
+      : (accountType === 'account' ? DEFAULT_ACCOUNT_TERMS : DEFAULT_TERMS);
+    return { accountType, terms, onAccount: accountType === 'account' };
+  };
+
   // Filled job card → invoice: carries parts & labour + GST into Invoices, and
   // marks the linked job Completed with the same lines/total. No re-keying.
   const generateInvoice = () => {
@@ -513,7 +526,10 @@ export function StoreProvider({ orgId, children }) {
     // Carry the job's parts and labour onto the invoice. Without this the
     // invoice stored only a total, so the PDF and the Invoices screen both
     // showed an amount with no explanation of what it was for.
-    const inv = { id: invId, customer: jobCard.customer || 'Walk-in', job: 'Job #' + jobId, terms: 'Due on receipt', dueBy: 'Today', status: 'Sent', amount, fromJob: true, lines, payments: [], vehicle: jobCard.vehicle || '', rego: jobCard.rego || '', odometer: jobCard.odo || '', jobStatus: 'Completed' };
+    const custName = jobCard.customer || 'Walk-in';
+    const bill = billingFor(custName);
+    const dueDate = dueDateFrom(bill.terms, todayIso());
+    const inv = { id: invId, customer: custName, job: 'Job #' + jobId, terms: termsLabel(bill.terms), dueBy: fmtDate(dueDate), dueDate, onAccount: bill.onAccount, status: 'Sent', amount, fromJob: true, lines, payments: [], vehicle: jobCard.vehicle || '', rego: jobCard.rego || '', odometer: jobCard.odo || '', jobStatus: 'Completed' };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
@@ -527,9 +543,12 @@ export function StoreProvider({ orgId, children }) {
   // Invoices screen: "+ New invoice" — a standalone invoice not linked to a job
   // (e.g. account/fleet billing). GST-inclusive amount, same shape as a
   // job-generated one just without `fromJob`/`job`.
-  const addInvoice = ({ customer, terms, dueBy, amount, orderNumber }) => {
+  const addInvoice = ({ customer, terms, amount, orderNumber }) => {
     const invId = nextNum(invoices, 'INV-', 1055);
-    const inv = { id: invId, customer, job: '', terms: terms || 'Due on receipt', dueBy: dueBy || 'Today', status: 'Sent', amount: parseFloat(amount) || 0, lines: [], payments: [], orderNumber: orderNumber || '' };
+    const code = normalizeTerms(terms);
+    const dueDate = dueDateFrom(code, todayIso());
+    const bill = billingFor(customer);
+    const inv = { id: invId, customer, job: '', terms: termsLabel(code), dueBy: fmtDate(dueDate), dueDate, onAccount: bill.onAccount || isAccountTerm(code), status: 'Sent', amount: parseFloat(amount) || 0, lines: [], payments: [], orderNumber: orderNumber || '' };
     setInvoices((list) => [inv, ...list]);
     persistInvoice(inv, orgId);
     syncInvoiceToXero(inv, 'created');
@@ -725,8 +744,8 @@ export function StoreProvider({ orgId, children }) {
   };
 
   // Customers screen: "+ New customer".
-  const addCustomer = ({ name, phone, email, vehicle, status }) => {
-    const customer = { id: crypto.randomUUID(), name, phone: phone || '', email: email || '', vehicle: vehicle || '', lastVisit: '', status: status || 'Regular', spend: 0, jobHistory: [] };
+  const addCustomer = ({ name, phone, email, vehicle, status, accountType, defaultTerms, creditLimit }) => {
+    const customer = { id: crypto.randomUUID(), name, phone: phone || '', email: email || '', vehicle: vehicle || '', lastVisit: '', status: status || 'Regular', spend: 0, jobHistory: [], accountType: accountType === 'account' ? 'account' : 'cash', defaultTerms: defaultTerms || DEFAULT_TERMS, creditLimit: (creditLimit === '' || creditLimit == null) ? '' : Number(creditLimit) };
     setCustomers((list) => [customer, ...list]);
     persistCustomer(customer, orgId);
     return customer;

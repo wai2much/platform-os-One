@@ -42,14 +42,31 @@ export function balanceDue(inv) {
 export const isSettled = (inv) => balanceDue(inv) <= 0.005;
 
 /**
- * The status to *show*. The stored status still records intent (Sent, Overdue,
- * On account); the ledger decides whether it's been paid, partly or fully. That
- * ordering matters: it means recording a payment never has to rewrite history.
+ * Overdue is derived, not stored. An invoice is overdue when it still owes
+ * money and its due date has passed — the same idea as balanceDue: one rule,
+ * computed everywhere, so a status can never be left stale by a job nobody ran.
+ * An invoice with no due date (every invoice from before this existed) is never
+ * overdue, which keeps old data honest.
  */
-export function displayStatus(inv) {
+export function isOverdue(inv, today = todayIso()) {
+  if (!inv?.dueDate) return false;
+  return balanceDue(inv) > 0.005 && String(inv.dueDate).slice(0, 10) < today;
+}
+
+/**
+ * The status to *show*. The stored status still records intent (Sent, On
+ * account); the ledger and the due date decide the rest. Order matters:
+ * settled wins, then overdue, then part paid — so recording a payment or
+ * passing a due date never has to rewrite the stored status.
+ */
+export function displayStatus(inv, today = todayIso()) {
   const rows = paymentsOf(inv);
-  if (rows.length === 0) return inv?.status || 'Sent';
+  if (rows.length === 0) {
+    if (inv?.status === 'Paid') return 'Paid';
+    return isOverdue(inv, today) ? 'Overdue' : (inv?.status || 'Sent');
+  }
   if (isSettled(inv)) return 'Paid';
+  if (isOverdue(inv, today)) return 'Overdue';
   // Refunded right back to nothing: the invoice is open again, and must not
   // keep wearing a 'Paid' label it no longer earns.
   if (paidTotal(inv) <= 0) return inv?.status === 'Paid' ? 'Sent' : (inv?.status || 'Sent');

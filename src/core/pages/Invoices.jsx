@@ -3,7 +3,8 @@ import { useStore } from '@/core/store';
 import { useAuth } from '@/core/auth';
 import { useTerminal } from '@/lib/zeller';
 import { generateInvoicePdf } from '@/lib/invoicePdf';
-import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals, lineTotal, isRefund, refundableTotal, PAYMENT_METHODS } from '@/lib/invoiceMoney';
+import { balanceDue, paidTotal, displayStatus, paymentsOf, fmtDate, invoiceTotals, lineTotal, isRefund, refundableTotal, PAYMENT_METHODS, todayIso } from '@/lib/invoiceMoney';
+import { TERMS, dueDateFrom } from '@/lib/terms';
 
 /**
  * Invoices — core screen. Faithful to the prototype: table with credit-hold /
@@ -105,19 +106,33 @@ function ZellerCharge({ invoice, amount, onPaid }) {
   );
 }
 
-function NewInvoiceModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({ customer: '', terms: 'Due on receipt', dueBy: 'Today', amount: '', orderNumber: '' });
+function NewInvoiceModal({ onClose, onCreate, customers = [] }) {
+  const [form, setForm] = useState({ customer: '', terms: 'DUE_ON_RECEIPT', amount: '', orderNumber: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // Typing a known account customer's name prefills their default terms — the
+  // same terms their invoice would inherit if it were raised from a job.
+  const onCustomer = (e) => {
+    const name = e.target.value;
+    const c = customers.find((x) => (x.name || '').trim().toLowerCase() === name.trim().toLowerCase());
+    setForm((f) => ({ ...f, customer: name, terms: c?.accountType === 'account' ? (c.defaultTerms || 'NET_30') : f.terms }));
+  };
+
+  const dueDate = dueDateFrom(form.terms, todayIso());
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New invoice</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input autoFocus value={form.customer} onChange={set('customer')} placeholder="Customer name" style={inp} />
+          <input autoFocus value={form.customer} onChange={onCustomer} placeholder="Customer name" style={inp} />
           <select value={form.terms} onChange={set('terms')} style={inp}>
-            <option>Due on receipt</option><option>Net 7</option><option>Net 14</option><option>Net 30</option><option>On account</option>
+            {TERMS.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
           </select>
-          <input value={form.dueBy} onChange={set('dueBy')} placeholder="Due by (e.g. 12 Aug)" style={inp} />
+          {/* Due date is computed from the terms, not typed — it can't be wrong,
+              and the counter sees exactly when it falls due. */}
+          <div className="fg" style={{ fontSize: 12, color: 'var(--text-mute2)', fontWeight: 600, padding: '0 2px' }}>
+            Due {form.terms === 'DUE_ON_RECEIPT' ? 'on receipt' : fmtDate(dueDate)}
+          </div>
           <input value={form.amount} onChange={set('amount')} inputMode="decimal" placeholder="Amount inc GST ($)" style={inp} />
           {/* The customer's own PO. Fleet and trade accounts won't pay an
               invoice that doesn't quote their order number back at them. */}
@@ -320,7 +335,7 @@ function LineEditor({ invoice, onSave, onCancel }) {
 }
 
 export function Invoices() {
-  const { invoices, flash, recordPayment, recordRefund, updateInvoiceLines, updateInvoiceDetails, addInvoice } = useStore();
+  const { invoices, customers, flash, recordPayment, recordRefund, updateInvoiceLines, updateInvoiceDetails, addInvoice } = useStore();
   const { org } = useAuth();
   const [openId, setOpenId] = useState(null);
   const [method, setMethod] = useState('Card');
@@ -613,7 +628,7 @@ export function Invoices() {
         </div>
       )}
 
-      {creating && <NewInvoiceModal onClose={() => setCreating(false)} onCreate={(form) => { addInvoice(form); setCreating(false); }} />}
+      {creating && <NewInvoiceModal customers={customers} onClose={() => setCreating(false)} onCreate={(form) => { addInvoice(form); setCreating(false); }} />}
     </div>
   );
 }
