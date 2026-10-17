@@ -3,7 +3,11 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-# This workflow will install Deno then run `deno lint` and `deno test`.
+# This workflow will install Deno then run `deno lint` and `deno test` on the
+# Supabase Edge Functions in supabase/functions, the only part of this repo
+# that runs on Deno. The rest is a Vite/React/Node app that Deno's linter was
+# never meant to check; linting the whole repo failed on every run because of
+# that, not because of real problems.
 # For more information see: https://github.com/denoland/setup-deno
 
 name: Deno
@@ -36,7 +40,9 @@ jobs:
       #   run: deno fmt --check
 
       - name: Run linter
-        run: deno lint
+        run: deno lint supabase/functions
 
+      # There are no edge function tests yet. --permit-no-files keeps this step
+      # passing until the first *_test.ts lands, and runs them from then on.
       - name: Run tests
-        run: deno test -A
+        run: deno test -A --permit-no-files supabase/functions
