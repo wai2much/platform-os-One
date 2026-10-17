@@ -1,4 +1,5 @@
 import { useStore, fmt, liveInvoices } from '@/core/store';
+import { isOverdue } from '@/lib/invoiceMoney';
 import { RegoCheck } from '@/components/RegoCheck';
 
 /**
@@ -51,7 +52,7 @@ export function Dashboard() {
   const diary = [...bookings].sort((a, b) => (a.time || '').localeCompare(b.time || '')).slice(0, 3);
   const partsStockRows = [...lowParts.map((p) => ({ name: p.name, tag: p.stock === 0 ? p.stock : `${p.stock} left`, ordered: p.status === 'Ordered' })), ...lowTyres.map((t) => ({ name: `${t.brand} ${t.model}`, tag: `${t.qty} left`, ordered: false }))].slice(0, 3);
 
-  const overdue = invoices.filter((i) => i.status === 'Overdue' || i.creditHold);
+  const overdue = invoices.filter((i) => isOverdue(i) || i.creditHold);
   const storeCredit = customers.filter((c) => c.status === 'Store credit' || c.status === 'Overdue').filter((c) => !overdue.some((i) => i.customer === c.name));
 
   const KPI = [
