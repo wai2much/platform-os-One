@@ -1,10 +1,12 @@
 # Moves Platform OS One's database from Tokyo to Sydney, one step at a time.
 # Manual only: it never runs on a push or a pull request.
 #
-# It reads repository secrets that Wai pastes in himself, so nobody else
-# ever sees them: OLD_DB_URL, NEW_DB_URL, SUPABASE_ACCESS_TOKEN, and
-# OLD_DB_PASSWORD / NEW_DB_PASSWORD when the connection strings are pasted
-# as Supabase shows them, with [YOUR-PASSWORD] still in them.
+# It needs one repository secret, which Wai pastes in himself so nobody else
+# ever sees it: SUPABASE_ACCESS_TOKEN. With it, the script asks Supabase for
+# a temporary database login for each project, the same way the Supabase CLI
+# does, and removes those logins again before it finishes.
+# OLD_DB_URL / NEW_DB_URL (and OLD_DB_PASSWORD / NEW_DB_PASSWORD) are
+# optional. They still work, and are used instead when they're set.
 # This repo is public, so the logs are public: the script prints ticks,
 # crosses and names only, and uploads nothing.
 #
