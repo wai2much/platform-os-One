@@ -1,0 +1,63 @@
+# Moves Platform OS One's database from Tokyo to Sydney, one step at a time.
+# Manual only: it never runs on a push or a pull request.
+#
+# It reads three repository secrets that Wai pastes in himself, so nobody
+# else ever sees them: OLD_DB_URL, NEW_DB_URL and SUPABASE_ACCESS_TOKEN.
+# This repo is public, so the logs are public: the script prints ticks,
+# crosses and names only, and uploads nothing.
+#
+# Walkthrough: docs/region-move-sydney.md
+
+name: Region move
+
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: Which step to run
+        type: choice
+        required: true
+        default: check
+        options:
+          - check
+          - copy-database
+          - copy-functions
+          - copy-auth-settings
+      new_project_ref:
+        description: The Sydney project's ref (the 20 letters in its dashboard address)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: region-move
+  cancel-in-progress: false
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Make sure psql and jq are installed
+        run: |
+          if ! command -v psql >/dev/null || ! command -v jq >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client jq
+          fi
+
+      - name: Run the step
+        env:
+          STEP: ${{ inputs.step }}
+          NEW_PROJECT_REF: ${{ inputs.new_project_ref }}
+          OLD_DB_URL: ${{ secrets.OLD_DB_URL }}
+          NEW_DB_URL: ${{ secrets.NEW_DB_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: bash scripts/region-move/run.sh
