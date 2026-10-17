@@ -12,6 +12,12 @@
 # ticks, crosses and names only. It never prints row counts, rows, keys or
 # passwords, and it never uploads anything. Tokyo is only ever read from.
 #
+# The only secret it needs is SUPABASE_ACCESS_TOKEN. With it, the script asks
+# Supabase for a temporary database login for each project, the same way the
+# Supabase CLI does when it has no database password, and removes those
+# logins again before it finishes. OLD_DB_URL and NEW_DB_URL (with
+# OLD_DB_PASSWORD and NEW_DB_PASSWORD) still work, and win when they're set.
+#
 # The full walkthrough is docs/region-move-sydney.md.
 
 set -euo pipefail
@@ -21,9 +27,13 @@ NEW_PROJECT_REF="${NEW_PROJECT_REF:-}"
 STEP="${STEP:-check}"
 SYDNEY_REGION="ap-southeast-2"
 API="${SUPABASE_API:-https://api.supabase.com/v1}"
+# A database address Supabase hands out must be under this domain, or the
+# script won't send a login to it. Only the local rehearsal changes it.
+POOLER_DOMAIN="${POOLER_DOMAIN:-supabase.com}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK=""
 FAILED=0
+TEMP_LOGIN_REFS=()
 
 say()  { printf '%s\n' "$*"; }
 ok()   { printf '  ✓ %s\n' "$*"; }
@@ -56,9 +66,18 @@ workdir() {
   if [ -z "$WORK" ]; then
     WORK="$(mktemp -d)"
     chmod 700 "$WORK"
-    trap 'rm -rf "$WORK"' EXIT
+    trap on_exit EXIT
   fi
 }
+
+# Runs however the script ends: removes any temporary logins first (that
+# needs the token header in $WORK), then the work folder.
+on_exit() {
+  drop_temp_logins || true
+  rm -rf "$WORK" || true
+}
+
+label_of() { if [ "$1" = "$OLD_PROJECT_REF" ]; then printf 'Tokyo'; else printf 'Sydney'; fi; }
 
 url_part() { # prints nothing for a string that isn't a valid URL
   python3 -c 'import sys, urllib.parse as u
@@ -69,14 +88,20 @@ except ValueError:
 print(u.unquote(str(v)))' "$1" "$2"
 }
 
+# A temporary login from Supabase is a cli_login_ role. Like the Supabase CLI,
+# every session on one steps into the postgres role first, so everything is
+# read, created and owned exactly as if postgres had logged in.
+is_temp_login() { [[ "$(url_part "$1" username)" == cli_login_* ]]; }
+
 # Runs psql against a database. On failure it prints only the kind of error:
 # Postgres error text and context lines can quote a row's values, and the
 # log is public.
 psql_quiet() {
   local url="$1"; shift
-  local err rc=0
+  local err rc=0 pre=()
+  if is_temp_login "$url"; then pre=(-c 'SET SESSION ROLE postgres'); fi
   err="$(mktemp)"
-  PGCONNECT_TIMEOUT=20 psql "$url" -X -A -t -q -v ON_ERROR_STOP=1 "$@" 2>"$err" || rc=$?
+  PGCONNECT_TIMEOUT=20 psql "$url" -X -A -t -q -v ON_ERROR_STOP=1 ${pre[@]+"${pre[@]}"} "$@" 2>"$err" || rc=$?
   if [ "$rc" -ne 0 ]; then
     { grep -oE '(ERROR|FATAL): +[^"(:]*|failed: [A-Za-z .]+' "$err" || true; } | head -3 | sed 's/^/    /' >&2
   fi
@@ -86,6 +111,7 @@ psql_quiet() {
 sql1() { psql_quiet "$1" -c "$2"; }
 
 finish() { # finish <success message> <failure message>
+  drop_temp_logins
   say ""
   if [ "$FAILED" -ne 0 ]; then say "$2"; exit 1; fi
   say "$1"
@@ -151,13 +177,42 @@ check_db_url() {
   ok "$label connection string looks right"
 }
 
+# Decides how to log in to one database. A complete connection string secret
+# wins, exactly as before. Otherwise the script asks Supabase for a temporary
+# login with the access token. Call it directly, never inside $(...).
+prepare_db() { # prepare_db <URL variable name> <project ref> <label>
+  local name="$1" ref="$2" label="$3" pw_name="${1%_URL}_PASSWORD" url
+  resolve_db_url "$name"
+  url="${!name}"
+  if [ -n "$url" ] && [[ "$url" != *"[YOUR-PASSWORD]"* ]]; then
+    check_db_url "$name" "$ref" "$label"
+    return
+  fi
+  if [ -n "$url" ]; then
+    if ! has SUPABASE_ACCESS_TOKEN; then
+      bad "$label: $name still says [YOUR-PASSWORD]. Add the database password as the $pw_name secret, or add the SUPABASE_ACCESS_TOKEN secret so the script can log in by itself."
+      return 1
+    fi
+    note "$label: $name still says [YOUR-PASSWORD], so using a temporary login instead"
+  elif ! has SUPABASE_ACCESS_TOKEN; then
+    bad "$label: add the SUPABASE_ACCESS_TOKEN secret, so the script can log in to the database"
+    return 1
+  fi
+  temp_login "$name" "$ref" "$label"
+}
+
+prepare_dbs() {
+  local fail=0
+  prepare_db OLD_DB_URL "$OLD_PROJECT_REF" "Tokyo" || fail=1
+  prepare_db NEW_DB_URL "$NEW_PROJECT_REF" "Sydney" || fail=1
+  return "$fail"
+}
+
 # ------------------------------------------------------------- databases ---
 
+# prepare_dbs must have succeeded first.
 db_ready() {
-  local fail=0 live tables users old_ext new_ext missing
-  check_db_url OLD_DB_URL "$OLD_PROJECT_REF" "Tokyo" || fail=1
-  check_db_url NEW_DB_URL "$NEW_PROJECT_REF" "Sydney" || fail=1
-  [ "$fail" -eq 0 ] || return 1
+  local live tables users old_ext new_ext missing
 
   if sql1 "$OLD_DB_URL" 'select 1' >/dev/null; then ok "Connected to the Tokyo database"
   else bad "Couldn't connect to the Tokyo database"; return 1; fi
@@ -178,6 +233,12 @@ db_ready() {
   missing="$(comm -23 <(tr ' ' '\n' <<<"$old_ext" | sort -u) <(tr ' ' '\n' <<<"$new_ext" | sort -u) | paste -sd ' ' -)"
   if [ -z "$missing" ]; then ok "Every database extension Tokyo uses is switched on in Sydney"
   else bad "Switch these on in Sydney first (Database > Extensions): $missing"; return 1; fi
+
+  # The data goes in with triggers paused (session_replication_role), so try
+  # that now, inside a transaction that is rolled back. Changes nothing.
+  if psql_quiet "$NEW_DB_URL" -c 'BEGIN' -c 'SET LOCAL session_replication_role = replica' -c 'ROLLBACK' >/dev/null; then
+    ok "Sydney will accept the data load (tried, then rolled back)"
+  else bad "Sydney won't accept the data load: it refused to pause its triggers"; return 1; fi
 }
 
 # Writes roles.sql, schema.sql and data.sql for Tokyo into the given folder,
@@ -249,7 +310,103 @@ api() {
   if [ -z "$WORK" ] || [ ! -f "$WORK/auth.hdr" ]; then printf '000'; return 0; fi
   local args=(-sS -o "$3" -w '%{http_code}' -X "$1" -H "@$WORK/auth.hdr")
   if [ -n "${4:-}" ]; then args+=(-H 'Content-Type: application/json' --data-binary "@$4"); fi
-  curl "${args[@]}" "$API$2" 2>/dev/null || true
+  (umask 077; curl "${args[@]}" "$API$2" 2>/dev/null) || true
+}
+
+# ------------------------------------------------------ temporary logins ---
+
+# The PRIMARY entry of a project's pooler settings, or {}.
+PRIMARY_POOLER='(if type == "array" then [.[] | objects | select(.database_type == "PRIMARY")][0] else null end) // {}'
+
+allowed_host() {
+  local host="$1"
+  [[ "$host" =~ ^[A-Za-z0-9.-]+$ ]] || return 1
+  [ "$host" = "$POOLER_DOMAIN" ] || [[ "$host" == *".$POOLER_DOMAIN" ]]
+}
+
+# Failed logins can get an address blocked for a while. Lifts the block on
+# this runner's own address only, as the Supabase CLI does. Never anyone else's.
+lift_own_ban() { # lift_own_ban <project ref>
+  local s
+  printf '{"ipv4_addresses":[],"requester_ip":true}' > "$WORK/unban.json"
+  s="$(api DELETE "/projects/$1/network-bans" "$WORK/unban-reply.json" "$WORK/unban.json")"
+  if [[ "$s" == 2?? ]]; then note "$(label_of "$1"): asked Supabase to lift any block on this runner's own address"
+  else note "$(label_of "$1"): couldn't ask Supabase to lift a block on this runner's address (HTTP $s)"; fi
+}
+
+# Asks Supabase for a temporary login to one project's database, the way the
+# Supabase CLI does when it has no database password, and points the URL
+# variable at it through the project's Session pooler. drop_temp_logins
+# removes it again. Call it directly, never inside $(...): the mask lines
+# have to reach the log.
+temp_login() { # temp_login <URL variable name> <project ref> <label>
+  local name="$1" ref="$2" label="$3" s cfg host db user role pw enc url err i delay=1 tries=8
+  if [ -z "$WORK" ] || [ ! -f "$WORK/auth.hdr" ]; then prepare_api; fi
+
+  cfg="$WORK/pooler-$ref.json"
+  s="$(api GET "/projects/$ref/config/database/pooler" "$cfg")"
+  if [ "$s" != "200" ]; then bad "$label: couldn't look up where the database is (HTTP $s)"; return 1; fi
+  host="$(jq -r "$PRIMARY_POOLER | .db_host // empty" "$cfg" 2>/dev/null)" || host=""
+  db="$(jq -r "$PRIMARY_POOLER | .db_name // empty" "$cfg" 2>/dev/null)" || db=""
+  user="$(jq -r "$PRIMARY_POOLER | .db_user // empty" "$cfg" 2>/dev/null)" || user=""
+  if [ -z "$host" ] || [ -z "$db" ]; then bad "$label: Supabase didn't say where the database is"; return 1; fi
+  if ! allowed_host "$host"; then
+    bad "$label: the database address Supabase gave isn't a Supabase address, so not logging in to it"; return 1
+  fi
+  if [[ ! "$db" =~ ^[A-Za-z0-9_]+$ ]]; then bad "$label: Supabase gave an unexpected database name"; return 1; fi
+
+  # Noted before asking, so a login that was made but never answered for
+  # still gets removed at the end.
+  TEMP_LOGIN_REFS+=("$ref")
+  printf '{"read_only":false}' > "$WORK/login-body.json"
+  s="$(api POST "/projects/$ref/cli/login-role" "$WORK/login.json" "$WORK/login-body.json")"
+  if [ "$s" != "201" ]; then
+    rm -f "$WORK/login.json"
+    bad "$label: Supabase didn't give a temporary login (HTTP $s)"; return 1
+  fi
+  role="$(jq -r '.role // empty' "$WORK/login.json" 2>/dev/null)" || role=""
+  pw="$(jq -r '.password // empty' "$WORK/login.json" 2>/dev/null)" || pw=""
+  rm -f "$WORK/login.json"
+  if [[ ! "$role" =~ ^cli_login_[A-Za-z0-9_]+$ ]] || [ -z "$pw" ]; then
+    bad "$label: the temporary login from Supabase didn't look right"; return 1
+  fi
+  mask "$pw"
+  enc="$(python3 -c 'import sys, urllib.parse as u; print(u.quote(sys.argv[1], safe=""))' "$pw")"
+  mask "$enc"
+  # Through the pooler the user name carries the project ref, as postgres's does.
+  if [[ "$user" == *".$ref" ]]; then role="$role.$ref"; fi
+  url="postgresql://$role:$enc@$host:5432/$db?sslmode=require"
+
+  # The pooler can take a moment to accept a brand new login.
+  err="$WORK/login-err.txt"
+  for ((i = 1; i <= tries; i++)); do
+    if PGCONNECT_TIMEOUT=10 psql "$url" -X -A -t -q -c 'select 1' >/dev/null 2>"$err"; then
+      printf -v "$name" '%s' "$url"
+      ok "$label: temporary login ready"
+      return 0
+    fi
+    if [ "$i" -eq 3 ]; then lift_own_ban "$ref"; fi
+    if [ "$i" -lt "$tries" ]; then
+      sleep "$delay"
+      delay=$((delay * 2)); if [ "$delay" -gt 16 ]; then delay=16; fi
+    fi
+  done
+  bad "$label: the temporary login didn't start working"
+  { grep -oE '(ERROR|FATAL): +[^"(:]*|failed: [A-Za-z .]+' "$err" || true; } | head -2 | sed 's/^/    /'
+  return 1
+}
+
+# Removes every temporary login this run asked for. Runs before the summary
+# line and again on any early exit; the second time there's nothing to do.
+# A login that can't be removed expires by itself, so it doesn't fail the step.
+drop_temp_logins() {
+  local ref s
+  for ref in ${TEMP_LOGIN_REFS[@]+"${TEMP_LOGIN_REFS[@]}"}; do
+    s="$(api DELETE "/projects/$ref/cli/login-role" "$WORK/logout.json")"
+    if [[ "$s" == 2?? ]]; then ok "Removed the temporary login for $(label_of "$ref")"
+    else printf '  ✗ %s\n' "Couldn't remove the temporary login for $(label_of "$ref") (HTTP $s). It expires by itself."; fi
+  done
+  TEMP_LOGIN_REFS=()
 }
 
 google_secret_readable() {
@@ -328,16 +485,14 @@ step_check() {
   say "Checking everything. Nothing gets changed in this step."
   check_inputs
   local s
-  for s in OLD_DB_URL NEW_DB_URL SUPABASE_ACCESS_TOKEN; do
-    if has "$s"; then ok "Secret $s is set"; else bad "Secret $s is missing"; fi
-  done
-  for s in OLD_DB_PASSWORD NEW_DB_PASSWORD; do
+  if has SUPABASE_ACCESS_TOKEN; then ok "Secret SUPABASE_ACCESS_TOKEN is set"; else bad "Secret SUPABASE_ACCESS_TOKEN is missing"; fi
+  # The database secrets are optional: without them the script logs in with
+  # a temporary login. When they're there, they're used.
+  for s in OLD_DB_URL OLD_DB_PASSWORD NEW_DB_URL NEW_DB_PASSWORD; do
     if has "$s"; then ok "Secret $s is set"; fi
   done
-  resolve_db_url OLD_DB_URL
-  resolve_db_url NEW_DB_URL
   if has SUPABASE_ACCESS_TOKEN; then token_checks || true; fi
-  if has OLD_DB_URL && has NEW_DB_URL; then db_ready || true; fi
+  if prepare_dbs; then db_ready || true; fi
   finish "All clear. Ready for copy-database." \
          "Fix the ✗ lines above, then run check again. Nothing was changed."
 }
@@ -345,10 +500,7 @@ step_check() {
 step_copy_database() {
   say "Copying the database. Tokyo is only read from."
   check_inputs
-  has OLD_DB_URL || die "Secret OLD_DB_URL is missing"
-  has NEW_DB_URL || die "Secret NEW_DB_URL is missing"
-  resolve_db_url OLD_DB_URL
-  resolve_db_url NEW_DB_URL
+  prepare_dbs || die "Not copying. Fix the line above and run check again. Nothing was changed."
   db_ready || die "Not copying. Fix the line above and run check again. Nothing was changed."
   workdir
   dump_old "$WORK" || die "Couldn't read the Tokyo database. Nothing was changed."
