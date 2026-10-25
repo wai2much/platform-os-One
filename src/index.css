@@ -1,6 +1,9 @@
-/* Front-of-House design system — warm cream / terracotta / sage.
-   Caprasimo (display) + Figtree (UI). Ported from the prototype. */
-@import url('https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap');
+/* Platform OS One — monochrome skin.
+   Editorial black & white, matched to the Platform OS sales site.
+   Fraunces (display) + Inter (UI). Apple-like restraint: white cards on a
+   light-grey canvas, hairline borders, a single near-black accent. */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,82 +11,82 @@
 
 @layer base {
   :root {
-    --background: 37 59% 90%;      /* cream #f5ead8 */
-    --foreground: 20 5% 12%;       /* ink #201e1d */
-    --card: 40 100% 97%;           /* warm card #fffaf0 */
-    --card-foreground: 20 5% 12%;
-    --muted: 37 45% 88%;
-    --muted-foreground: 35 6% 41%; /* #6f6a63 */
-    --primary: 24 55% 50%;         /* terracotta #c67139 */
-    --primary-foreground: 40 100% 97%;
-    --secondary: 37 55% 86%;       /* panel #efe0c8 */
-    --secondary-foreground: 20 5% 12%;
-    --accent: 82 27% 45%;          /* sage #7a8a5e */
-    --accent-foreground: 40 100% 97%;
-    --border: 40 22% 84%;          /* #e0dccf */
-    --ring: 24 55% 50%;
-    --radius: 0.9rem;
+    /* Tailwind semantic tokens (HSL triplets). */
+    --background: 240 6% 96%;      /* light-grey canvas #f5f5f7 */
+    --foreground: 240 4% 11%;      /* ink #1d1d1f */
+    --card: 0 0% 100%;             /* white card */
+    --card-foreground: 240 4% 11%;
+    --muted: 240 6% 96%;           /* panel grey */
+    --muted-foreground: 240 4% 46%;/* #6e6e73 */
+    --primary: 0 0% 7%;            /* near-black #111111 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 6% 96%;
+    --secondary-foreground: 240 4% 11%;
+    --accent: 240 2% 30%;          /* dark grey #48484a */
+    --accent-foreground: 0 0% 100%;
+    --border: 240 5% 91%;          /* hairline #e8e8ed */
+    --ring: 240 4% 11%;
+    --radius: 1rem;
 
-    /* Prototype named tokens (used by faithfully-ported markup) */
-    --page-bg: #f5ead8;
-    --card-bg: #fffaf0;
-    --panel-bg: #efe0c8;
-    --text: #201e1d;
-    --text-soft: #3c3936;
-    --text-mute: #6f6a63;
-    --text-mute2: #8a857c;
-    --border-c: #e0dccf;
+    /* Named tokens (used by the inline-styled screens). */
+    --page-bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --panel-bg: #f5f5f7;
+    --text: #1d1d1f;
+    --text-soft: #3a3a3c;
+    --text-mute: #6e6e73;
+    --text-mute2: #86868b;
+    --border-c: #e8e8ed;
 
-    /* "Ink" surfaces — the dark cards/buttons that sit ON the cream page
-       (Mercedes hero, GST banner, live-call card, primary buttons). In light
-       mode they're the brand ink. In dark mode a near-black card would vanish
-       against a dark page, so it lifts to a raised warm surface instead. */
-    --ink: #201e1d;
-    --ink-text: #f5ead8;
-    --ink-soft: #a49a8c;
+    /* "Ink" surfaces — the dark cards/buttons that sit ON the light canvas
+       (Mercedes hero, primary buttons, filled chips). Flips to white in dark
+       mode, paired with --ink-text. */
+    --ink: #111111;
+    --ink-text: #ffffff;
+    --ink-soft: #a1a1a6;
+
+    /* Secondary ink — the softer "positive / normal" tone (was sage). */
+    --ink-2: #48484a;
   }
 
-  /* Dark theme. Warm rather than neutral-grey, so it still reads as the
-     Front-of-House palette — the cream becomes the type colour and the
-     browns deepen, instead of turning the product into a generic dark app.
-     Applied via [data-theme="dark"] on <html> (see src/core/theme.js);
-     the media query only covers first paint before the script sets the
-     attribute, so a system-dark user never sees a flash of light. */
   :root[data-theme='dark'] {
-    --background: 30 12% 8%;
-    --foreground: 37 59% 90%;
-    --card: 30 10% 11%;
-    --card-foreground: 37 59% 90%;
-    --muted: 30 9% 16%;
-    --muted-foreground: 35 12% 62%;
-    --primary: 24 55% 54%;
-    --primary-foreground: 30 12% 8%;
-    --secondary: 30 9% 16%;
-    --secondary-foreground: 37 59% 90%;
-    --accent: 82 24% 52%;
-    --accent-foreground: 30 12% 8%;
-    --border: 30 8% 20%;
-    --ring: 24 55% 54%;
+    --background: 0 0% 0%;          /* #000000 */
+    --foreground: 240 5% 96%;       /* #f5f5f7 */
+    --card: 0 0% 4%;                /* #0a0a0a */
+    --card-foreground: 240 5% 96%;
+    --muted: 0 0% 11%;              /* #1c1c1e */
+    --muted-foreground: 240 4% 60%;
+    --primary: 240 5% 96%;          /* white primary (flips) */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 240 5% 96%;
+    --accent: 240 4% 60%;
+    --accent-foreground: 0 0% 0%;
+    --border: 0 0% 17%;             /* #2c2c2e */
+    --ring: 240 5% 96%;
 
-    --page-bg: #14120f;
-    --card-bg: #1f1c18;
-    --panel-bg: #2a2621;
-    --text: #f5ead8;
-    --text-soft: #ddd2be;
-    --text-mute: #a89e8e;
-    --text-mute2: #877d6f;
-    --border-c: #332e28;
+    --page-bg: #000000;
+    --card-bg: #0a0a0a;
+    --panel-bg: #1c1c1e;
+    --text: #f5f5f7;
+    --text-soft: #d2d2d7;
+    --text-mute: #86868b;
+    --text-mute2: #6e6e73;
+    --border-c: #2c2c2e;
 
-    --ink: #322c26;
-    --ink-text: #f5ead8;
-    --ink-soft: #b3a898;
+    --ink: #f5f5f7;
+    --ink-text: #000000;
+    --ink-soft: #6e6e73;
+
+    --ink-2: #b0b0b5;
   }
 
-  .cap { font-family: 'Caprasimo', Georgia, serif; }
-  .fg { font-family: 'Figtree', system-ui, sans-serif; }
+  /* Display (editorial serif) + UI (sans) helpers. */
+  .cap { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-optical-sizing: auto; letter-spacing: -0.01em; }
+  .fg { font-family: 'Inter', system-ui, sans-serif; }
 
   * { border-color: hsl(var(--border)); box-sizing: border-box; }
-  html { font-family: 'Figtree', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  html { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body {
     margin: 0;
     background: hsl(var(--background));
@@ -91,10 +94,10 @@
     font-size: 14px;
     line-height: 1.5;
   }
-  h1, h2, .font-display { font-family: 'Caprasimo', Georgia, serif; font-weight: 400; letter-spacing: .01em; }
+  h1, h2, .font-display { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-optical-sizing: auto; letter-spacing: -0.01em; }
 }
 
-/* Origami drift — folded-paper accents on the Login screen. */
+/* Origami drift — folded-paper accents on the Login screen (kept, desaturated). */
 @keyframes origami-drift {
   0% { transform: translate(0, 0) rotate(var(--rot, 0deg)) scale(1); }
   25% { transform: translate(8px, -22px) rotate(calc(var(--rot, 0deg) + 10deg)) scale(1.05); }
@@ -107,7 +110,7 @@
   animation-name: origami-drift;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
-  filter: drop-shadow(0 10px 18px rgba(32, 30, 29, .16));
+  filter: drop-shadow(0 10px 18px rgba(17, 17, 17, .16));
   pointer-events: none;
 }
 @keyframes origami-card-in {
@@ -127,13 +130,13 @@
   transition: box-shadow .15s ease, transform .15s ease;
 }
 .login-google-btn:hover {
-  box-shadow: 0 6px 16px rgba(32, 30, 29, .12);
+  box-shadow: 0 6px 16px rgba(17, 17, 17, .12);
   transform: translateY(-1px);
 }
 
 /* Mercedes HISTORY rows — delete only appears on hover, same declutter as
    the Claude Code chat-list reference this was modelled on. */
-.mercedes-history-row:hover { background: rgba(198, 113, 57, .06); }
+.mercedes-history-row:hover { background: rgba(17, 17, 17, .06); }
 .mercedes-history-delete { opacity: 0; transition: opacity .12s ease; }
 .mercedes-history-row:hover .mercedes-history-delete { opacity: 1; }
 
@@ -152,10 +155,8 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Login monogram field — the Platform OS One mark tiled across the sign-in
-   page, colours interchanging cell to cell. Lives here rather than inline
-   because it needs a media query (the tile has to shrink on a phone or the
-   marks read enormous) and a data-theme swap. Sits behind the card at
-   z-index 0 and is inert to the pointer. */
+   page. Desaturated to monochrome so the jade caret reads as grey. Sits
+   behind the card at z-index 0 and is inert to the pointer. */
 .monogram-field {
   position: absolute;
   inset: 0;
@@ -164,49 +165,43 @@
   background-image: url('/pos-one-monogram.svg');
   background-size: 220px 220px;
   background-repeat: repeat;
-  opacity: .26;
+  opacity: .14;
+  filter: grayscale(1);
 }
 
-/* Dark ground: obsidian plates disappear into it, so the dark tile trades
-   them for jade and bone, and the whole field drops back — the same marks
-   carry much further against a dark page. */
 [data-theme="dark"] .monogram-field {
   background-image: url('/pos-one-monogram-dark.svg');
-  opacity: .15;
+  opacity: .10;
 }
 
 @media (max-width: 640px) {
   .monogram-field { background-size: 150px 150px; }
 }
 
-/* Login page ground. Was three hardcoded cream stops inline on the page
-   div, which meant the sign-in screen stayed light even with the rest of
-   the app in dark — and the dark monogram tile would then be painting
-   jade-and-bone marks onto cream. Moved here so both themes are real.
-   The dark stops are warm rather than neutral, same as the palette above:
-   the page deepens toward espresso, not toward grey. */
+/* Login page ground — a quiet monochrome gradient instead of the old cream
+   stops. White in light, near-black in dark, same restraint as the app. */
 .login-page {
   background:
-    radial-gradient(52rem 42rem at 8% -8%, rgba(255, 255, 255, .65), transparent 55%),
-    radial-gradient(48rem 44rem at 106% 112%, rgba(191, 51, 36, .16), transparent 60%),
-    linear-gradient(160deg, #f8efdf 0%, #f2dfc4 55%, #e9c9a1 100%);
+    radial-gradient(52rem 42rem at 8% -8%, rgba(255, 255, 255, .8), transparent 55%),
+    radial-gradient(48rem 44rem at 106% 112%, rgba(17, 17, 17, .06), transparent 60%),
+    linear-gradient(160deg, #fafafa 0%, #f5f5f7 55%, #ececee 100%);
 }
 
 [data-theme="dark"] .login-page {
   background:
-    radial-gradient(52rem 42rem at 8% -8%, rgba(245, 234, 216, .07), transparent 55%),
-    radial-gradient(48rem 44rem at 106% 112%, rgba(191, 51, 36, .20), transparent 60%),
-    linear-gradient(160deg, #1c1815 0%, #14120f 55%, #0c0a08 100%);
+    radial-gradient(52rem 42rem at 8% -8%, rgba(245, 245, 247, .07), transparent 55%),
+    radial-gradient(48rem 44rem at 106% 112%, rgba(245, 245, 247, .05), transparent 60%),
+    linear-gradient(160deg, #0a0a0a 0%, #000000 55%, #000000 100%);
 }
 
-/* The dot grid over that ground — ink dots on cream, cream dots on ink. */
+/* The dot grid over that ground — ink dots on light, light dots on ink. */
 .login-dots {
-  background-image: radial-gradient(rgba(60, 57, 54, .08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(17, 17, 17, .08) 1px, transparent 1px);
   background-size: 22px 22px;
   -webkit-mask-image: radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%);
   mask-image: radial-gradient(60rem 60rem at 50% 40%, #000, transparent 75%);
 }
 
 [data-theme="dark"] .login-dots {
-  background-image: radial-gradient(rgba(245, 234, 216, .07) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(245, 245, 247, .07) 1px, transparent 1px);
 }
