@@ -16,12 +16,12 @@ import { useAuth } from '@/core/auth';
  * hardcoded here — every org, including demo signups, showed Wai's real
  * business name and real bank BSB/account number. Fixed 2026-08-08.
  */
-const inp = { width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' };
+const inp = { width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, fontFamily: 'Inter, sans-serif', color: 'var(--text)', outline: 'none' };
 const label = { fontSize: 11, color: 'var(--text-mute)', fontWeight: 700, letterSpacing: '.06em' };
 
 function Card({ title, children, action }) {
   return (
-    <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>{title}</div>
         {action}
@@ -38,7 +38,7 @@ function Field({ l, value, onChange, placeholder }) {
 function SaveButton({ onClick, status }) {
   const label = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : status === 'error' ? 'Retry' : 'Save';
   return (
-    <span onClick={status === 'saving' ? undefined : onClick} className="fg" style={{ fontSize: 11, fontWeight: 700, color: status === 'saved' ? '#fff' : 'var(--text-soft)', background: status === 'saved' ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: status === 'saving' ? 'default' : 'pointer' }}>
+    <span onClick={status === 'saving' ? undefined : onClick} className="fg" style={{ fontSize: 11, fontWeight: 700, color: status === 'saved' ? 'var(--ink-text)' : 'var(--text-soft)', background: status === 'saved' ? 'var(--ink-2)' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: status === 'saving' ? 'default' : 'pointer' }}>
       {label}
     </span>
   );
@@ -46,18 +46,18 @@ function SaveButton({ onClick, status }) {
 
 function Toggle({ on, onClick }) {
   return (
-    <span onClick={onClick} style={{ width: 34, height: 19, borderRadius: 999, background: on ? '#7a8a5e' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
-      <span style={{ position: 'absolute', top: 2, left: on ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+    <span onClick={onClick} style={{ width: 34, height: 19, borderRadius: 999, background: on ? 'var(--ink-2)' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
+      <span style={{ position: 'absolute', top: 2, left: on ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: 'var(--card-bg)', transition: 'left .15s' }} />
     </span>
   );
 }
 
 const XERO_BANNER = {
-  connected: { color: '#7a8a5e', text: 'Xero connected successfully.' },
-  denied: { color: '#c67139', text: 'Xero authorisation was cancelled.' },
-  not_configured: { color: '#c67139', text: 'Xero isn’t configured on the server yet (XERO_CLIENT_ID/SECRET missing).' },
-  token_exchange_failed: { color: '#c67139', text: 'Xero token exchange failed — check the server logs.' },
-  error: { color: '#c67139', text: 'Something went wrong connecting Xero.' },
+  connected: { color: 'var(--ink-2)', text: 'Xero connected successfully.' },
+  denied: { color: 'var(--ink)', text: 'Xero authorisation was cancelled.' },
+  not_configured: { color: 'var(--ink)', text: 'Xero isn’t configured on the server yet (XERO_CLIENT_ID/SECRET missing).' },
+  token_exchange_failed: { color: 'var(--ink)', text: 'Xero token exchange failed — check the server logs.' },
+  error: { color: 'var(--ink)', text: 'Something went wrong connecting Xero.' },
 };
 
 const BLANK_PROFILE = { business_name: '', trading_as: '', abn: '', address: '', phone: '', email: '' };
@@ -199,19 +199,19 @@ export function Settings() {
         {[['3CX phone system', true], ['Mercedes AI', true], ['London (voice agent · Grok)', true]].map(([name, connected]) => (
           <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{name}</span>
-            <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#7a8a5e', borderRadius: 999, padding: '3px 10px' }}>{connected ? 'Connected' : 'Off'}</span>
+            <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ink-text)', background: 'var(--ink-2)', borderRadius: 999, padding: '3px 10px' }}>{connected ? 'Connected' : 'Off'}</span>
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}><span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Voice ID</span><span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'monospace' }}>f47a84ff-bb8c-42f9-8458-763051a6dae0</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}><span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Agent ID</span><span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'monospace' }}>agent_w54p3rF4EgKG1y4I</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}>
           <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Connection</span>
-          <span onClick={testConnection} className="fg" style={{ fontSize: 11, fontWeight: 700, color: connResult?.ok ? '#fff' : 'var(--text-soft)', background: connResult?.ok ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: 'pointer' }}>
+          <span onClick={testConnection} className="fg" style={{ fontSize: 11, fontWeight: 700, color: connResult?.ok ? 'var(--ink-text)' : 'var(--text-soft)', background: connResult?.ok ? 'var(--ink-2)' : 'var(--panel-bg)', borderRadius: 999, padding: '4px 12px', cursor: 'pointer' }}>
             {connTesting ? 'Testing…' : connResult?.ok ? '✓ Connected' : 'Test connection'}
           </span>
         </div>
         {connResult && !connResult.ok && (
-          <div className="fg" style={{ fontSize: 11, color: '#c67139', paddingLeft: 14 }}>{connResult.configured ? connResult.message : 'XAI_API_KEY not set on the server yet.'}</div>
+          <div className="fg" style={{ fontSize: 11, color: 'var(--ink)', paddingLeft: 14 }}>{connResult.configured ? connResult.message : 'XAI_API_KEY not set on the server yet.'}</div>
         )}
         <div className="fg" style={{ fontSize: 10.5, color: 'var(--text-mute2)', paddingLeft: 14, lineHeight: 1.5 }}>API key stored server-side only — never shipped to the browser</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 14 }}>
@@ -224,18 +224,18 @@ export function Settings() {
             {testCallResult && testCallResult.ok && (
               <>
                 <div style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft)', width: 52, flexShrink: 0 }}>Caller</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{testCallResult.callerLine}</span></div>
-                <div style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#c67139', width: 52, flexShrink: 0 }}>London</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{testCallResult.reply}</span></div>
-                <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: '#7a8a5e' }}>✓ Real Grok response — call flow verified</span>
+                <div style={{ display: 'flex', gap: 8 }}><span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ink)', width: 52, flexShrink: 0 }}>London</span><span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>{testCallResult.reply}</span></div>
+                <span className="fg" style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)' }}>✓ Real Grok response — call flow verified</span>
               </>
             )}
             {testCallResult && !testCallResult.ok && (
-              <span className="fg" style={{ fontSize: 12, color: '#c67139' }}>{testCallResult.configured ? testCallResult.message : 'XAI_API_KEY not set on the server yet — nothing to test.'}</span>
+              <span className="fg" style={{ fontSize: 12, color: 'var(--ink)' }}>{testCallResult.configured ? testCallResult.message : 'XAI_API_KEY not set on the server yet — nothing to test.'}</span>
             )}
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>Accounting sync</span>
-          <span onClick={xeroConnected ? undefined : connectXero} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: xeroConnected ? '#fff' : 'var(--text-soft)', background: xeroConnected ? '#7a8a5e' : 'var(--panel-bg)', borderRadius: 999, padding: '2px 9px', cursor: xeroConnected ? 'default' : 'pointer' }}>
+          <span onClick={xeroConnected ? undefined : connectXero} className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: xeroConnected ? 'var(--ink-text)' : 'var(--text-soft)', background: xeroConnected ? 'var(--ink-2)' : 'var(--panel-bg)', borderRadius: 999, padding: '2px 9px', cursor: xeroConnected ? 'default' : 'pointer' }}>
             {xeroConfigured === null ? 'Checking…' : xeroConnected ? 'Xero · Synced' : xeroConfigured ? 'Connect Xero' : 'Not configured'}
           </span>
         </div>
@@ -243,8 +243,8 @@ export function Settings() {
       </Card>
 
       <Card title="Account">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{user?.email || 'Signed in'} · {org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Owner'}</span><span onClick={() => setActive('team')} className="fg" style={{ fontSize: 12, fontWeight: 600, color: '#c67139', cursor: 'pointer' }}>Manage team</span></div>
-        <span onClick={signOut} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Sign out</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{user?.email || 'Signed in'} · {org?.role ? org.role[0].toUpperCase() + org.role.slice(1) : 'Owner'}</span><span onClick={() => setActive('team')} className="fg" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', cursor: 'pointer' }}>Manage team</span></div>
+        <span onClick={signOut} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', cursor: 'pointer' }}>Sign out</span>
       </Card>
     </div>
   );

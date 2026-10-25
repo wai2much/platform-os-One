@@ -12,7 +12,7 @@ const Empty = ({ children }) => (
   <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', lineHeight: 1.6 }}>{children}</div>
 );
 const Card = ({ title, children }) => (
-  <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+  <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
     <div className="cap" style={{ fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>{title}</div>
     {children}
   </div>
@@ -44,16 +44,16 @@ export function Reports() {
     { v: fmt(invoiced), l: 'Invoiced (inc GST)', c: 'var(--text)' },
     { v: '—', l: 'Gross margin', c: 'var(--text-mute2)' },
     { v: completed.length, l: 'Jobs completed', c: 'var(--text)' },
-    { v: fmt(avgJobValue), l: 'Avg job value (inc GST)', c: '#c67139' },
+    { v: fmt(avgJobValue), l: 'Avg job value (inc GST)', c: 'var(--ink)' },
   ];
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}><span onClick={() => globalThis.print()} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>Print / Save as PDF →</span></div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}><span onClick={() => globalThis.print()} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink)', cursor: 'pointer' }}>Print / Save as PDF →</span></div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
         {kpi.map((k) => (
-          <div key={k.l} style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+          <div key={k.l} style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
             <div className="cap" style={{ color: k.c, fontSize: 26, lineHeight: 1 }}>{k.v}</div>
             <div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)', marginTop: 8, fontWeight: 600 }}>{k.l}</div>
           </div>
