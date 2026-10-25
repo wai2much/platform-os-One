@@ -10,15 +10,15 @@ import { useStore } from '@/core/store';
  * accrual themselves are real. Handbook/Performance-reviews/Documents
  * sub-sections are a smaller separate follow-up, not included here.
  */
-const LEAVE_STATUS = { Pending: { color: '#fff', bg: '#c67139' }, Approved: { color: '#fff', bg: '#7a8a5e' } };
-const SEVERITY = { Minor: { color: 'var(--text-soft)', bg: 'var(--panel-bg)' }, Moderate: { color: '#fff', bg: '#c67139' } };
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const LEAVE_STATUS = { Pending: { color: 'var(--ink-text)', bg: 'var(--ink)' }, Approved: { color: 'var(--ink-text)', bg: 'var(--ink-2)' } };
+const SEVERITY = { Minor: { color: 'var(--text-soft)', bg: 'var(--panel-bg)' }, Moderate: { color: 'var(--ink-text)', bg: 'var(--ink)' } };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function NewHireModal({ onClose, onCreate }) {
   const [form, setForm] = useState({ name: '', role: '', startDate: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New hire</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -28,7 +28,7 @@ function NewHireModal({ onClose, onCreate }) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
           <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
-          <span onClick={() => form.name.trim() && onCreate(form)} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.name.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>Add hire</span>
+          <span onClick={() => form.name.trim() && onCreate(form)} className="fg" style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-text)', background: form.name.trim() ? 'var(--ink)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>Add hire</span>
         </div>
       </div>
     </div>
@@ -39,7 +39,7 @@ function NewLeaveModal({ onClose, onCreate }) {
   const [form, setForm] = useState({ name: '', type: 'Annual leave', dates: '' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New leave request</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -51,7 +51,7 @@ function NewLeaveModal({ onClose, onCreate }) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
           <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
-          <span onClick={() => form.name.trim() && onCreate(form)} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.name.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>Add request</span>
+          <span onClick={() => form.name.trim() && onCreate(form)} className="fg" style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-text)', background: form.name.trim() ? 'var(--ink)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>Add request</span>
         </div>
       </div>
     </div>
@@ -80,26 +80,26 @@ export function HR() {
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>{team.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Team members</div></div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: '#c67139', fontSize: 26, lineHeight: 1 }}>{pendingLeave}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Leave requests pending</div></div>
-        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}><div className="cap" style={{ color: '#c67139', fontSize: 26, lineHeight: 1 }}>{hires.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Onboarding in progress</div></div>
+        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}><div className="cap" style={{ color: 'var(--text)', fontSize: 26, lineHeight: 1 }}>{team.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Team members</div></div>
+        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}><div className="cap" style={{ color: 'var(--ink)', fontSize: 26, lineHeight: 1 }}>{pendingLeave}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Leave requests pending</div></div>
+        <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 15, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}><div className="cap" style={{ color: 'var(--ink)', fontSize: 26, lineHeight: 1 }}>{hires.length}</div><div className="fg" style={{ fontSize: 10, color: 'var(--text-mute2)', marginTop: 8, fontWeight: 600 }}>Onboarding in progress</div></div>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Onboarding</span><span onClick={() => setShowHire(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New hire</span></div>
+      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Onboarding</span><span onClick={() => setShowHire(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: 'var(--ink-text)', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New hire</span></div>
         {hires.map((h, hi) => {
           const doneCount = h.tasks.filter((t) => t.done).length;
           return (
             <div key={h.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border-c)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <div><div className="fg" style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 700 }}>{h.name} · {h.role}</div><div className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)', fontWeight: 600, marginTop: 2 }}>Starts {h.startDate}</div></div>
-                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: doneCount === h.tasks.length ? '#7a8a5e' : '#c67139', borderRadius: 999, padding: '3px 10px' }}>{doneCount}/{h.tasks.length} done</span>
+                <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ink-text)', background: doneCount === h.tasks.length ? 'var(--ink-2)' : 'var(--ink)', borderRadius: 999, padding: '3px 10px' }}>{doneCount}/{h.tasks.length} done</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {h.tasks.map((t, ti) => (
                   <div key={ti} onClick={() => toggleHireTask(h.id, ti)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <span style={{ width: 17, height: 17, borderRadius: 5, border: `1.5px solid ${t.done ? '#7a8a5e' : 'var(--border-c)'}`, background: t.done ? '#7a8a5e' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {t.done && <span className="fg" style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
+                    <span style={{ width: 17, height: 17, borderRadius: 5, border: `1.5px solid ${t.done ? 'var(--ink-2)' : 'var(--border-c)'}`, background: t.done ? 'var(--ink-2)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {t.done && <span className="fg" style={{ color: 'var(--ink-text)', fontSize: 11, fontWeight: 700 }}>✓</span>}
                     </span>
                     <span className="fg" style={{ fontSize: 12.5, color: t.done ? 'var(--text-mute2)' : 'var(--text)', fontWeight: 600, textDecoration: t.done ? 'line-through' : 'none' }}>{t.label}</span>
                   </div>
@@ -114,8 +114,8 @@ export function HR() {
         {!hires.length && <div className="fg" style={{ padding: '12px 0', fontSize: 12.5, color: 'var(--text-mute)' }}>No one onboarding right now.</div>}
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Leave requests</span><span onClick={() => setShowLeave(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New request</span></div>
+      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Leave requests</span><span onClick={() => setShowLeave(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: 'var(--ink-text)', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New request</span></div>
         {leave.map((lv) => {
           const s = LEAVE_STATUS[lv.status] ?? LEAVE_STATUS.Pending;
           return (
@@ -128,12 +128,12 @@ export function HR() {
         {!leave.length && <div className="fg" style={{ padding: '12px 0', fontSize: 12.5, color: 'var(--text-mute)' }}>No leave requests.</div>}
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
           <span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Payroll</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute2)', fontWeight: 600 }}>Next pay run: 31 Jul</span>
-            <span onClick={() => setPayrollRun(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: payrollRun ? '#7a8a5e' : '#201e1d', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: payrollRun ? 'default' : 'pointer' }}>{payrollRun ? '✓ Payroll run' : 'Run payroll'}</span>
+            <span onClick={() => setPayrollRun(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: payrollRun ? 'var(--ink-2)' : 'var(--text)', color: 'var(--ink-text)', borderRadius: 999, padding: '6px 14px', cursor: payrollRun ? 'default' : 'pointer' }}>{payrollRun ? '✓ Payroll run' : 'Run payroll'}</span>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1.3fr .8fr .8fr .9fr .9fr auto', gap: 10, padding: '0 0 8px' }}>
@@ -168,8 +168,8 @@ export function HR() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Disciplinary notes</span><span onClick={() => setShowNote(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: '#fff', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New note</span></div>
+      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}><span className="cap" style={{ fontSize: 16, color: 'var(--text)' }}>Disciplinary notes</span><span onClick={() => setShowNote(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: 'var(--ink-text)', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>+ New note</span></div>
         {disciplinaryNotes.map((dn) => {
           const s = SEVERITY[dn.severity] ?? SEVERITY.Minor;
           return (
@@ -187,7 +187,7 @@ export function HR() {
       {showLeave && <NewLeaveModal onClose={() => setShowLeave(false)} onCreate={(form) => { addLeaveRequest(form); setShowLeave(false); }} />}
 
       {showNote && (
-        <div onClick={() => setShowNote(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+        <div onClick={() => setShowNote(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 400 }}>
             <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New disciplinary note</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -196,7 +196,7 @@ export function HR() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <span onClick={() => setShowNote(false)} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
-              <span onClick={submitNote} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Add note</span>
+              <span onClick={submitNote} className="fg" style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-text)', background: 'var(--ink)', borderRadius: 999, padding: '9px 20px', cursor: 'pointer' }}>Add note</span>
             </div>
           </div>
         </div>
