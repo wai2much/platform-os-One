@@ -28,16 +28,16 @@ export class ErrorBoundary extends Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--page-bg, #f5ead8)', padding: 24 }}>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--page-bg, var(--ink-text))', padding: 24 }}>
           <div style={{ maxWidth: 420, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
-            <div className="cap" style={{ fontSize: 22, color: '#8a4f24' }}>Something went wrong</div>
-            <p className="fg" style={{ fontSize: 13.5, color: 'var(--text-mute, #6b6560)', lineHeight: 1.6, margin: 0 }}>
+            <div className="cap" style={{ fontSize: 22, color: 'var(--ink)' }}>Something went wrong</div>
+            <p className="fg" style={{ fontSize: 13.5, color: 'var(--text-mute, var(--text-mute))', lineHeight: 1.6, margin: 0 }}>
               This screen hit an unexpected error and couldn't continue. It's been logged to the console. Reloading usually fixes it — if it keeps happening, let Wai know what you were doing when it broke.
             </p>
             <span
               onClick={() => { this.setState({ error: null }); window.location.reload(); }}
               className="fg"
-              style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#8a4f24', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}
+              style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-text)', background: 'var(--ink)', borderRadius: 999, padding: '10px 22px', cursor: 'pointer' }}
             >
               Reload
             </span>
