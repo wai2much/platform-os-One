@@ -15,16 +15,16 @@ function NavIcon({ icon, color }) {
 }
 
 function NavItem({ item, active, onClick }) {
-  const color = active ? '#fff' : 'var(--text-soft)';
-  const badgeColor = active ? '#fff' : item.badgeAccent ? '#fff' : 'var(--text-mute2)';
-  const badgeBg = active ? 'rgba(255,255,255,.25)' : item.badgeAccent ? '#7a8a5e' : 'transparent';
+  const color = active ? 'var(--ink-text)' : 'var(--text-soft)';
+  const badgeColor = active ? 'var(--ink-text)' : item.badgeAccent ? 'var(--ink-text)' : 'var(--text-mute2)';
+  const badgeBg = active ? 'rgba(255,255,255,.25)' : item.badgeAccent ? 'var(--ink-2)' : 'transparent';
   return (
     <button
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
         padding: '10px 15px', borderRadius: 999, border: 'none', cursor: 'pointer',
-        textAlign: 'left', background: active ? '#c67139' : 'transparent',
+        textAlign: 'left', background: active ? 'var(--ink)' : 'transparent',
       }}
     >
       <NavIcon icon={item.icon} color={color} />
@@ -156,8 +156,8 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
           <span className="fg" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-soft)', flex: 1 }}>
             {themePref === 'system' ? 'Theme · auto' : themePref === 'dark' ? 'Dark mode' : 'Light mode'}
           </span>
-          <span style={{ width: 34, height: 19, borderRadius: 999, background: isDark ? '#7a8a5e' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, transition: 'background .18s' }}>
-            <span style={{ position: 'absolute', top: 2, left: isDark ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: '#fff', transition: 'left .18s' }} />
+          <span style={{ width: 34, height: 19, borderRadius: 999, background: isDark ? 'var(--ink-2)' : 'var(--panel-bg)', position: 'relative', flexShrink: 0, transition: 'background .18s' }}>
+            <span style={{ position: 'absolute', top: 2, left: isDark ? 17 : 2, width: 15, height: 15, borderRadius: '50%', background: 'var(--card-bg)', transition: 'left .18s' }} />
           </span>
         </div>
 
@@ -170,7 +170,7 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
           {avatarUrl ? (
             <img src={avatarUrl} alt="" style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcc9a8', flexShrink: 0 }} />
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--panel-bg)', flexShrink: 0 }} />
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="fg" style={{ color: 'var(--text)', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
@@ -189,9 +189,9 @@ export function Layout({ title, sections, activeKey, onNavigate, user, org, onSi
             </svg>
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search invoices, jobs, customers, rego…"
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px 9px 36px', fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--text)', outline: 'none' }} />
             {search.trim().length >= 2 && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--card-bg)', borderRadius: 14, boxShadow: '0 12px 34px rgba(32,30,29,.22)', overflow: 'hidden', zIndex: 200 }}>
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--card-bg)', borderRadius: 14, boxShadow: '0 12px 34px rgba(17,17,17,.22)', overflow: 'hidden', zIndex: 200 }}>
                 {results.length === 0 ? (
                   <div className="fg" style={{ fontSize: 12.5, color: 'var(--text-mute2)', padding: '12px 14px' }}>Nothing matches &ldquo;{search.trim()}&rdquo;</div>
                 ) : results.map((r, n) => (

@@ -8,7 +8,7 @@ import { useState } from 'react';
  * host screen can pre-fill a form from it.
  */
 const STATES = ['VIC', 'NSW', 'QLD', 'SA', 'WA', 'NT', 'TAS', 'ACT'];
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--text)', outline: 'none' };
 
 export function RegoCheck({ onResult }) {
   const [plate, setPlate] = useState('');
@@ -39,12 +39,12 @@ export function RegoCheck({ onResult }) {
   };
 
   const reg = result?.registered;
-  const badge = reg === true ? { t: 'Registered', c: '#fff', bg: '#7a8a5e' }
-    : reg === false ? { t: result.status || 'Not registered', c: '#fff', bg: '#b4522f' }
+  const badge = reg === true ? { t: 'Registered', c: 'var(--ink-text)', bg: 'var(--ink-2)' }
+    : reg === false ? { t: result.status || 'Not registered', c: 'var(--ink-text)', bg: 'var(--ink)' }
     : { t: result?.status || 'Status unknown', c: 'var(--text)', bg: 'var(--panel-bg)' };
 
   return (
-    <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 16, boxShadow: '0 1px 3px rgba(32,30,29,.06)' }}>
+    <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 16, boxShadow: '0 1px 3px rgba(17,17,17,.06)' }}>
       <div className="cap" style={{ fontSize: 14, color: 'var(--text)', marginBottom: 10 }}>Rego check</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <input value={plate} onChange={(e) => setPlate(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && check()}
@@ -52,19 +52,19 @@ export function RegoCheck({ onResult }) {
         <select value={state} onChange={(e) => setState(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
           {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <span onClick={check} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: loading ? 'var(--text-mute2)' : '#c67139', borderRadius: 999, padding: '9px 18px', cursor: loading ? 'default' : 'pointer' }}>
+        <span onClick={check} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-text)', background: loading ? 'var(--text-mute2)' : 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: loading ? 'default' : 'pointer' }}>
           {loading ? 'Checking…' : 'Check'}
         </span>
       </div>
 
-      {error && <div className="fg" style={{ fontSize: 12, color: '#b4522f', marginTop: 10 }}>{error}</div>}
+      {error && <div className="fg" style={{ fontSize: 12, color: 'var(--ink)', marginTop: 10 }}>{error}</div>}
 
       {result && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: badge.c, background: badge.bg, borderRadius: 999, padding: '3px 12px' }}>{badge.t}</span>
             {result.expiry && <span className="fg" style={{ fontSize: 12, color: 'var(--text-soft)' }}>Expires {result.expiry}</span>}
-            {result.writtenOff && <span className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', background: '#b4522f', borderRadius: 999, padding: '3px 12px' }}>Write-off recorded</span>}
+            {result.writtenOff && <span className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-text)', background: 'var(--ink)', borderRadius: 999, padding: '3px 12px' }}>Write-off recorded</span>}
           </div>
           {(result.make || result.model || result.year || result.vin) && (
             <div className="fg" style={{ fontSize: 12.5, color: 'var(--text)' }}>
