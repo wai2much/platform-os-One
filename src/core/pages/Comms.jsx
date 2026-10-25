@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../lib/supabase.js';
+import { useAuth } from '../auth.jsx';
 
 /**
  * Comms — unified SMS/Email inbox.
@@ -10,9 +12,31 @@ import { useState } from 'react';
  * traffic. With real customers now in the system, staff could reasonably
  * believe someone was waiting on a reply that doesn't exist.
  *
- * The UI is kept and works — threads, search, send, resolve all function on
- * whatever's in state — it simply starts empty until a real channel is wired.
+ * SMS is now wired (26 Oct 2026) through LinkedUp: threads come from the
+ * sms_messages table, Send goes through /api/sms/send (key server-side).
+ * Until LinkedUp's API details are in, the screen says 'SMS not connected
+ * yet' and Send refuses. Nothing is ever shown that didn't really happen.
  */
+const normalizeAuMobile = (input) => {
+  const d = String(input || '').replace(/[^\d+]/g, '');
+  const m = d.match(/^\+?614(\d{8})$/) || d.match(/^04(\d{8})$/);
+  return m ? `+614${m[1]}` : null;
+};
+const fmtAu = (n) => (/^\+614\d{8}$/.test(n) ? `0${n.slice(3, 6)} ${n.slice(6, 9)} ${n.slice(9)}` : n);
+
+// sms_messages rows (supabase/add-sms-messages.sql) -> one thread per number.
+function groupThreads(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    if (!by.has(r.contact)) by.set(r.contact, { id: r.contact, name: fmtAu(r.contact), phone: fmtAu(r.contact), channel: 'SMS', messages: [], unread: false, resolved: false, last: '' });
+    const t = by.get(r.contact);
+    t.messages.push({ from: r.direction === 'out' ? 'us' : 'them', text: r.body });
+    if (r.direction === 'in' && !r.read) t.unread = true;
+    t.resolved = r.resolved; t.last = r.created_at;
+  }
+  return [...by.values()].sort((a, b) => (a.last < b.last ? 1 : -1));
+}
+
 const QUICK_REPLIES = ["It's ready for pickup", 'Running about 30 min behind', "I'll check and call you back"];
 
 // Hoisted to module scope (found during the 13 Aug health check) — this was
@@ -26,31 +50,73 @@ function Toggle({ on, onClick }) {
 }
 
 export function Comms() {
-  const [threads, setThreads] = useState([]);
+  const { org } = useAuth();
+  const [rows, setRows] = useState([]);
+  const [sms, setSms] = useState({ checked: false, configured: false });
+  const [loadError, setLoadError] = useState('');
+  const [sendError, setSendError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [newTo, setNewTo] = useState('');
   const [activeId, setActiveId] = useState(null);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
-  const [resolved, setResolved] = useState({});
   const [showSettings, setShowSettings] = useState(false);
   const [notif, setNotif] = useState({ sms: true, email: true, forward: true });
 
-  const active = threads.find((t) => t.id === activeId);
+  const load = useCallback(async () => {
+    if (!supabase || !org?.id) return;
+    const { data, error } = await supabase.from('sms_messages').select('*').eq('org_id', org.id).order('created_at', { ascending: true }).limit(2000);
+    // Table not created yet (migration unapplied) -> just stay empty.
+    if (error) { setLoadError(error.message); return; }
+    setLoadError(''); setRows(data || []);
+  }, [org?.id]);
+
+  useEffect(() => {
+    fetch('/api/sms/status').then((r) => r.json()).then((d) => setSms({ checked: true, configured: !!d.configured })).catch(() => setSms({ checked: true, configured: false }));
+  }, []);
+  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, [load]);
+
+  const threads = useMemo(() => groupThreads(rows), [rows]);
+  const active = threads.find((t) => t.id === activeId) || (activeId ? { id: activeId, name: activeId, phone: activeId, channel: 'SMS', messages: [], resolved: false } : null);
   const term = search.trim().toLowerCase();
   const visible = threads.filter((t) => !term || t.name.toLowerCase().includes(term) || t.messages.some((m) => m.text.toLowerCase().includes(term)));
 
-  const open = (id) => {
-    setActiveId(id);
-    setThreads((list) => list.map((t) => (t.id === id ? { ...t, unread: false } : t)));
+  const open = async (id) => {
+    setActiveId(id); setSendError('');
+    const t = threads.find((x) => x.id === id);
+    if (supabase && t?.unread) {
+      await supabase.from('sms_messages').update({ read: true }).eq('org_id', org.id).eq('contact', id).eq('direction', 'in').eq('read', false);
+      load();
+    }
   };
 
-  const send = (text) => {
+  const startNew = () => {
+    const n = normalizeAuMobile(newTo);
+    if (!n) { setSendError('Enter an Australian mobile, e.g. 0412 345 678'); return; }
+    setNewTo(''); setActiveId(n); setSendError('');
+  };
+
+  const send = async (text) => {
     const msg = (text ?? draft).trim();
-    if (!msg) return;
-    setThreads((list) => list.map((t) => (t.id === activeId ? { ...t, messages: [...t.messages, { from: 'us', text: msg }] } : t)));
-    setDraft('');
+    if (!msg || !activeId || sending) return;
+    if (!sms.configured) { setSendError('SMS not connected yet. Nothing was sent.'); return; }
+    setSending(true); setSendError('');
+    try {
+      const { data: s } = await supabase.auth.getSession();
+      const r = await fetch('/api/sms/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.session?.access_token || ''}` }, body: JSON.stringify({ to: activeId, body: msg }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) { setSendError(d.message || `Send failed (HTTP ${r.status}). Nothing was sent.`); return; }
+      setDraft(''); load();
+    } catch (e) { setSendError(`Send failed: ${e.message}. Nothing was sent.`); }
+    finally { setSending(false); }
   };
 
-  const toggleResolved = () => setResolved((r) => ({ ...r, [activeId]: !r[activeId] }));
+  const toggleResolved = async () => {
+    if (!supabase || !active) return;
+    await supabase.from('sms_messages').update({ resolved: !active.resolved }).eq('org_id', org.id).eq('contact', active.id);
+    load();
+  };
+  const resolved = { [activeId]: active?.resolved };
 
   return (
     <div style={{ padding: '6px 30px 26px', display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
@@ -76,8 +142,23 @@ export function Comms() {
         </div>
       )}
 
+      {sms.checked && !sms.configured && (
+        <div style={{ paddingBottom: 12 }}>
+          <div className="fg" style={{ background: 'var(--card-bg)', borderRadius: 20, padding: '14px 20px', boxShadow: '0 1px 3px rgba(32,30,29,.06)', fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6 }}>
+            <span style={{ fontWeight: 700, color: '#c67139' }}>SMS not connected yet.</span> Waiting on LinkedUp's API details. Texts can't be sent or received until then. Email isn't connected either.
+          </div>
+        </div>
+      )}
+      {loadError && !/does not exist|schema cache/i.test(loadError) && (
+        <div className="fg" style={{ paddingBottom: 10, fontSize: 12, color: '#c67139', fontWeight: 600 }}>Couldn't load messages: {loadError}</div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '.9fr 1.6fr', gap: 14, flex: 1, minHeight: 0 }}>
         <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+            <input value={newTo} onChange={(e) => setNewTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && startNew()} placeholder="New text to mobile…" style={{ flex: 1, minWidth: 0, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+            <span onClick={startNew} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer', alignSelf: 'center', padding: '0 6px' }}>Start</span>
+          </div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations…" style={{ background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '9px 14px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', marginBottom: 6 }} />
           {visible.map((t) => (
             <div key={t.id} onClick={() => open(t.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 12px', borderRadius: 12, cursor: 'pointer', background: t.id === activeId ? 'var(--panel-bg)' : 'transparent' }}>
@@ -94,7 +175,7 @@ export function Comms() {
           {!visible.length && (
             <div className="fg" style={{ padding: 16, fontSize: 12.5, color: 'var(--text-mute)', textAlign: 'center', lineHeight: 1.6 }}>
               {threads.length === 0 && !term
-                ? 'No conversations yet. Messages will appear here once an SMS or email channel is connected.'
+                ? (sms.configured ? 'No texts yet.' : 'No conversations yet. Messages will appear here once SMS is connected.')
                 : 'No matches'}
             </div>
           )}
@@ -122,9 +203,10 @@ export function Comms() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
               {QUICK_REPLIES.map((qr) => <span key={qr} onClick={() => send(qr)} className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft)', background: 'var(--panel-bg)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer' }}>{qr}</span>)}
             </div>
+            {sendError && <div className="fg" style={{ fontSize: 11.5, color: '#c67139', fontWeight: 600 }}>{sendError}</div>}
             <div style={{ display: 'flex', gap: 10 }}>
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, background: 'var(--panel-bg)', border: 'none', borderRadius: 999, padding: '10px 15px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
-              <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Send</span>
+              <span onClick={() => send()} className="fg" style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--ink)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer', opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending…' : 'Send'}</span>
             </div>
           </div>
         )}
