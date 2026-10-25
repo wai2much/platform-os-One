@@ -8,22 +8,22 @@ import { useStore } from '@/core/store';
  */
 const fmt = (n) => '$' + (n || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const OLIVE = '#5a6a3c';
-const TERRA = '#8a4f24';
-const INK = '#201e1d';
-const LINE = '#d3c19a';
+const OLIVE = 'var(--ink-2)';
+const TERRA = 'var(--ink)';
+const INK = 'var(--text)';
+const LINE = 'var(--border-c)';
 
 const INSPECTION_ITEMS = [
   'Front brake pads (mm)', 'Rear brake pads / shoes (mm)', 'Discs / drums condition', 'Brake fluid level / condition',
   'Shocks / struts & springs', 'Steering, ball joints & tie rods', 'Bushes, CV boots & wheel bearings', 'Battery test (V / CCA)',
   'Lights, horn & wipers', 'Fluids, belts & filters', 'Exhaust & leaks under body',
 ];
-const STATUS_COLOR = { ok: '#5a6a3c', monitor: '#c9a15e', action: '#b4531f' };
+const STATUS_COLOR = { ok: 'var(--ink-2)', monitor: 'var(--ink-2)', action: 'var(--ink)' };
 
-const inp = { border: `1px solid ${LINE}`, borderRadius: 999, padding: '8px 12px', fontSize: 12.5, fontFamily: 'Figtree, sans-serif', color: INK, background: '#fffdf8', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { border: `1px solid ${LINE}`, borderRadius: 999, padding: '8px 12px', fontSize: 12.5, fontFamily: 'Inter, sans-serif', color: INK, background: 'var(--card-bg)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function Card({ children, style }) {
-  return <div style={{ background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', padding: 20, ...style }}>{children}</div>;
+  return <div style={{ background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)', padding: 20, ...style }}>{children}</div>;
 }
 function SectionTitle({ children }) {
   return <div className="cap" style={{ color: TERRA, fontSize: 17, letterSpacing: '.01em', marginBottom: 12 }}>{children}</div>;
@@ -122,7 +122,7 @@ function BackPage() {
           <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)' }}><b style={{ color: STATUS_COLOR.ok }}>OK</b> serviceable · <b style={{ color: STATUS_COLOR.monitor }}>MONITOR</b> advise · <b style={{ color: STATUS_COLOR.action }}>ACTION</b> now</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 60px 78px 68px 1.3fr', gap: 10, background: OLIVE, borderRadius: 10, padding: '9px 14px' }}>
-          {['ITEM', 'OK', 'MONITOR', 'ACTION', 'MEASUREMENT / NOTE'].map((h) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.05em', color: '#fff', fontWeight: 700 }}>{h}</span>)}
+          {['ITEM', 'OK', 'MONITOR', 'ACTION', 'MEASUREMENT / NOTE'].map((h) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.05em', color: 'var(--ink-text)', fontWeight: 700 }}>{h}</span>)}
         </div>
         {INSPECTION_ITEMS.map((item) => (
           <div key={item} style={{ display: 'grid', gridTemplateColumns: '1.4fr 60px 78px 68px 1.3fr', gap: 10, alignItems: 'center', padding: '8px 14px', borderBottom: `1px solid var(--border-c)` }}>
@@ -153,7 +153,7 @@ function BackPage() {
       <Card>
         <SectionTitle>Parts &amp; Labour</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 150px 110px 110px', gap: 10, background: OLIVE, borderRadius: 10, padding: '9px 14px' }}>
-          {['QTY', 'DESCRIPTION OF PART OR LABOUR', 'PART NO.', 'UNIT $', 'LINE $'].map((h, i) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.05em', color: '#fff', fontWeight: 700, textAlign: i >= 3 ? 'right' : 'left' }}>{h}</span>)}
+          {['QTY', 'DESCRIPTION OF PART OR LABOUR', 'PART NO.', 'UNIT $', 'LINE $'].map((h, i) => <span key={h} className="fg" style={{ fontSize: 10, letterSpacing: '.05em', color: 'var(--ink-text)', fontWeight: 700, textAlign: i >= 3 ? 'right' : 'left' }}>{h}</span>)}
         </div>
         <datalist id="parts-inventory">
           {inventory.map((p) => <option key={p.id} value={p.name} />)}
@@ -207,9 +207,9 @@ function BackPage() {
             </div>
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: OLIVE, borderRadius: 999, padding: '10px 16px', marginTop: 6 }}>
-            <span className="cap" style={{ color: '#fff', fontSize: 15, lineHeight: 1 }}>TOTAL DUE</span>
+            <span className="cap" style={{ color: 'var(--ink-text)', fontSize: 15, lineHeight: 1 }}>TOTAL DUE</span>
             <span style={{ flex: 1 }} />
-            <span className="cap" style={{ color: '#fff', fontSize: 22 }}>{fmt(totalDue)}</span>
+            <span className="cap" style={{ color: 'var(--ink-text)', fontSize: 22 }}>{fmt(totalDue)}</span>
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
             {['Card', 'Cash', 'Account', 'Fleet / warranty'].map((m) => (
@@ -220,7 +220,7 @@ function BackPage() {
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-            <span className="fg" onClick={onGenerateInvoice} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? '#fff' : 'var(--text-mute2)', background: net > 0 ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
+            <span className="fg" onClick={onGenerateInvoice} style={{ fontSize: 13, fontWeight: 700, color: net > 0 ? 'var(--ink-text)' : 'var(--text-mute2)', background: net > 0 ? 'var(--ink)' : 'var(--panel-bg)', borderRadius: 999, padding: '10px 22px', cursor: net > 0 ? 'pointer' : 'default' }}>Generate invoice →</span>
           </div>
         </Card>
       </div>
@@ -364,7 +364,7 @@ function FrontPage() {
 }
 
 function PageTab({ label, active, onClick }) {
-  return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 18px', color: active ? '#fff' : 'var(--text-soft)', background: active ? TERRA : 'transparent' }}>{label}</span>;
+  return <span className="fg" onClick={onClick} style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '7px 18px', color: active ? 'var(--ink-text)' : 'var(--text-soft)', background: active ? TERRA : 'transparent' }}>{label}</span>;
 }
 
 export function JobCard() {
@@ -376,7 +376,7 @@ export function JobCard() {
           <PageTab label="Front — Intake" active={page === 'front'} onClick={() => setPage('front')} />
           <PageTab label="Back — Inspection & Sign-off" active={page === 'back'} onClick={() => setPage('back')} />
         </div>
-        <span className="fg" onClick={() => window.print()} style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: OLIVE, borderRadius: 999, padding: '8px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+        <span className="fg" onClick={() => window.print()} style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-text)', background: OLIVE, borderRadius: 999, padding: '8px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-4a2 2 0 012-2h16a2 2 0 012 2v4a2 2 0 01-2 2h-2M6 14h12v8H6z" /></svg>
           Print job card
         </span>

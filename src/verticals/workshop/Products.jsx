@@ -7,17 +7,17 @@ import { useStore, fmt } from '@/core/store';
  * table (see supabase/schema.sql Phase 6).
  */
 const STATUS = {
-  'In stock': { color: '#7a8a5e', bg: 'rgba(122,138,94,.16)' },
-  Low: { color: '#fff', bg: '#c67139' },
+  'In stock': { color: 'var(--ink-2)', bg: 'rgba(72,72,74,.16)' },
+  Low: { color: 'var(--ink-text)', bg: 'var(--ink)' },
   Ordered: { color: 'var(--text-soft)', bg: 'var(--panel-bg)' },
 };
-const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
+const inp = { background: 'var(--panel-bg)', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
 function NewPartModal({ onClose, onCreate }) {
   const [form, setForm] = useState({ name: '', size: '', stock: '', price: '', status: 'In stock' });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(32,30,29,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 24, width: 380 }}>
         <div className="cap" style={{ fontSize: 18, color: 'var(--text)', marginBottom: 16 }}>New product</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -31,7 +31,7 @@ function NewPartModal({ onClose, onCreate }) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
           <span onClick={onClose} className="fg" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', border: '1.5px solid var(--border-c)', borderRadius: 999, padding: '9px 18px', cursor: 'pointer' }}>Cancel</span>
-          <span onClick={() => form.name.trim() && onCreate(form)} className="fg" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: form.name.trim() ? '#c67139' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>Add product</span>
+          <span onClick={() => form.name.trim() && onCreate(form)} className="fg" style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-text)', background: form.name.trim() ? 'var(--ink)' : 'var(--panel-bg)', borderRadius: 999, padding: '9px 20px', cursor: form.name.trim() ? 'pointer' : 'not-allowed' }}>Add product</span>
         </div>
       </div>
     </div>
@@ -47,14 +47,14 @@ export function Products() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 16 }}>
         <span className="fg" style={{ color: 'var(--text-mute)', fontSize: 13, fontWeight: 500 }}>{parts.length} total</span>
         <span style={{ flex: 1 }} />
-        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: '#c67139', color: '#fff', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New product</span>
+        <span onClick={() => setCreating(true)} className="fg" style={{ fontSize: 12, fontWeight: 700, background: 'var(--ink)', color: 'var(--ink-text)', borderRadius: 999, padding: '8px 18px', cursor: 'pointer' }}>+ New product</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
         {parts.map((p) => {
           const s = STATUS[p.status] ?? STATUS['In stock'];
           return (
-            <div key={p.id} style={{ background: 'var(--card-bg)', borderRadius: 18, padding: 16, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div key={p.id} style={{ background: 'var(--card-bg)', borderRadius: 18, padding: 16, boxShadow: '0 1px 3px rgba(17,17,17,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--panel-bg)', flexShrink: 0 }} />
                 <span className="fg" style={{ fontSize: 10, fontWeight: 700, color: s.color, background: s.bg, borderRadius: 999, padding: '3px 9px' }}>{p.status}</span>
@@ -69,10 +69,10 @@ export function Products() {
         })}
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(32,30,29,.06)', marginTop: 16 }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 17, boxShadow: '0 1px 3px rgba(17,17,17,.06)', marginTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 13 }}>
           <span className="cap" style={{ fontSize: 15, color: 'var(--text)' }}>Suppliers</span>
-          <span onClick={() => setActive('suppliers')} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: '#c67139', cursor: 'pointer' }}>View all →</span>
+          <span onClick={() => setActive('suppliers')} className="fg" style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink)', cursor: 'pointer' }}>View all →</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {suppliers.slice(0, 5).map((s) => (
