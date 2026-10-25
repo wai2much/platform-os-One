@@ -196,7 +196,7 @@ export function Settings() {
       </Card>
 
       <Card title="Integrations">
-        {[['3CX phone system', true], ['Mercedes AI', true], ['London (voice agent · Grok)', true]].map(([name, connected]) => (
+        {[['Mercedes AI', true], ['London (voice agent · Grok)', true]].map(([name, connected]) => (
           <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="fg" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{name}</span>
             <span className="fg" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ink-text)', background: 'var(--ink-2)', borderRadius: 999, padding: '3px 10px' }}>{connected ? 'Connected' : 'Off'}</span>

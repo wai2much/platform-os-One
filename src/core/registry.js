@@ -37,7 +37,6 @@ export const SECTIONS = [
     items: [
       { key: 'dashboard', label: 'Dashboard', icon: I.dashboard },
       { key: 'assistant', label: 'Mercedes', icon: I.mercedes, badge: 'AGENT', badgeAccent: true },
-      { key: 'phone', label: '3CX', icon: I.threecx },
       { key: 'comms', label: 'Comms', icon: I.comms, badge: '2' },
       { key: 'bookings', label: 'Bookings', icon: I.bookings, badge: '3' },
       { key: 'pubBooking', label: 'Public Booking', icon: I.pubBooking },
