@@ -15,7 +15,7 @@ function MercedesAvatar({ size = 26, rounded = 9 }) {
   const [broken, setBroken] = useState(false);
   if (broken) {
     return (
-      <div style={{ width: size, height: size, borderRadius: rounded, flexShrink: 0, background: 'rgba(198,113,57,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: size, height: size, borderRadius: rounded, flexShrink: 0, background: 'rgba(17,17,17,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Zap size={Math.round(size * 0.55)} color={ACCENT} />
       </div>
     );
@@ -69,7 +69,7 @@ function stripFilesForStorage(messages) {
  * to clean up, nothing left in a bucket, and one less thing to secure.
  */
 
-const ACCENT = '#c67139';
+const ACCENT = 'var(--ink)';
 
 // Which Mercedes answers.
 //
@@ -245,19 +245,19 @@ function VehicleHealthAlerts() {
   );
   const poll = () => { setPolling(true); setTimeout(() => setPolling(false), 900); };
   return (
-    <div style={{ background: 'rgba(198,113,57,.06)', border: '1px solid var(--border-c)', borderRadius: 14, padding: 12 }}>
+    <div style={{ background: 'rgba(17,17,17,.06)', border: '1px solid var(--border-c)', borderRadius: 14, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <AlertTriangle size={13} color={alerts.length ? ACCENT : 'var(--text-mute)'} />
           <span className="fg" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Vehicle Health Alerts</span>
         </div>
-        <button onClick={poll} className="fg" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700, color: ACCENT, background: 'rgba(198,113,57,.12)', border: 'none', borderRadius: 999, padding: '4px 9px', cursor: 'pointer' }}>
+        <button onClick={poll} className="fg" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700, color: ACCENT, background: 'rgba(17,17,17,.12)', border: 'none', borderRadius: 999, padding: '4px 9px', cursor: 'pointer' }}>
           <RefreshCw size={11} style={{ animation: polling ? 'spin .9s linear infinite' : 'none' }} /> Poll Now
         </button>
       </div>
       {alerts.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 0' }}>
-          <CheckCircle2 size={26} color="#7a8a5e" />
+          <CheckCircle2 size={26} color="var(--ink-2)" />
           <span className="fg" style={{ fontSize: 11.5, color: 'var(--text-mute)', textAlign: 'center' }}>All vehicles healthy — no active alerts</span>
         </div>
       ) : (
@@ -268,7 +268,7 @@ function VehicleHealthAlerts() {
                 <div className="fg" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.model} · {v.rego}</div>
                 <div className="fg" style={{ fontSize: 10, color: 'var(--text-mute)' }}>{v.owner} · due {v.nextDue}</div>
               </div>
-              <span className="fg" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, color: '#fff', background: v.status === 'Overdue' ? '#b4522f' : ACCENT, borderRadius: 999, padding: '2px 8px' }}>{v.status}</span>
+              <span className="fg" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, color: 'var(--ink-text)', background: v.status === 'Overdue' ? 'var(--ink)' : ACCENT, borderRadius: 999, padding: '2px 8px' }}>{v.status}</span>
             </div>
           ))}
         </div>
@@ -279,8 +279,8 @@ function VehicleHealthAlerts() {
 
 // --- Shared pieces ----------------------------------------------------------
 function IconBtn({ children, onClick, primary, active, disabled, title }) {
-  const bg = disabled ? 'var(--text-mute2)' : active ? '#b4522f' : primary ? ACCENT : 'var(--panel-bg)';
-  const col = primary || active ? '#fff' : 'var(--text-soft)';
+  const bg = disabled ? 'var(--text-mute2)' : active ? 'var(--ink)' : primary ? ACCENT : 'var(--panel-bg)';
+  const col = primary || active ? 'var(--ink-text)' : 'var(--text-soft)';
   return (
     <button onClick={onClick} disabled={disabled} title={title} style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: bg, color: col, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1, flexShrink: 0 }}>
       {children}
@@ -296,10 +296,10 @@ function AttachTray({ items, remove, error }) {
       {items.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {items.map((f) => (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(198,113,57,.08)', border: '1px solid rgba(198,113,57,.25)', borderRadius: 10, padding: '5px 7px', maxWidth: 210 }}>
+            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(17,17,17,.08)', border: '1px solid rgba(17,17,17,.25)', borderRadius: 10, padding: '5px 7px', maxWidth: 210 }}>
               {f.preview
                 ? <img src={f.preview} alt="" style={{ width: 26, height: 26, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-                : <div style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(198,113,57,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FileText size={13} color={ACCENT} /></div>}
+                : <div style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(17,17,17,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FileText size={13} color={ACCENT} /></div>}
               <div style={{ minWidth: 0 }}>
                 <div className="fg" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                 <div className="fg" style={{ fontSize: 9.5, color: 'var(--text-mute2)' }}>{prettySize(f.size)}</div>
@@ -311,7 +311,7 @@ function AttachTray({ items, remove, error }) {
           ))}
         </div>
       )}
-      {error && <div className="fg" style={{ fontSize: 11, color: '#b4522f', fontWeight: 600 }}>{error}</div>}
+      {error && <div className="fg" style={{ fontSize: 11, color: 'var(--ink)', fontWeight: 600 }}>{error}</div>}
     </div>
   );
 }
@@ -340,7 +340,7 @@ function Bubble({ m, thinking, onSpeak, speaking }) {
           <div className="fg" style={{
             padding: '11px 15px', fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap',
             borderRadius: user ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-            background: user ? ACCENT : 'var(--panel-bg)', color: user ? '#fff' : 'var(--text)', opacity: thinking ? 0.6 : 1,
+            background: user ? ACCENT : 'var(--panel-bg)', color: user ? 'var(--ink-text)' : 'var(--text)', opacity: thinking ? 0.6 : 1,
           }}>{thinking ? 'Thinking…' : m.text}</div>
         )}
       </div>
@@ -399,7 +399,7 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLa
         {hidden}
         <AttachTray items={attach.items} remove={attach.remove} error={attach.error} />
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} rows={3} placeholder="Ask Mercedes anything…"
-          style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', background: 'transparent', padding: '14px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)' }} />
+          style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', background: 'transparent', padding: '14px 16px', fontSize: 13.5, fontFamily: 'Inter, sans-serif', color: 'var(--text)' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 12px' }}>
           <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>Press Enter to send · drop a file anywhere</span>
           <div style={{ display: 'flex', gap: 7 }}>
@@ -421,7 +421,7 @@ function Composer({ draft, setDraft, send, thinking, listening, toggleMic, micLa
       <div style={{ padding: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
         <IconBtn onClick={pick} title="Attach a photo, PDF or file"><Paperclip size={15} /></IconBtn>
         <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} placeholder={listening ? 'Listening…' : 'Ask Mercedes anything…'}
-          style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Figtree, sans-serif', color: 'var(--text)', outline: 'none' }} />
+          style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--border-c)', borderRadius: 999, padding: '11px 16px', fontSize: 13.5, fontFamily: 'Inter, sans-serif', color: 'var(--text)', outline: 'none' }} />
         <IconBtn onClick={cycleMicLang} title={`Dictation language: ${micLang === 'en-AU' ? 'English' : 'Cantonese'} — click to switch`}>
           <span className="fg" style={{ fontSize: 12, fontWeight: 800 }}>{MIC_LANGS.find((l) => l.code === micLang)?.label}</span>
         </IconBtn>
@@ -733,15 +733,15 @@ export function Mercedes() {
   return (
     <div style={{ display: 'flex', gap: 14, padding: '6px 24px 20px', height: 'calc(100vh - 128px)', minHeight: 560 }}>
       {/* Left rail */}
-      <aside style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(32,30,29,.06)', overflow: 'hidden' }}>
+      <aside style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card-bg)', borderRadius: 20, padding: 12, boxShadow: '0 1px 3px rgba(17,17,17,.06)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MercedesAvatar size={26} rounded={8} />
             <span className="fg" style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Mercedes</span>
-            <span className="fg" style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: ACCENT, background: 'rgba(198,113,57,.14)', borderRadius: 5, padding: '2px 5px' }}>AI</span>
+            <span className="fg" style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: ACCENT, background: 'rgba(17,17,17,.14)', borderRadius: 5, padding: '2px 5px' }}>AI</span>
             {/* Only ever shows on a ?agent=v2 tab, so you always know which one you are talking to. */}
             {MERCEDES_FN === 'mercedes' && (
-              <span className="fg" title="Harnessed rewrite. Add ?agent=v1 to the URL for the original." style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: '#2f7d55', background: 'rgba(47,125,85,.14)', borderRadius: 5, padding: '2px 5px' }}>V2</span>
+              <span className="fg" title="Harnessed rewrite. Add ?agent=v1 to the URL for the original." style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.06em', color: 'var(--ink-2)', background: 'rgba(72,72,74,.14)', borderRadius: 5, padding: '2px 5px' }}>V2</span>
             )}
           </div>
           <button onClick={() => setVoiceOn((v) => !v)} title={voiceOn ? 'Auto-speak replies: on' : 'Auto-speak replies: off'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: voiceOn ? ACCENT : 'var(--text-mute2)', display: 'flex' }}>
@@ -749,7 +749,7 @@ export function Mercedes() {
           </button>
         </div>
 
-        <button onClick={newChat} className="fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', fontSize: 12.5, fontWeight: 700, color: ACCENT, background: 'rgba(198,113,57,.1)', border: '1px solid rgba(198,113,57,.25)', borderRadius: 12, padding: '9px 12px', cursor: 'pointer' }}>
+        <button onClick={newChat} className="fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', fontSize: 12.5, fontWeight: 700, color: ACCENT, background: 'rgba(17,17,17,.1)', border: '1px solid rgba(17,17,17,.25)', borderRadius: 12, padding: '9px 12px', cursor: 'pointer' }}>
           <Plus size={14} /> New Chat
         </button>
 
@@ -763,7 +763,7 @@ export function Mercedes() {
               <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute2)' }}>No chats yet</span>
             </div>
           ) : conversations.map((c) => (
-            <div key={c.id} onClick={() => selectChat(c)} className="mercedes-history-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(198,113,57,.1)' : undefined }}>
+            <div key={c.id} onClick={() => selectChat(c)} className="mercedes-history-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 9px', borderRadius: 10, cursor: 'pointer', background: activeId === c.id ? 'rgba(17,17,17,.1)' : undefined }}>
               <MessageSquare size={14} color={activeId === c.id ? ACCENT : 'var(--text-mute2)'} style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="fg" style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title || 'Untitled'}</div>
@@ -778,10 +778,10 @@ export function Mercedes() {
       {/* Main */}
       <section
         onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}
-        style={{ position: 'relative', flex: 1, minWidth: 0, background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(32,30,29,.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ position: 'relative', flex: 1, minWidth: 0, background: 'var(--card-bg)', borderRadius: 20, boxShadow: '0 1px 3px rgba(17,17,17,.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         {dragging && (
-          <div style={{ position: 'absolute', inset: 8, zIndex: 5, borderRadius: 16, border: `2px dashed ${ACCENT}`, background: 'rgba(198,113,57,.08)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', inset: 8, zIndex: 5, borderRadius: 16, border: `2px dashed ${ACCENT}`, background: 'rgba(17,17,17,.08)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>
             <Paperclip size={26} color={ACCENT} />
             <span className="fg" style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>Drop it here and Mercedes will take a look</span>
             <span className="fg" style={{ fontSize: 11, color: 'var(--text-mute)' }}>Photos, PDFs and text files · up to {MAX_FILES} at a time</span>

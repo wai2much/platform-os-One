@@ -2,10 +2,10 @@ import { Wrench, CalendarCheck, Receipt, Sparkles, Lock } from 'lucide-react';
 import { useAuth } from '@/core/auth';
 import { BrandLockup } from '@/components/BrandMark';
 
-const FEATURE_TERRACOTTA = '#c67139';
-const FEATURE_SAGE = '#7a8a5e';
-const FEATURE_BLUSH = '#c17b71';
-const FEATURE_INK = '#3c3936';
+const FEATURE_TERRACOTTA = 'var(--ink)';
+const FEATURE_SAGE = 'var(--ink-2)';
+const FEATURE_BLUSH = 'var(--ink-2)';
+const FEATURE_INK = 'var(--text-soft)';
 
 const FEATURES = [
   { icon: Wrench, label: 'Jobs', color: FEATURE_TERRACOTTA },
@@ -45,7 +45,7 @@ export function Login() {
         style={{ position: 'absolute', inset: 0, opacity: .6, pointerEvents: 'none' }}
       />
       <div aria-hidden="true" className="monogram-field" />
-      <div className="origami-card-in" style={{ width: '100%', maxWidth: 400, position: 'relative', zIndex: 1, background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '38px 36px 32px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(32,30,29,.25)', overflow: 'hidden' }}>
+      <div className="origami-card-in" style={{ width: '100%', maxWidth: 400, position: 'relative', zIndex: 1, background: 'var(--card-bg)', border: '1px solid var(--border-c)', borderRadius: 18, padding: '38px 36px 32px', textAlign: 'center', boxShadow: '0 24px 60px -20px rgba(17,17,17,.25)', overflow: 'hidden' }}>
         <div aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${FEATURE_TERRACOTTA}, ${FEATURE_BLUSH}, ${FEATURE_SAGE})` }} />
 
         <BrandLockup height={34} style={{ display: 'block', margin: '0 auto 16px' }} />
@@ -79,7 +79,7 @@ export function Login() {
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             padding: '11px 16px', borderRadius: 999, border: '1px solid var(--border-c)',
-            background: '#fff', color: 'var(--text)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+            background: 'var(--card-bg)', color: 'var(--text)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
           }}
         >
           <GoogleG />
