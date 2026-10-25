@@ -78,8 +78,8 @@ export function Login() {
           className="fg login-google-btn"
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-            padding: '11px 16px', borderRadius: 999, border: '1px solid var(--border-c)',
-            background: 'var(--card-bg)', color: 'var(--text)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+            padding: '13px 16px', borderRadius: 999, border: '1px solid var(--ink)',
+            background: 'var(--ink)', color: 'var(--ink-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
           }}
         >
           <GoogleG />
